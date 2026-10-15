@@ -1,0 +1,145 @@
+# Music Theory (Piano)
+
+An interactive piano keyboard that shows the key signature of every major and minor key.
+Click any key (black or white) to root the keyboard there and light up its scale.
+
+No build tools or dependencies. Open `index.html` in a browser, or open the single-file
+`dist/index.html`.
+
+## What it does
+
+- **Major / Minor selector.** Switches every label box between major and natural-minor
+  signatures. The selected root stays put; its spelling re-defaults for the new mode.
+- **Click a key to root it.** The keyboard slides to the new view. The view always starts on
+  C (the start of the pair of black keys) or F (the start of the triple) and ends after E or B,
+  so a group of black keys is never split. It shows two full octaves from the root: roots C to E
+  start on C (17 white keys), roots F to B start on F (18). The scale keeps going through the second
+  octave (chords light up there too). The key-signature boxes appear only above the leftmost octave, so
+  each signature shows once (the boxes are drawn smaller than the old one-octave layout to fit; the page
+  is also a little wider). Fingering and sound stay in the lower octave. Black keys work too.
+- **Scale highlight.** All keys of the scale are lit in one uniform light yellow. Highlighted keys
+  are named with the correct spelling of the scale (D major shows F♯, G♭ major shows C♭). Use the
+  chord selector (pick type Triad and degree 1, the I chord) to see the root, third and fifth.
+- **Pop / Jazz level.** A Pop / Jazz switch at the left of the controls (default Pop). Pop hides the
+  advanced theory you don't need for carols and pop tunes: the Pentatonic / Whole tone switch, the 11th
+  and 13th chord types, the Ambiguity and Tension sorts, the mode names and brightness shading on the
+  degree chips (the row is labelled "Degree"), the mode sort, and the mode paragraph and the
+  tension/ambiguity sentence in the chord description. Study mode is a Pop-only activity: the Explore / Study switch is hidden in Jazz (and switching to Jazz from study mode returns to Explore). Jazz shows the advanced theory. Switching back to Pop
+  returns to the full scale and drops any hidden chord type.
+- **Find the signature (Study).** With Study on, a second switch picks the direction. *Find the key*
+  is the original card (a signature is shown; press the key). *Find the signature* reverses it: the keyboard
+  rotates onto a random tonic (the lit key, labelled with its spelling) and all the signatures of the current
+  Major / Minor deck sit above it, C (or Am) in the first column centred vertically between two rows, sharps
+  on top and flats below, so equal numbers of accidentals line up in columns. Click the matching signature. F♯ and G♭ (D♯m and E♭m) are separate boxes and
+  independent answers: the lit key says which one is asked for. A wrong pick is named and counts as a miss
+  (missed tonics come up more often); a right pick names the key, counts its accidentals and lists them,
+  lights the scale, and offers Next, which rotates the keyboard onto the next tonic as a click does in Explore.
+- **Keyboard shortcuts (chord selector, while it is open).** 1-7 pick the degree (Mode row in Jazz; same
+  degrees, whatever the sort order); A S D F G H J K pick the Type chips in the order they are shown (so
+  they follow the Frequency / Complexity / ... sort). Each chip shows its key in the corner, but only while the Progressions section is open. In Pop the type sort menu is hidden (the order is always by frequency). Enter submits the
+  chord to the progression. Pressing a key that is already selected leaves it selected.
+- **Sound.** (`js/audio.js`, Web Audio; no samples, no piano imitation: each note is a soft triangle plus a sine.) In the
+  Chords section a "Hold to play" speaker button appears when the section is open and a chord is selected. In
+  Progressions a "Sound off / Sound on" switch keeps the lit chord sounding and follows the stepping, cross-fading
+  over ~0.1 s and letting shared notes ring (it starts at the first chord if none is lit). The notes are the
+  left-hand voicing the keyboard shows. **Shift key** (pressed alone, not in a combination): with Progressions open it toggles the progression sound on release (P
+  does too); otherwise, with Chords open and a chord selected, it plays the chord while held; with neither open (or
+  nothing to play) it does nothing. A held chord stops if the chord or key changes; the progression sound keeps
+  going across key changes but stops when its section is collapsed or hidden. The audio engine is created on
+  the first click or key press, as browsers require.
+- **Reordering and Clear.** The chiclets in a progression can be dragged with the mouse to a new position (a bar shows where
+  the chord will land; the lit chord stays lit, the fingering is recomputed, and a saved progression is updated). The
+  Add and Clear (and the Actions menu) are shown only while the chord selector is open; Clear only when there are chords.
+- **Saved progressions.** Once a progression has chords, a name box and Save button appear (Enter also saves). After the
+  first save, two menus appear on the Progressions header line, only while the section is expanded: a selector of the
+  saved progressions, and an Actions menu (Rename, Duplicate, Delete, then New progression after a separator; shown only while the chord selector is open). New progression looks exactly like
+  working on the first one (name box and Save, no placeholder entry), and the Actions menu is hidden until it is saved or a stored one is opened. Opening a stored progression while a new one has unsaved chords asks "Discard current progression?" (Yes / Cancel).
+  Delete asks for confirmation; Clear on a saved progression needs a second click. Edits to a saved progression are kept
+  automatically, names are kept unique (a suffix is added), and everything lives in localStorage and is cleared by
+  Reset app settings.
+- **Progressions (Explore).** A collapsible section below the chord selector, hidden until a chord (type and
+  degree) has been selected, unless a saved progression exists, in which case it appears as soon as a key is picked; then it appears (collapsed) and stays. Nothing is pre-selected: opening the chord selector
+  or Reset view leaves no chord, and the section waits for the first one. Inside the section, under its title (so only
+  while it is expanded, and only while the chord selector is open), an "Add ... to progression" button, or the
+  Enter key (even with a type or degree chip focused), submits the selected chord; Clear sits at the far right
+  of the same row. The progression is a row of chiclets (roman numeral over chord name; × removes one) stored by degree and type, so it follows whatever key you pick. It is saved in localStorage.
+  With the section open, picking a key on the piano lights the first chord; Next, the right arrow (also
+  while a piano key has focus), or a click on a chiclet steps through, wrapping at the end (Prev / left arrow go
+  back). The lit chord is layered onto the keyboard exactly as in the chord selector, and a suggested **left-hand fingering** is labelled under its keys (1 = thumb, 5 = little finger; an "LH" row just under the keys, shown only while the Progressions section is expanded),. Fingering is computed as the progression is entered (`js/fingering.js`): each chord is voiced as an inversion inside the keys on screen, chosen for the whole progression at once (including the wrap from the last chord back to the first) to keep the hand moving as little as possible and the stretch to 9 semitones or less. Chords of five or more notes (9th, 11th, 13th) are cut to four tones: root, 3rd, 7th and top extension. Each chiclet's tooltip gives its inversion and fingers. Full scales only (not
+  pentatonic or whole tone).
+- **Scale type (Explore).** A Full scale / Pentatonic / Whole tone switch beside Major / Minor. Pentatonic
+  follows the mode (major pentatonic 1 2 3 5 6, minor pentatonic 1 ♭3 4 5 ♭7); whole tone is six notes a
+  whole step apart. The lit keys use the same light yellow and carry correctly spelled names. The
+  chord selector works for all three. For pentatonic and whole tone it offers only chords whose
+  notes all belong to the scale (pentatonic: major/minor, sus2, sus4, 6, add9, 6/9, m7, 7sus4, power
+  chords; whole tone: augmented, 7♯5, 7♭5, 9♯5), and greys out the notes that can't carry the chosen type.
+- **Label boxes are clickable too.** For a key with two spellings (F♯/G♭ major, D♯/E♭ minor)
+  click the half of the tall box you want.
+- **Chord selector (Explore).** With a key selected, a panel below the keyboard lists the chord on
+  each degree of the key (roman numeral + chord name) and eight chord types: triad, sus2, sus4,
+  add9, 7th, 9th, 11th, 13th. Pick a degree and the chord lights up (root deep amber, other chord
+  tones orange, the rest of the scale faint) and the panel shows the symbol (Em7), roman numeral
+  with its key (D: ii7; the key letter is lower case for a minor key, e.g. d: iv), the mode that starts on its root (E Dorian) with a description of how that mode sounds, the chord type's description ending in one sentence on its ambiguity and tension (tension adjusts to the chord's quality: dominant sevenths drive, major and minor ones rest), and the notes with their
+  intervals. The seven degree chips (labelled Mode) can be sorted (via a small menu at the right of the row, with a "?" beside it that pops up an explanation of the chosen order on mouse-over; scale order's explains the capital/lower-case numerals and the major/minor pattern) by scale order, brightness (Lydian to Locrian), or frequency of use (Ionian, Aeolian, Mixolydian, Dorian, Lydian, Phrygian, Locrian; a rough conventional ranking). The eight chord types can likewise be sorted by frequency of use (the default), complexity (number of notes), ambiguity (how little they say about major vs minor) or tension (how much they want to resolve). Both sort controls sit at the right of their rows. The mode chips are very gently shaded from the brightest mode (Lydian) to the darkest (Locrian). Chord qualities come from the key, so they are always diatonic. (`js/chords.js`) The panel is collapsible (click its
+  "Chords in the key of C" header, naming the selected key) and starts collapsed. The chord sources are linked in the footer.
+- **Study.** The Explore / Study switch turns on a quiz. All the signature boxes and
+  the counts on the keys are hidden and one random key signature (just the clef and accidentals)
+  is shown. Press the key you think it is: a wrong key shakes the card, flashes the key red,
+  shows "Nope" and adds to the incorrect count; the right key adds to the correct count, slides
+  the keyboard to that key with its scale lit up, and deals a new card. Major/Minor picks the
+  deck; "Reset score" clears the counts.
+  The keys carry no labels (only the notes of the scale light up and are named once you answer).
+  After a correct answer a **Next** button sits beside the clef; the solved card slides out and the
+  new one slides in.
+- **Weighted deal.** Every wrong answer makes that key more likely to come up again (+2 to its
+  weight, max 16, separately for major and minor); getting it right first time eases it back (-1).
+  Weights are saved in the browser's localStorage when available. The quiet "Reset app settings
+  weights" link in the footer clears them. (`js/weights.js`)
+- **Keyboard accessible.** Tab to a key, Enter/Space to root, ← → to move between keys.
+
+- **Notation on the stave.** While the Chords or Progressions section is open, the signature boxes give way to one treble stave (the current key's signature) stretched across the keyboard. With Chords open and a chord selected it shows the chord in root position and each inversion, with the chord symbol (and slash bass) underneath. With Progressions open it ignores the chord selector and shows the progression as whole-note block chords, one per slot, using the same smooth left-hand voicings as the fingering plan, with Roman numeral and symbol underneath and the lit chord highlighted. With nothing to show the stave is empty, with a hint. Closing both sections brings the signature boxes back.
+
+- **Clef picker.** Click the clef on the big stave to choose treble, treble 8va, treble 8vb, alto, tenor or bass (the choice is remembered). Key signatures and note positions follow the clef; inversions start from a clef-appropriate note (middle C for treble) and progressions are moved by whole octaves to sit around the middle of the staff. (Grand staff is not done yet.)
+
+- **Choosing inversions.** With Progressions open, click above a chord on the stave to move that chord up one inversion, below it to move it down. The fingering under the keyboard, the sound and the notation all follow, the choice is saved with the progression, and it stops where the voicing would leave the keyboard.
+
+- **Typing a progression.** The small icon at the right of the progression line opens a box where you can type chords as Roman numerals, e.g. `I - V - vi - IV | I - V7 - I` (or digits 1-7; 7, 9, sus2, sus4, add9 and, in Jazz, 11/13 after a numeral). Hyphens, bars and spaces just separate chords; the key decides major or minor. Enter appends them (or replaces the progression if you tick the box); a bad chord is reported and nothing is added. Altered and borrowed chords (bVII) are not supported.
+
+## Layout of the code
+
+| File | Role |
+| --- | --- |
+| `js/theory.js` | Pure music data: key signatures by pitch class, scale spelling, accidental order |
+| `js/render.js` | Pure function `render(state) -> SVG string`; all geometry and colors |
+| `js/app.js` | DOM wiring: state, clicks, mode toggle, caption |
+| `js/glyphs.js` | Generated Bravura outlines for the clef, sharp and flat |
+| `index.html`, `styles.css` | Page shell and styling |
+| `tools/` | Tests, bundler and glyph generator (not needed to run the app) |
+
+State is just `{ root: 0..11, mode: 'major'|'minor', spell: 0|1, selected: bool }`.
+
+## Development
+
+```
+node tools/test_theory.js      # signature table vs independently spelled scales, geometry
+python3 tools/browser_check.py # drives the page in headless Chromium (needs playwright)
+python3 tools/build.py         # writes dist/index.html
+python3 tools/gen_glyphs.py    # regenerates js/glyphs.js (needs: pip install verovio)
+```
+
+## Notes and choices
+
+- Natural minor only. Impractical key signatures (7 sharps, 7+ flats) are not shown, so each
+  black key has its usual spelling: D♭, E♭, A♭, B♭ in major; C♯, F♯, G♯, B♭ in minor.
+- Music symbols are drawn from the Bravura font outlines (SIL Open Font License 1.1).
+
+The app icon (a keyboard with a note over it) is `icon.svg`; the same SVG is inlined as the tab-bar favicon (with a 64px PNG fallback for browsers that ignore SVG favicons) and beside the title.
+
+## Installing on the iPad (PWA via GitHub Pages)
+
+`python3 tools/build.py` writes `dist/index.html` and a deployable `docs/` folder (app, manifest, icons, offline service worker). Re-run it before every push.
+
+1. Create an empty GitHub repo (e.g. `music-theory`), then in this folder: `git remote add origin https://github.com/<you>/music-theory.git && git push -u origin main`.
+2. Repo > Settings > Pages > Source: "Deploy from a branch", branch `main`, folder `/docs`.
+3. On the iPad, open `https://<you>.github.io/music-theory/` in Safari > Share > Add to Home Screen.
+4. After updating: rebuild, commit, push; the app picks up the new version the next time it is opened online (close and reopen it once).

@@ -1,0 +1,511 @@
+:root {
+  --ink: #1f2430;
+  --muted: #5d6475;
+  --line: #e3e6ee;
+  --page: #f6f7fa;
+  --card: #ffffff;
+  --accent: #2563eb;
+  --sharp: #9db4d8;
+  --flat: #b7a3d8;
+  --scale: #fde047;
+  --third: #ea580c;
+}
+
+* { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background: var(--page);
+  color: var(--ink);
+  font: 16px/1.5 -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+.page {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 36px 20px 48px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---- intro ---- */
+.intro h1 {
+  margin: 0 0 6px;
+  font-size: 1.9rem;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+
+.lede {
+  margin: 0;
+  max-width: 62ch;
+  color: var(--muted);
+}
+
+/* ---- controls ---- */
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 22px 0 14px;
+  min-height: 42px;
+  flex-wrap: wrap;
+}
+
+.segmented {
+  display: inline-flex;
+  margin: 0;
+  padding: 4px;
+  border: 0;
+  border-radius: 999px;
+  background: #e6e9f1;
+}
+
+.segmented input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.segmented label {
+  padding: 7px 22px;
+  border-radius: 999px;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+}
+
+.segmented input:checked + label {
+  background: #fff;
+  color: var(--ink);
+  box-shadow: 0 1px 3px rgba(20, 30, 60, 0.18);
+}
+
+.segmented input:focus-visible + label {
+  outline: 3px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.btn-reset {
+  padding: 7px 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.btn-reset:hover { color: var(--ink); border-color: #c9cfdd; }
+.btn-reset:focus-visible { outline: 3px solid var(--accent); outline-offset: 1px; }
+.btn-reset[hidden] { display: none; }
+
+.kb-svg .next-btn { cursor: pointer; outline: none; }
+.kb-svg .next-btn:focus-visible rect { stroke: #1e3a8a; stroke-width: 4; }
+@media (hover: hover) {
+  .kb-svg .next-btn:hover rect { fill: #1d4ed8; }
+}
+
+/* ---- flashcard score ---- */
+.score {
+  display: inline-flex;
+  align-items: center;
+  gap: 16px;
+  flex-basis: 100%;               /* its own row, so the keyboard doesn't jump when Reset view appears */
+  font-weight: 600;
+}
+.score[hidden] { display: none; }
+.score b { font-variant-numeric: tabular-nums; }
+.score-ok { color: #15803d; }
+.score-bad { color: #b91c1c; }
+
+/* ---- keyboard ---- */
+.stage-card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 14px 8px 6px;
+  box-shadow: 0 1px 2px rgba(20, 30, 60, 0.04), 0 8px 24px rgba(20, 30, 60, 0.05);
+}
+
+.stage { position: relative; overflow-x: auto; }
+.stage.sliding { overflow: hidden; }
+.stage.sliding .kb-svg { position: relative; }
+
+.kb-svg {
+  display: block;
+  width: 100%;
+  min-width: 820px;
+  height: auto;
+}
+
+.kb-svg .key { cursor: pointer; outline: none; }
+.kb-svg .hover-ring { fill: none; stroke: none; }
+.kb-svg .key:focus-visible .hover-ring { stroke: var(--accent); stroke-width: 4px; fill: rgba(37, 99, 235, 0.14); }
+
+.kb-svg .box { cursor: pointer; outline: none; }
+
+/* hover feedback only where there is a real hovering pointer (not sticky on touch) */
+@media (hover: hover) {
+  /* the key under the pointer gets a bold blue inset ring and a light tint */
+  .kb-svg .key:hover .hover-ring { stroke: var(--accent); stroke-width: 4px; fill: rgba(37, 99, 235, 0.14); }
+  .kb-svg .box:hover > rect { filter: brightness(0.96); }
+}
+
+/* ---- chord selector (Explore) ---- */
+.chords {
+  margin-top: 14px;
+  padding: 16px 16px 14px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  box-shadow: 0 1px 2px rgba(20, 30, 60, 0.04), 0 8px 24px rgba(20, 30, 60, 0.05);
+}
+.chords[hidden] { display: none; }
+
+.chord-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  margin-bottom: 12px;
+}
+.chord-label {
+  flex: 0 0 5.2em;
+  padding-top: 8px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.chip {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 3.4em;
+  padding: 6px 12px;
+  border: 1px solid #d5dae6;
+  border-radius: 12px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+  line-height: 1.25;
+  cursor: pointer;
+}
+.chip-type, .chip-sort { flex-direction: row; padding: 7px 14px; border-radius: 999px; font-weight: 600; }
+.chip-num { font-weight: 700; }
+.chip-sym { font-size: 0.82rem; color: var(--muted); }
+@media (hover: hover) { .chip:hover { border-color: var(--accent); } }
+.chip:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+.chip[aria-pressed="true"] .chip-sym { color: #dbe7ff; }
+
+.chord-info {
+  margin-top: 4px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #f6f7fb;
+  min-height: 5.6em;
+}
+.chord-hint { margin: 0; color: var(--muted); }
+.ci-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; }
+.ci-symbol { font-size: 1.5rem; font-weight: 800; letter-spacing: -0.01em; }
+.ci-roman { font-size: 1.15rem; font-weight: 700; color: #b45309; }
+.ci-mode { font-size: 1.05rem; font-weight: 600; }
+.ci-desc { margin: 2px 0 8px; color: var(--muted); }
+.ci-notes { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.ci-notes li {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 2.8em;
+  padding: 3px 10px;
+  border: 1px solid #f1c98c;
+  border-radius: 10px;
+  background: #fff7ed;
+  font-weight: 700;
+  line-height: 1.2;
+}
+.ci-notes small { font-size: 0.7rem; font-weight: 600; color: var(--muted); }
+
+@media (max-width: 560px) {
+  .chord-row { flex-direction: column; gap: 4px; }
+  .chord-label { padding-top: 0; }
+}
+
+/* ---- legend + footer ---- */
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 22px;
+  margin: 18px 0 0;
+  padding: 14px 0 0;
+  border-top: 1px solid var(--line);
+  list-style: none;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.legend li { display: inline-flex; align-items: center; gap: 8px; }
+
+.swatch {
+  width: 16px;
+  height: 16px;
+  border-radius: 5px;
+  border: 1.5px solid;
+}
+
+.sw-sharp { background: #eef3fb; border-color: var(--sharp); }
+.sw-flat { background: #f3eefb; border-color: var(--flat); }
+.sw-scale { background: #fef08a; border-color: #ca9a04; }
+.sw-croot { background: #f59e0b; border-color: #92400e; }
+.sw-ctone { background: #fb923c; border-color: #9a3412; }
+.legend-chord[hidden] { display: none; }
+
+.foot {
+  margin-top: 20px;
+  color: #7b8294;
+  font-size: 0.82rem;
+  max-width: 70ch;
+}
+
+.quiet-link {
+  margin-left: 6px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #a3a9b8;
+  font: inherit;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  cursor: pointer;
+}
+.quiet-link:hover, .quiet-link:focus-visible { color: var(--muted); text-decoration-color: currentColor; }
+.noscript { color: #b91c1c; }
+
+@media (max-width: 560px) {
+  .page { padding: 24px 12px 36px; }
+  .intro h1 { font-size: 1.5rem; }
+}
+
+.chords summary { cursor: pointer; font-weight: 600; margin-bottom: 10px; }
+.chords details:not([open]) summary { margin-bottom: 0; }
+.foot a { color: inherit; }
+.segmented[hidden] { display: none; }
+
+/* very gentle shading of the seven mode chips, brightest (Lydian) to darkest (Locrian) */
+.chip-deg[data-dark="0"] { background: #ffffff; }
+.chip-deg[data-dark="1"] { background: #fbfcfe; }
+.chip-deg[data-dark="2"] { background: #f6f8fc; }
+.chip-deg[data-dark="3"] { background: #f0f3f9; }
+.chip-deg[data-dark="4"] { background: #eaeef6; }
+.chip-deg[data-dark="5"] { background: #e4e9f3; }
+.chip-deg[data-dark="6"] { background: #dee4f0; }
+.chip-deg[aria-pressed="true"] { background: var(--accent); }
+.chip-mode { font-size: 0.72rem; color: var(--muted); letter-spacing: 0.01em; }
+.chip[aria-pressed="true"] .chip-mode { color: #dbe7ff; }
+.ci-lead { display: block; color: var(--ink); font-size: 1.02rem; margin-bottom: 1px; }
+.chord-row[hidden] { display: none; }
+
+/* sort menus: a compact select at the right edge of the Mode and Type rows */
+.chord-row > .chips { flex: 1 1 auto; min-width: 0; }
+.sort-box { flex: 0 0 auto; margin-left: auto; display: inline-flex; align-items: center; gap: 6px;
+  font-size: 0.72rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
+.sort-box[hidden] { display: none; }
+.sort-box select { font: inherit; font-size: 0.85rem; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--ink);
+  padding: 5px 8px; border: 1px solid #d5dae6; border-radius: 10px; background: #fff; cursor: pointer; }
+.sort-box select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+@media (max-width: 600px) {
+  .sort-box { margin-left: 0; }
+}
+
+/* the chord's note chips sit at the right end of the description's heading line */
+.ci-head { align-items: center; }
+.ci-head .ci-notes { margin-left: auto; justify-content: flex-end; }
+
+/* "?" beside each sort menu: the description pops up on hover or keyboard focus */
+.sort-box label { cursor: default; }
+.help { position: relative; display: inline-flex; }
+.help-btn { width: 22px; height: 22px; padding: 0; border: 1px solid #c3cadb; border-radius: 50%; background: #fff;
+  color: var(--muted); font: inherit; font-size: 0.8rem; font-weight: 700; letter-spacing: 0; text-transform: none; cursor: help; }
+.help-btn:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.help.is-empty .help-btn { opacity: 0; pointer-events: none; }
+.help .tip { position: absolute; z-index: 20; top: calc(100% + 8px); right: 0; width: min(300px, 80vw);
+  padding: 10px 12px; border-radius: 10px; background: #fffdf5; color: #1f2740; border: 1px solid #d5dae6; box-shadow: 0 8px 24px rgba(20, 30, 60, 0.18);
+  font-size: 0.85rem; font-weight: 400; letter-spacing: 0; text-transform: none; line-height: 1.4; text-align: left;
+  opacity: 0; visibility: hidden; transition: opacity 0.12s; pointer-events: none; }
+.help:not(.is-empty):hover .tip, .help:not(.is-empty):focus-within .tip { opacity: 1; visibility: visible; }
+@media (max-width: 600px) { .help .tip { right: auto; left: 0; } }
+
+/* Mode and Type: heading and sort menu share a line above their chips, which spread across the full width */
+.chord-row { display: block; margin-bottom: 14px; }
+.chord-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 6px; }
+.chord-head .chord-label { flex: 0 0 auto; padding-top: 0; }
+.chord-head .sort-box { margin-left: 0; }
+.chord-row > .chips { width: 100%; }
+#chord-degrees .chip-deg { flex: 1 1 0; min-width: 4.6em; }
+#chord-types .chip-type { flex: 1 1 auto; justify-content: center; }
+.ci-tag { margin-right: 8px; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
+
+/* "?" beside the Mode and Type headings: a fixed explanation that opens to the right */
+.chord-title { display: inline-flex; align-items: center; gap: 8px; }
+.head-help .tip { right: auto; left: 0; }
+.head-help:hover .tip, .head-help:focus-within .tip { opacity: 1; visibility: visible; }
+
+/* ---- flashcards: find the signature ---- */
+.kb-svg .sigbox { cursor: pointer; outline: none; }
+.kb-svg .sigbox:focus-visible > rect { stroke: var(--accent); stroke-width: 3px; }
+.kb-svg.sig .key { cursor: default; }
+@media (hover: hover) {
+  .kb-svg .sigbox:hover > rect { filter: brightness(0.95); }
+}
+.kb-svg.sig .key:hover .hover-ring { stroke: none; fill: none; }
+
+/* ---- title icon ---- */
+.intro h1 { display: flex; align-items: center; gap: 0.6rem; }
+.app-icon { width: 2.1rem; height: 2.1rem; flex: none; }
+
+/* ---- progressions (Explore) ---- */
+.prog-hint { margin: 0 0 10px; color: var(--muted); font-size: 0.92rem; }
+.prog-controls { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn-primary:hover { background: #1d4ed8; border-color: #1d4ed8; color: #fff; }
+.prog-controls button:disabled { opacity: 0.45; cursor: default; }
+.prog-list { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.prog-item { display: inline-flex; align-items: stretch; }
+.prog-item .chip { border-radius: 12px 0 0 12px; border-right: 0; }
+.prog-x {
+  padding: 0 8px;
+  border: 1px solid #d5dae6;
+  border-radius: 0 12px 12px 0;
+  background: #f6f7fb;
+  color: var(--muted);
+  font: inherit;
+  cursor: pointer;
+}
+.prog-x:hover, .prog-x:focus-visible { color: #b91c1c; border-color: #f1b4b4; background: #fff5f5; }
+.prog-item .chip[aria-pressed="true"] + .prog-x { border-color: var(--accent); }
+.prog-empty { color: var(--muted); font-style: italic; }
+
+/* progressions: Add on the left, Clear well away on the right */
+.prog-actions { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.prog-actions[hidden] { display: none; }
+.prog-actions #prog-clear { margin-left: auto; }
+.btn-danger { color: #b91c1c; border-color: #f1c4c4; }
+.btn-danger:hover { color: #991b1b; border-color: #e58f8f; background: #fff5f5; }
+.prog-actions button:disabled { opacity: 0.45; cursor: default; }
+
+/* shortcut hints on the chord selector chips */
+.chip[data-key] { position: relative; }
+.chords:not(.show-hints) .chip[data-key]::after { display: none; }
+.chip[data-key]::after {
+  content: attr(data-key);
+  position: absolute;
+  top: 2px;
+  right: 6px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  opacity: 0.45;
+  pointer-events: none;
+}
+.chip-type[data-key]::after { top: 1px; right: 8px; }
+
+
+/* saved progressions: two menus on the Progressions header line */
+.prog-menus { float: right; display: inline-flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin: -4px 0 0 12px; font-weight: 400; }
+.prog-menus[hidden], .prog-confirm[hidden], .prog-save-form[hidden] { display: none; }
+#progressions details:not([open]) .prog-menus { display: none; }
+.prog-menus select { padding: 4px 10px; border: 1px solid #d5dae6; border-radius: 10px; background: #fff; font: inherit; font-size: 0.9rem; max-width: 14rem; }
+.prog-confirm { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin-bottom: 12px; }
+.prog-save-form { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.prog-save-form input { flex: 1 1 12rem; min-width: 0; padding: 7px 12px; border: 1px solid #d5dae6; border-radius: 10px; font: inherit; }
+.prog-save-form input:focus-visible { outline: 3px solid var(--accent); outline-offset: 1px; }
+
+/* the header menus float right; everything below the header starts underneath them */
+#prog-details > :not(summary) { clear: both; }
+
+/* sound buttons */
+.chord-sound { margin-top: 12px; }
+.chord-sound[hidden] { display: none; }
+.sound-btn { display: inline-flex; align-items: center; gap: 8px; }
+.sound-btn:disabled { opacity: 0.45; cursor: default; }
+#chord-play { touch-action: none; user-select: none; -webkit-user-select: none; }
+#chord-play.playing, .sound-btn[aria-pressed="true"] { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+.sound-note { margin: 10px 0 0; font-size: 0.85rem; color: #b45309; }
+.sound-note[hidden] { display: none; }
+
+/* drag to reorder the progression */
+.prog-item[draggable="true"] { cursor: grab; }
+.prog-item.dragging { opacity: 0.4; }
+.prog-item.drop-before { box-shadow: -4px 0 0 var(--accent); }
+.prog-item.drop-after { box-shadow: 4px 0 0 var(--accent); }
+.prog-actions [hidden] { display: none; }
+
+/* the clef on the big stave is a button; the picker pops up beside it */
+.clef-hit { fill: transparent; cursor: pointer; }
+.clef-hit:hover, .clef-hit:focus-visible { fill: rgba(37, 99, 235, 0.09); outline: none; }
+.clef-hit:focus-visible { stroke: #2563eb; stroke-width: 1.5; }
+#clef-pop { position: fixed; z-index: 50; background: #fff; border: 1px solid #cdd3e0; border-radius: 12px; box-shadow: 0 8px 28px rgba(20, 30, 60, 0.2); padding: 8px; width: min(470px, calc(100vw - 16px)); }
+.clef-pop-title { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #5d6475; padding: 2px 8px 6px; }
+.clef-opt { display: grid; grid-template-columns: 60px 1fr; grid-template-rows: auto auto; column-gap: 12px; align-items: center; width: 100%; text-align: left; background: none; border: 1px solid transparent; border-radius: 8px; padding: 2px 8px; cursor: pointer; font: inherit; color: inherit; }
+.clef-opt svg { grid-row: 1 / span 2; }
+.clef-opt-name { font-weight: 700; align-self: end; }
+.clef-opt-note { font-size: 0.85rem; color: #5d6475; align-self: start; }
+.clef-opt:hover, .clef-opt:focus-visible { background: #f1f4fb; outline: none; }
+.clef-opt[aria-selected="true"] { background: #e8efff; border-color: #9db4d8; }
+
+.clef-pop-list { display: grid; grid-template-columns: 1fr; gap: 2px 6px; }
+#clef-pop.wide { width: min(780px, calc(100vw - 16px)); }
+.clef-pop-list.two { grid-template-columns: 1fr 1fr; grid-template-rows: repeat(3, auto); grid-auto-flow: column; }
+@media (max-width: 640px) { .clef-pop-list.two { grid-template-columns: 1fr; grid-template-rows: none; grid-auto-flow: row; } }
+
+/* clicking above / below a progression chord on the stave moves its inversion up / down */
+.inv-zone { cursor: pointer; }
+.inv-zone .inv-bg { fill: transparent; }
+.inv-zone .inv-chev { fill: none; stroke: #4b5563; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; opacity: 0; }
+.inv-zone:hover .inv-bg { fill: rgba(37, 99, 235, 0.07); }
+.inv-zone:hover .inv-chev { opacity: 0.85; }
+
+/* typing a progression */
+.prog-row { display: flex; align-items: flex-start; gap: 10px; }
+.prog-row .prog-list { flex: 1 1 auto; min-width: 0; }
+.prog-text-btn { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 38px; height: 38px; padding: 0; color: #4b5563; background: #fff; border: 1px solid #cdd3e0; border-radius: 10px; cursor: pointer; }
+.prog-text-btn:hover, .prog-text-btn:focus-visible { color: #1d4ed8; border-color: #9db4d8; background: #f1f4fb; }
+#text-pop { position: fixed; z-index: 50; background: #fff; border: 1px solid #cdd3e0; border-radius: 12px; box-shadow: 0 8px 28px rgba(20, 30, 60, 0.2); padding: 10px 12px 12px; width: min(460px, calc(100vw - 16px)); }
+.text-pop-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.text-pop-title { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #5d6475; }
+.text-pop-close { width: 28px; height: 28px; border: none; border-radius: 6px; background: none; font-size: 1.4rem; line-height: 1; color: #5d6475; cursor: pointer; }
+.text-pop-close:hover, .text-pop-close:focus-visible { background: #eef1f8; color: #111; outline: none; }
+.text-pop-form { display: flex; gap: 8px; }
+.text-pop-form input[type="text"] { flex: 1 1 auto; min-width: 0; font: inherit; padding: 8px 10px; border: 1px solid #b8c0d2; border-radius: 8px; }
+.text-pop-replace { display: block; margin-top: 8px; font-size: 0.9rem; }
+.text-pop-help { margin: 8px 0 0; font-size: 0.82rem; color: #5d6475; }
+.text-pop-error { margin: 6px 0 0; font-size: 0.85rem; color: #b91c1c; }
+.text-pop-error:empty { display: none; }
+
+/* touch devices (iPad): no hover, so show the cues permanently */
+html { -webkit-text-size-adjust: 100%; }
+button, .inv-zone, .clef-hit, .key, svg { touch-action: manipulation; }
+@media (hover: none) {
+  .inv-zone .inv-chev { opacity: 0.45; }
+  .inv-zone .inv-bg { fill: rgba(37, 99, 235, 0.04); }
+  .prog-text-btn { width: 44px; height: 44px; }
+}

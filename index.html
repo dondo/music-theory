@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#2563eb">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Music Theory">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <title>Music Theory (Piano)</title>
+  <meta name="description" content="Explore major and minor key signatures on a piano keyboard. Click a key to root the keyboard there and light up its scale.">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20viewBox=%220%200%2064%2064%22%3E%3Crect%20width=%2264%22%20height=%2264%22%20rx=%2214%22%20fill=%22%232563eb%22/%3E%3Crect%20x=%228%22%20y=%2234%22%20width=%2248%22%20height=%2222%22%20rx=%223%22%20fill=%22%23fff%22/%3E%3Cpath%20d=%22M20%2034v22M32%2034v22M44%2034v22%22%20stroke=%22%2394a3b8%22%20stroke-width=%221.5%22/%3E%3Crect%20x=%2217%22%20y=%2234%22%20width=%226%22%20height=%2213%22%20rx=%221%22%20fill=%22%231c1c1c%22/%3E%3Crect%20x=%2229%22%20y=%2234%22%20width=%226%22%20height=%2213%22%20rx=%221%22%20fill=%22%231c1c1c%22/%3E%3Crect%20x=%2241%22%20y=%2234%22%20width=%226%22%20height=%2213%22%20rx=%221%22%20fill=%22%231c1c1c%22/%3E%3Cellipse%20cx=%2234%22%20cy=%2227%22%20rx=%226.5%22%20ry=%224.5%22%20transform=%22rotate%28-20%2034%2027%29%22%20fill=%22%23fff%22/%3E%3Crect%20x=%2238.6%22%20y=%228%22%20width=%222.8%22%20height=%2219%22%20fill=%22%23fff%22/%3E%3Cpath%20d=%22M41%208C41%2015%2053%2015%2050%2025C49%2019%2044%2018%2041%2016Z%22%20fill=%22%23fff%22/%3E%3C/svg%3E">
+  <link rel="icon" type="image/png" sizes="64x64" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAFL0lEQVR4nOybe0xbVRzHv+e2DBhPoXQvUVYeEt0mSzYYxuhwy6Io6hRZFF0UcIvGmMU4I0bDlMTEacwSE40TKmbqkBFH4tTFPxwzRmQuylyMk9eSVQejBdwoozDa4+9chAEr7V3X1235JL0999xfyTnf8/qd3+VooQBDuWWDxHkhA8+l26X0WQTGYhBMcD5M13P0OcvBWjnwdZcx5Yi7n7E5n6zn2kyDpYJSr5HVUqgRjrMOjte7TuuMaGbjzkyuFGAXl9JNlhLG8QZjyEQIQL2hna6vdtamNFKV+fRn0mzjjDPmYsa5MVQqL6BWzqKvuowyS5GTZ5cxVFgeorF+gDkRJhSgpnfQXPFop1HfMJk3JYDhyYGVkjTeyhiLRgjDOR9hDtzWUadvE/cTLU3jXpLs9aFeeYGoI5ewT9RZ3MuXzDOWbTTmb0aYQCKsEHWW0ynP9sUm2NBNmSkIIrbcEYXqrbFyuvpzK/Z9b4M3oaHQpwHL0CbapGJaGYKq8rPRJ3p/TqYG1zs4e1gCc6xHkLMuewF8AuPraNVjaQhybjVosTYrAt6Gc2RTD0AaVMB7z8Qj+3oNvAn5AItpcPHFUAFJcQz7KxOxIcd7w4EzEoCBRUIlxEQyfPBcPHYWe2cjSj0gQZUu79N3R6OqNBYSwzWjCgE+O2JD76BjRl5pQRQ+eTEBsdHXpoIqBDhlGsfGygHsabqIkbHL+Xk3RWDv8/G0psNjVDMExiic8f6hi7jr5X7sb7aJJUxmTWYEyjZ5voVR3RzQf4Gj6lMrSnefx6B1QoXthQs9ng9Uu+8/3nEJj731L4ZtHIkxtJO7QQtPUHXgo6vHjlfqrHJ6mc6zqngmmxdZtVyLHEME0pdoqBIa9AzY0fLnJcW///b4KHacWyiHezwhYAKkLdKgcksMClbN9uwi5K1wz4BD8d/64qgN5gvK7acTEAEK10binYo4aF249kuSlHfp5t/H0D+kEgHuWROJPdvj4E26e+3wFL8KoKFGfemR4Hqh5FcBVtyoxbJk5V37r7/tKNo1CF/iVwGstqubqoXn52v86geYzHbFs/vbjcPyEudr/CqA8Od31g7J3ttcnKJuv+PDIXx0eAT+gGWWmz10ITwnksJ7RXlR2Lh6AWKjJpx4MZN/1TqKX9qVO0HeICACBBMBd4UDjVsBdPGM1u5Y3H7LAjntjJKSErS0tMzIy8/PR0NDQ0DsLbRl/vGPMew+YJXTrnA7BN7dFof7cl3HTVNTU53mm0ymgNhPcujYKF7YO+TSxm0PuHOlj97K+AElZXcrQFy0F0KvAUJJ2ecnQYQ58wIgzJkXAGHOvAAIc7wSDxB+uZI8f9lfDW73Au01Oijl4HfH5O/Nm3KDwl6QVWFx+Xx+DkCYI3Fw30cegxQa++dpEmS9CFMYR68kLghTqAf0in+UbHNlNDSi3pipu7JzxtokB6QmV0ZHT45BrbgrO2OsXuqqTT5MOv02l9Gb9VY0tYy6DS4GE6Ksosyi7HPC+YnOmuSf5ZhRernlQQn8IMIIB9jmrlpd01TQLKPc/CvdrEY4QK3fYdTniOTUXsDOtU+JA0UIcUQd7Q7tE5P3UwKcNl53AlyzFSGMODbnkKTHu+uSTk7mzdgNdn6c3Mg5HiDv0Pcv5v2MaHl6MX9/d43uy+n5TgPnGeV9NBew+v9PXKoecXSWhniJ3Mtn4fLwdPpyS5nEUKXmw9N0re7o1tUoPzzthPQycwEZ3svA8xDsx+cZ+4e6+0+M4ZuOWv0P7n72HwAAAP//yuqdZwAAAAZJREFUAwDdZ8aAX9wkZwAAAABJRU5ErkJggg==">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="page">
+    <header class="intro">
+      <h1><svg class="app-icon" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#2563eb"/><rect x="8" y="34" width="48" height="22" rx="3" fill="#fff"/><path d="M20 34v22M32 34v22M44 34v22" stroke="#94a3b8" stroke-width="1.5"/><rect x="17" y="34" width="6" height="13" rx="1" fill="#1c1c1c"/><rect x="29" y="34" width="6" height="13" rx="1" fill="#1c1c1c"/><rect x="41" y="34" width="6" height="13" rx="1" fill="#1c1c1c"/><ellipse cx="34" cy="27" rx="6.5" ry="4.5" transform="rotate(-20 34 27)" fill="#fff"/><rect x="38.6" y="8" width="2.8" height="19" fill="#fff"/><path d="M41 8C41 15 53 15 50 25C49 19 44 18 41 16Z" fill="#fff"/></svg><span>Music Theory (Piano)</span></h1>
+      <p class="lede">Each box shows the key signature of the key below it. Click any key, black or white, to move the keyboard to that root and light up its scale.</p>
+    </header>
+
+    <section class="controls" aria-label="Controls">
+      <fieldset class="segmented" id="level-group">
+        <legend class="sr-only">Theory level</legend>
+        <input type="radio" name="level" id="level-pop" value="pop" checked>
+        <label for="level-pop">Pop</label>
+        <input type="radio" name="level" id="level-jazz" value="jazz">
+        <label for="level-jazz">Jazz</label>
+      </fieldset>
+      <fieldset class="segmented">
+        <legend class="sr-only">Mode</legend>
+        <input type="radio" name="mode" id="mode-major" value="major" checked>
+        <label for="mode-major">Major</label>
+        <input type="radio" name="mode" id="mode-minor" value="minor">
+        <label for="mode-minor">Minor</label>
+      </fieldset>
+      <fieldset class="segmented" id="scalekind-group">
+        <legend class="sr-only">Scale</legend>
+        <input type="radio" name="scalekind" id="sk-full" value="full" checked>
+        <label for="sk-full">Full scale</label>
+        <input type="radio" name="scalekind" id="sk-pent" value="pentatonic">
+        <label for="sk-pent">Pentatonic</label>
+        <input type="radio" name="scalekind" id="sk-whole" value="wholetone">
+        <label for="sk-whole">Whole tone</label>
+      </fieldset>
+      <fieldset class="segmented" id="view-group">
+        <legend class="sr-only">Activity</legend>
+        <input type="radio" name="view" id="view-explore" value="explore" checked>
+        <label for="view-explore">Explore</label>
+        <input type="radio" name="view" id="view-flash" value="flash">
+        <label for="view-flash">Study</label>
+      </fieldset>
+      <fieldset class="segmented" id="flashmode-group" hidden>
+        <legend class="sr-only">Study direction</legend>
+        <input type="radio" name="flashmode" id="fm-key" value="key" checked>
+        <label for="fm-key">Find the key</label>
+        <input type="radio" name="flashmode" id="fm-sig" value="sig">
+        <label for="fm-sig">Find the signature</label>
+      </fieldset>
+      <button type="button" id="reset" class="btn-reset" hidden>Reset view</button>
+      <div id="score" class="score" hidden aria-label="Score">
+        <span class="score-ok"><span aria-hidden="true">✓</span> <b id="n-ok">0</b> correct</span>
+        <span class="score-bad"><span aria-hidden="true">✗</span> <b id="n-bad">0</b> incorrect</span>
+        <button type="button" id="score-reset" class="btn-reset">Reset score</button>
+      </div>
+    </section>
+
+    <section class="stage-card" aria-label="Keyboard">
+      <div id="stage" class="stage"></div>
+    </section>
+
+    <section id="chords" class="chords" aria-label="Chords in this key" hidden>
+      <details id="chords-details">
+      <summary id="chords-summary">Chords in this key</summary>
+      <div class="chord-row">
+        <div class="chord-head">
+          <div class="chord-title">
+            <span class="chord-label" id="lbl-type">Type</span>
+            <span class="help head-help">
+              <button type="button" class="help-btn" aria-label="About type" aria-describedby="type-head-tip">?</button>
+              <span class="tip" role="tooltip" id="type-head-tip">The chord establishes a harmony, typically played by the left hand on a piano.</span>
+            </span>
+          </div>
+          <div id="type-sort" class="sort-box">
+            <label for="type-sort-select">Sort</label>
+            <select id="type-sort-select">
+              <option value="frequency">Frequency</option>
+              <option value="complexity">Complexity</option>
+              <option value="ambiguity" class="jazz-only">Ambiguity</option>
+              <option value="tension" class="jazz-only">Tension</option>
+            </select>
+            <span class="help" id="type-help">
+              <button type="button" class="help-btn" aria-label="About this sort order" aria-describedby="type-tip">?</button>
+              <span class="tip" role="tooltip" id="type-tip"></span>
+            </span>
+          </div>
+        </div>
+        <div id="chord-types" class="chips" role="group" aria-labelledby="lbl-type"></div>
+      </div>
+      <div class="chord-row">
+        <div class="chord-head">
+          <div class="chord-title">
+            <span class="chord-label" id="lbl-deg">Mode</span>
+            <span class="help head-help">
+              <button type="button" class="help-btn" aria-label="About mode" aria-describedby="mode-head-tip">?</button>
+              <span class="tip" role="tooltip" id="mode-head-tip">Together with the key context, the mode tells you which notes are available to build a melody over it.</span>
+            </span>
+          </div>
+          <div id="mode-sort" class="sort-box">
+            <label for="mode-sort-select">Sort</label>
+            <select id="mode-sort-select">
+              <option value="scale">Scale order</option>
+              <option value="brightness">Brightness</option>
+              <option value="frequency">Frequency</option>
+            </select>
+            <span class="help" id="mode-help">
+              <button type="button" class="help-btn" aria-label="About this sort order" aria-describedby="mode-tip">?</button>
+              <span class="tip" role="tooltip" id="mode-tip"></span>
+            </span>
+          </div>
+        </div>
+        <div id="chord-degrees" class="chips" role="group" aria-labelledby="lbl-deg"></div>
+      </div>
+      <div id="chord-info" class="chord-info" aria-live="polite"></div>
+      <div id="chord-sound" class="chord-sound" hidden>
+        <button type="button" id="chord-play" class="btn-reset sound-btn" aria-keyshortcuts="Shift" title="Hold to hear the chord (or hold Shift while Progressions is closed)" aria-label="Hold to hear the chord">
+          <svg class="sound-icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          <span>Hold to play</span>
+        </button>
+      </div>
+      </details>
+    </section>
+
+    <p id="sound-note" class="sound-note" role="status" hidden>Your browser is holding the sound back. Click anywhere on the page once, then try again.</p>
+
+    <section id="progressions" class="chords prog" aria-label="Progressions" hidden>
+      <details id="prog-details">
+        <summary class="prog-head">
+          <span id="prog-summary">Progressions</span>
+          <span id="prog-menus" class="prog-menus" hidden>
+            <select id="prog-select" aria-label="Saved progressions"></select>
+            <select id="prog-menu" aria-label="Progression actions">
+              <option value="">Actions&hellip;</option>
+              <option value="rename">Rename&hellip;</option>
+              <option value="dup">Duplicate</option>
+              <option value="del">Delete&hellip;</option>
+              <option value="" disabled>&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;</option>
+              <option value="new">New progression</option>
+            </select>
+          </span>
+        </summary>
+        <div id="prog-confirm" class="prog-confirm" hidden>
+          <span id="prog-confirm-text"></span>
+          <button type="button" id="prog-confirm-yes" class="btn-reset btn-danger">Delete</button>
+          <button type="button" id="prog-confirm-no" class="btn-reset">Cancel</button>
+        </div>
+        <form id="prog-save-form" class="prog-save-form" hidden>
+          <input id="prog-name" type="text" maxlength="40" autocomplete="off" aria-label="Progression name" placeholder="Name this progression">
+          <button type="submit" id="prog-save-btn" class="btn-reset btn-primary">Save</button>
+          <button type="button" id="prog-cancel" class="btn-reset" hidden>Cancel</button>
+        </form>
+        <div id="prog-actions" class="prog-actions" hidden>
+          <button type="button" id="add-prog" class="btn-reset btn-primary">+ Add to progression</button>
+          <button type="button" id="prog-clear" class="btn-reset btn-danger">Clear</button>
+        </div>
+        <p class="prog-hint" id="prog-hint"></p>
+        <div class="prog-controls">
+          <button type="button" id="prog-prev" class="btn-reset">&#9664; Prev</button>
+          <button type="button" id="prog-next" class="btn-reset btn-primary">Next &#9654;</button>
+          <button type="button" id="prog-sound" class="btn-reset sound-btn" aria-pressed="false" aria-keyshortcuts="Shift P" title="Play the lit chord continuously, changing as you step (Shift or P)">
+            <svg class="sound-icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+            <span id="prog-sound-label">Sound off</span>
+          </button>
+        </div>
+        <div class="prog-row">
+          <ol id="prog-list" class="prog-list" aria-label="Chords in the progression"></ol>
+          <button type="button" id="prog-text-btn" class="btn-reset prog-text-btn" aria-haspopup="dialog" aria-label="Type a progression"
+                  title="Type a progression instead of clicking chords, e.g. I - V - vi - IV | I - V - I. Roman numerals, with 7, 9, sus4, sus2 or add9 after them; bars and hyphens just separate chords.">
+            <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><rect x="2.5" y="5" width="19" height="14" rx="3" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M6.5 9.5h7M6.5 14.5h4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" fill="none"/><path d="M16 10.5v4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+          </button>
+        </div>
+        <div id="prog-status" class="sr-only" aria-live="polite"></div>
+      </details>
+    </section>
+
+    <!-- spoken summary of the selected key for screen readers; not shown -->
+    <section id="caption" class="sr-only" aria-live="polite"></section>
+
+    <ul class="legend" aria-label="Legend">
+      <li><span class="swatch sw-sharp"></span>Key signature with sharps</li>
+      <li><span class="swatch sw-flat"></span>Key signature with flats</li>
+      <li><span class="swatch sw-scale"></span>Scale tones</li>
+      <li class="legend-chord" hidden><span class="swatch sw-croot"></span>Chord root</li>
+      <li class="legend-chord" hidden><span class="swatch sw-ctone"></span>Other chord tones</li>
+    </ul>
+
+    <footer class="foot">
+      Natural minor scales. Black keys show their most common spelling; where both are in everyday use
+      (F&#x266F;/G&#x266D; major, D&#x266F;/E&#x266D; minor) both spellings are shown.
+      Music symbols from the Bravura font (SIL Open Font License).
+      Chord sources:
+      <a href="https://harmonious.nfshost.com/p/b9/Diatonic-Modes-Chords" target="_blank" rel="noopener">Diatonic Modes &amp; Chords</a>,
+      <a href="https://amadeus-chordzart.readthedocs.io/en/latest/theory/chord_dictionary.html" target="_blank" rel="noopener">Chord Dictionary</a>,
+      <a href="https://www.songtive.com/en/chords/piano/type/extended" target="_blank" rel="noopener">Extended chords: 9th, 11th, 13th</a>,
+      <a href="https://www.basicmusictheory.com/topic/mode-chord" target="_blank" rel="noopener">Mode chord</a>.
+      <button type="button" id="reset-app" class="quiet-link">Reset app settings</button>
+    </footer>
+  </main>
+
+  <noscript><p class="noscript">This page needs JavaScript to draw the keyboard.</p></noscript>
+
+  <script src="js/glyphs.js"></script>
+  <script src="js/theory.js"></script>
+  <script src="js/chords.js"></script>
+  <script src="js/weights.js"></script>
+  <script src="js/fingering.js"></script>
+  <script src="js/progtext.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/render.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+    if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+      window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); });
+    }
+  </script>
+</body>
+</html>
