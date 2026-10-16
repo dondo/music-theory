@@ -843,7 +843,8 @@ var KeyboardRender = (function () {
     var allKeys = whites.concat(blacks);
 
     var parts = [];
-    var svgH = sig ? HEIGHT_SIG : (flash ? HEIGHT_FLASH : HEIGHT);
+    var noKeys = flash && state.cardMode === 'chord';                  // Find the chord: just the staff card, no keyboard
+    var svgH = sig ? HEIGHT_SIG : (noKeys ? 244 : (flash ? HEIGHT_FLASH : HEIGHT));
     var cut = (sig || flash) ? 0 : (state.staff && selected ? 30 : TOP_CUT);   // explore: no empty strip above the boxes; the big stave needs headroom for high chords
     parts.push('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 ' + cut + ' ' + WIDTH + ' ' + (svgH - cut) + '" width="' + WIDTH +
       '" height="' + (svgH - cut) + '" class="kb-svg' + (sig ? ' sig' : '') + '" role="group" aria-label="Piano keyboard with key signatures" ' +
@@ -857,10 +858,12 @@ var KeyboardRender = (function () {
       '" height="' + (WH + 6) + '"/></clipPath></defs>');
 
     // keys (clipped to the window; white keys first so black keys sit on top)
-    parts.push('<g class="keys" clip-path="url(#kbclip)">');
-    whites.forEach(function (k) { parts.push(whiteKey(k, ctx)); });
-    blacks.forEach(function (k) { parts.push(blackKey(k, ctx)); });
-    parts.push('</g>');
+    if (!noKeys) {
+      parts.push('<g class="keys" clip-path="url(#kbclip)">');
+      whites.forEach(function (k) { parts.push(whiteKey(k, ctx)); });
+      blacks.forEach(function (k) { parts.push(blackKey(k, ctx)); });
+      parts.push('</g>');
+    }
 
     if (sig) {
       parts.push(sigGrid(state, mode));

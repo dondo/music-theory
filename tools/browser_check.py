@@ -1290,11 +1290,15 @@ with sync_playwright() as p:
           fc.locator(".chordcard ellipse").count())
     check("find the chord: at first the chord is one of I IV V V7 in C", answer_symbol() in ("C", "F", "G", "G7")
           and "Chords in the key of C" in fc.locator("#chords-summary").text_content(), answer_symbol())
+    check("find the chord: the piano keyboard is hidden", fc.locator(".key").count() == 0 and fc.locator(".keys").count() == 0)
+    check("find the chord: degree chips show no chord names while guessing",
+          all(t.strip() == "" for t in fc.locator(".chip-deg .chip-sym").all_inner_texts()), fc.locator(".chip-deg .chip-sym").all_inner_texts())
     fc.locator("#chord-types .chip").nth(1).click()
     check("find the chord: one pick is not a guess", fc.locator("#n-bad").text_content() == "0" and fc.locator("#n-ok").text_content() == "0")
     solve(wrong=True)
     check("find the chord: the second pick is a (wrong) guess and is reported", fc.locator("#n-bad").text_content() == "1"
           and "Try again" in fc.locator(".chordcard").text_content(), fc.locator(".chordcard").text_content())
+    check("find the chord: the second pick reveals the chord names", any(t.strip() for t in fc.locator(".chip-deg .chip-sym").all_inner_texts()))
     fc.locator("#chord-types .chip").nth(0).click()
     check("find the chord: after a wrong guess a single click starts a new attempt", fc.locator("#n-bad").text_content() == "1"
           and fc.locator("#chord-degrees .chip[aria-pressed=true]").count() == 0)

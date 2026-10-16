@@ -2635,7 +2635,8 @@ var KeyboardRender = (function () {
     var allKeys = whites.concat(blacks);
 
     var parts = [];
-    var svgH = sig ? HEIGHT_SIG : (flash ? HEIGHT_FLASH : HEIGHT);
+    var noKeys = flash && state.cardMode === 'chord';                  // Find the chord: just the staff card, no keyboard
+    var svgH = sig ? HEIGHT_SIG : (noKeys ? 244 : (flash ? HEIGHT_FLASH : HEIGHT));
     var cut = (sig || flash) ? 0 : (state.staff && selected ? 30 : TOP_CUT);   // explore: no empty strip above the boxes; the big stave needs headroom for high chords
     parts.push('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 ' + cut + ' ' + WIDTH + ' ' + (svgH - cut) + '" width="' + WIDTH +
       '" height="' + (svgH - cut) + '" class="kb-svg' + (sig ? ' sig' : '') + '" role="group" aria-label="Piano keyboard with key signatures" ' +
@@ -2649,10 +2650,12 @@ var KeyboardRender = (function () {
       '" height="' + (WH + 6) + '"/></clipPath></defs>');
 
     // keys (clipped to the window; white keys first so black keys sit on top)
-    parts.push('<g class="keys" clip-path="url(#kbclip)">');
-    whites.forEach(function (k) { parts.push(whiteKey(k, ctx)); });
-    blacks.forEach(function (k) { parts.push(blackKey(k, ctx)); });
-    parts.push('</g>');
+    if (!noKeys) {
+      parts.push('<g class="keys" clip-path="url(#kbclip)">');
+      whites.forEach(function (k) { parts.push(whiteKey(k, ctx)); });
+      blacks.forEach(function (k) { parts.push(blackKey(k, ctx)); });
+      parts.push('</g>');
+    }
 
     if (sig) {
       parts.push(sigGrid(state, mode));
@@ -3022,10 +3025,11 @@ var KeyboardRender = (function () {
         else b.setAttribute('aria-label', ac.symbol);
       } else {
         var c = Chords.chordInKey(rootName, state.mode, d, type);
-        b.setAttribute('aria-label', c.roman + ', ' + c.symbol + (pop ? '' : ', ' + c.mode));
+        var hideSym = quizOn() && !state.chord;                      // Find the chord: the names would give the answer away until a guess is made
+        b.setAttribute('aria-label', c.roman + (hideSym ? '' : ', ' + c.symbol) + (pop ? '' : ', ' + c.mode));
         if (!pop) b.setAttribute('data-dark', c.darkness);           // gentle shading: brightest mode to darkest
         b.appendChild(el('span', 'chip-num', c.roman));
-        b.appendChild(el('span', 'chip-sym', c.symbol));
+        b.appendChild(el('span', 'chip-sym', hideSym ? '\u00a0' : c.symbol));
         if (!pop) b.appendChild(el('span', 'chip-mode', c.mode));
       }
       chordDegrees.appendChild(b);

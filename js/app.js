@@ -300,10 +300,11 @@
         else b.setAttribute('aria-label', ac.symbol);
       } else {
         var c = Chords.chordInKey(rootName, state.mode, d, type);
-        b.setAttribute('aria-label', c.roman + ', ' + c.symbol + (pop ? '' : ', ' + c.mode));
+        var hideSym = quizOn() && !state.chord;                      // Find the chord: the names would give the answer away until a guess is made
+        b.setAttribute('aria-label', c.roman + (hideSym ? '' : ', ' + c.symbol) + (pop ? '' : ', ' + c.mode));
         if (!pop) b.setAttribute('data-dark', c.darkness);           // gentle shading: brightest mode to darkest
         b.appendChild(el('span', 'chip-num', c.roman));
-        b.appendChild(el('span', 'chip-sym', c.symbol));
+        b.appendChild(el('span', 'chip-sym', hideSym ? '\u00a0' : c.symbol));
         if (!pop) b.appendChild(el('span', 'chip-mode', c.mode));
       }
       chordDegrees.appendChild(b);
