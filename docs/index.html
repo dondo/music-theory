@@ -526,6 +526,34 @@ button, .inv-zone, .clef-hit, .key, svg { touch-action: manipulation; }
   .inv-zone .inv-bg { fill: rgba(37, 99, 235, 0.04); }
   .prog-text-btn { width: 44px; height: 44px; }
 }
+
+/* Study: Find the chord */
+.segmented [hidden] { display: none; }
+.ftc { margin-top: 14px; padding: 14px 16px; background: var(--card); border: 1px solid var(--line); border-radius: 16px;
+       box-shadow: 0 1px 2px rgba(20, 30, 60, 0.04), 0 8px 24px rgba(20, 30, 60, 0.05); }
+.ftc[hidden] { display: none; }
+.ftc-main { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.ftc-prompt { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.ftc-key { font-size: 1.05rem; font-weight: 600; color: var(--muted); }
+.ftc-find { color: var(--muted); }
+.ftc-chord { font-size: 2.1rem; font-weight: 700; line-height: 1; color: var(--ink); }
+.ftc-actions { display: flex; gap: 8px; }
+.ftc-actions .btn-reset { padding: 9px 22px; font-weight: 600; }
+.ftc-actions button:disabled { opacity: 0.45; cursor: default; }
+.ftc-msg { margin: 10px 0 0; min-height: 1.4em; color: var(--muted); }
+.ftc-msg.ok { color: #15803d; font-weight: 600; }
+.ftc-msg.bad { color: #b91c1c; }
+.ftc-levels { display: flex; flex-wrap: wrap; gap: 8px 24px; align-items: center; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); font-size: 0.9rem; }
+.ftc-step { display: inline-flex; align-items: center; gap: 8px; }
+.ftc-step-name { font-weight: 600; min-width: 3.6em; }
+.ftc-step b { min-width: 1.6em; text-align: center; font-variant-numeric: tabular-nums; }
+.ftc-btn { width: 32px; height: 32px; padding: 0; font-size: 1.1rem; line-height: 1; }
+.ftc-btn:disabled { opacity: 0.35; cursor: default; }
+.ftc-list { color: var(--muted); max-width: 22ch; }
+.ftc-auto { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); cursor: pointer; }
+.ftc-auto small { color: var(--muted); font-variant-numeric: tabular-nums; }
+#chords.quizzing summary { pointer-events: none; }
+@media (hover: none) { .ftc-btn { width: 40px; height: 40px; } }
 </style>
 </head>
 <body>
@@ -572,6 +600,8 @@ button, .inv-zone, .clef-hit, .key, svg { touch-action: manipulation; }
         <label for="fm-key">Find the key</label>
         <input type="radio" name="flashmode" id="fm-sig" value="sig">
         <label for="fm-sig">Find the signature</label>
+        <input type="radio" name="flashmode" id="fm-chord" value="chord">
+        <label for="fm-chord">Find the chord</label>
       </fieldset>
       <button type="button" id="reset" class="btn-reset" hidden>Reset view</button>
       <div id="score" class="score" hidden aria-label="Score">
@@ -583,6 +613,38 @@ button, .inv-zone, .clef-hit, .key, svg { touch-action: manipulation; }
 
     <section class="stage-card" aria-label="Keyboard">
       <div id="stage" class="stage"></div>
+    </section>
+
+    <section id="ftc" class="ftc" aria-label="Find the chord" hidden>
+      <div class="ftc-main">
+        <div class="ftc-prompt">
+          <span class="ftc-key" id="ftc-key"></span>
+          <span class="ftc-find">find</span>
+          <span class="ftc-chord" id="ftc-chord"></span>
+        </div>
+        <div class="ftc-actions">
+          <button type="button" id="ftc-check" class="btn-reset btn-primary" disabled>Check</button>
+          <button type="button" id="ftc-next" class="btn-reset btn-primary" hidden>Next &#9654;</button>
+        </div>
+      </div>
+      <p id="ftc-msg" class="ftc-msg" role="status" aria-live="polite">Pick a degree and a type below, then press Check.</p>
+      <div class="ftc-levels" role="group" aria-label="Difficulty">
+        <div class="ftc-step">
+          <span class="ftc-step-name">Keys</span>
+          <button type="button" id="ftc-keys-dn" class="btn-reset ftc-btn" aria-label="Fewer keys">&minus;</button>
+          <b id="ftc-keys-n" aria-live="polite">1</b>
+          <button type="button" id="ftc-keys-up" class="btn-reset ftc-btn" aria-label="More keys">+</button>
+          <small id="ftc-keys-list" class="ftc-list"></small>
+        </div>
+        <div class="ftc-step">
+          <span class="ftc-step-name">Chords</span>
+          <button type="button" id="ftc-chords-dn" class="btn-reset ftc-btn" aria-label="Fewer chords">&minus;</button>
+          <b id="ftc-chords-n" aria-live="polite">1</b>
+          <button type="button" id="ftc-chords-up" class="btn-reset ftc-btn" aria-label="More chords">+</button>
+          <small id="ftc-chords-list" class="ftc-list"></small>
+        </div>
+        <label class="ftc-auto"><input type="checkbox" id="ftc-auto" checked> Level up automatically <small id="ftc-streak"></small></label>
+      </div>
     </section>
 
     <section id="chords" class="chords" aria-label="Chords in this key" hidden>
@@ -1344,6 +1406,107 @@ var Weights = (function () {
   if (typeof module !== 'undefined' && module.exports) { module.exports = api; }
   return api;
 })();
+</script>
+  <script>
+/* "Find the chord": the difficulty ladder and the question picker. Pure functions, no DOM.
+ *
+ * Two independent dials, both counted from 1:
+ *   keys   - how many keys are in play (most common first: C, G, F, D, B♭ ... ; A, E, D, B, G ... in minor)
+ *   chords - how many chord groups are in play (I IV V V7 first, then vi ii, then the sevenths ...)
+ * A chord is { deg: 0..6, type } exactly as the chord selector uses it.
+ */
+(function (root, factory) {
+  if (typeof module !== 'undefined' && module.exports) module.exports = factory();
+  else root.FindChord = factory();
+})(typeof self !== 'undefined' ? self : this, function () {
+  'use strict';
+
+  // pitch classes, most familiar key first
+  var KEY_ORDER = {
+    major: [0, 7, 5, 2, 10, 9, 3, 4, 8, 11, 1, 6],     // C G F D B♭ A E♭ E A♭ B D♭ F♯/G♭
+    minor: [9, 4, 2, 11, 7, 6, 0, 1, 5, 8, 10, 3]      // A E D B G F♯ C C♯ F G♯ B♭ D♯/E♭
+  };
+
+  function c(deg, type) { return { deg: deg, type: type || 'triad' }; }
+
+  // the hand-picked first groups: [degrees, type] pairs; each inner array is one level
+  var START = {
+    major: [
+      [c(0), c(3), c(4), c(4, '7')],                       // I IV V V7
+      [c(5), c(1)],                                        // vi ii
+      [c(0, '7'), c(3, '7'), c(1, '7'), c(5, '7')],        // the sevenths of those
+      [c(2), c(6)],                                        // iii vii°
+      [c(2, '7'), c(6, '7')]
+    ],
+    minor: [
+      [c(0), c(3), c(4), c(5)],                            // i iv v VI
+      [c(6), c(2)],                                        // VII III
+      [c(0, '7'), c(3, '7'), c(4, '7'), c(5, '7')],
+      [c(6, '7'), c(2, '7')],
+      [c(1), c(1, '7')]                                    // ii° and its seventh
+    ]
+  };
+  // after that, one type at a time (most common first), the principal degrees before the rest
+  var LATER_TYPES = ['sus4', 'sus2', 'add9', '9', '11', '13'];
+  var PRINCIPAL = { major: [0, 4, 3], minor: [0, 3, 4] };
+  var ALL_DEGS = { major: [0, 4, 3, 5, 1, 2, 6], minor: [0, 3, 4, 5, 6, 2, 1] };
+  var POP_HIDDEN = ['11', '13'];
+
+  function groups(mode, pop) {
+    mode = mode === 'minor' ? 'minor' : 'major';
+    var out = START[mode].map(function (g) { return g.slice(); });
+    LATER_TYPES.forEach(function (t) {
+      if (pop && POP_HIDDEN.indexOf(t) >= 0) return;
+      var first = PRINCIPAL[mode].map(function (d) { return c(d, t); });
+      var rest = ALL_DEGS[mode].filter(function (d) { return PRINCIPAL[mode].indexOf(d) < 0; }).map(function (d) { return c(d, t); });
+      out.push(first, rest);
+    });
+    return out;
+  }
+
+  function maxKeys() { return 12; }
+  function maxChords(mode, pop) { return groups(mode, pop).length; }
+  function clamp(n, lo, hi) { n = Math.round(Number(n)); if (!isFinite(n)) n = lo; return Math.max(lo, Math.min(hi, n)); }
+
+  // the key pitch classes in play at this keys level
+  function keys(mode, n) {
+    return KEY_ORDER[mode === 'minor' ? 'minor' : 'major'].slice(0, clamp(n, 1, 12));
+  }
+  // the chords in play at this chords level (all groups up to and including it)
+  function chords(mode, pop, n) {
+    var g = groups(mode, pop), top = clamp(n, 1, g.length), out = [];
+    for (var i = 0; i < top; i++) out = out.concat(g[i]);
+    return out;
+  }
+
+  // one question: a key (pc) and a chord, never the same pair as `avoid` (when there is any choice)
+  // `rng` returns [0, 1); `avoid` is { pc, deg, type } or null
+  function pick(mode, pop, keysLevel, chordsLevel, rng, avoid) {
+    var ks = keys(mode, keysLevel), cs = chords(mode, pop, chordsLevel);
+    var all = [];
+    ks.forEach(function (pc) { cs.forEach(function (ch) { all.push({ pc: pc, deg: ch.deg, type: ch.type }); }); });
+    var pool = all.filter(function (q) {
+      return !(avoid && q.pc === avoid.pc && q.deg === avoid.deg && q.type === avoid.type);
+    });
+    if (!pool.length) pool = all;
+    return pool[Math.min(pool.length - 1, Math.floor(rng() * pool.length))];
+  }
+
+  // Levelling up by itself: after STREAK first-try answers in a row the next dial goes up one, keys and
+  // chords taking turns (keys first). Returns the new { keys, chords, next } or null when nothing can rise.
+  var STREAK = 5;
+  function levelUp(mode, pop, keysLevel, chordsLevel, nextDial) {
+    var dials = nextDial === 'chords' ? ['chords', 'keys'] : ['keys', 'chords'];
+    for (var i = 0; i < 2; i++) {
+      if (dials[i] === 'keys' && keysLevel < maxKeys()) return { keys: keysLevel + 1, chords: chordsLevel, next: 'chords' };
+      if (dials[i] === 'chords' && chordsLevel < maxChords(mode, pop)) return { keys: keysLevel, chords: chordsLevel + 1, next: 'keys' };
+    }
+    return null;
+  }
+
+  return { KEY_ORDER: KEY_ORDER, STREAK: STREAK, groups: groups, maxKeys: maxKeys, maxChords: maxChords,
+           clamp: clamp, keys: keys, chords: chords, pick: pick, levelUp: levelUp };
+});
 </script>
   <script>
 /* Left-hand chord fingering. Pure functions, no DOM.
@@ -2772,7 +2935,7 @@ var KeyboardRender = (function () {
 
   // ---- chord selector ---------------------------------------------------------
   function updateChordPanel() {
-    var show = state.selected && !state.flash;
+    var show = state.selected && (!state.flash || quizOn());
     chordsPanel.hidden = !show;
     var active = show && state.chord;
     Array.prototype.forEach.call(legendChord, function (li) { li.hidden = !active; });
@@ -2985,7 +3148,7 @@ var KeyboardRender = (function () {
     setTimeout(function () { restoring = false; }, 200);
     if (typeof s.clef === 'string' && KeyboardRender.CLEFS.some(function (c) { return c.id === s.clef; })) state.clef = s.clef;
     if (s.mode === 'minor') { state.mode = 'minor'; document.getElementById('mode-minor').checked = true; }
-    if (s.level === 'jazz') { level = 'jazz'; document.getElementById('level-jazz').checked = true; viewGroup.hidden = true; }
+    if (s.level === 'jazz') { level = 'jazz'; document.getElementById('level-jazz').checked = true; }
     var kinds = { full: 'sk-full', pentatonic: 'sk-pent', wholetone: 'sk-whole' };
     if (level === 'jazz' && kinds[s.scaleKind]) { state.scaleKind = s.scaleKind; document.getElementById(kinds[s.scaleKind]).checked = true; }
     if (s.chordTypes && typeof s.chordTypes === 'object') {
@@ -3309,7 +3472,7 @@ var KeyboardRender = (function () {
     ChordAudio.engine.setNotes(holding ? heldNotes() : litNotes(), true);
   }
   function syncSound() {
-    var ok = state.selected && !state.flash;
+    var ok = state.selected && (!state.flash || quizOn());
     var canHold = ok && !!state.chord && chordsDetails.open && !chordsPanel.hidden;
     chordSoundRow.hidden = !canHold;
     if (holding && (!canHold || chordSig() !== holdSig)) holding = false;
@@ -3623,10 +3786,11 @@ var KeyboardRender = (function () {
     }
     if (textPop && (!progDetails.open || !state.selected || state.flash)) closeTextPop(false);
     state.staff = buildStaff();
-    stage.innerHTML = KeyboardRender.render(state);
-    resetBtn.hidden = !state.selected || (state.flash && state.cardMode === 'sig');
+    stage.innerHTML = KeyboardRender.render(quizOn() ? Object.assign({}, state, { flash: false, card: null }) : state);
+    resetBtn.hidden = !state.selected || (state.flash && state.cardMode === 'sig') || quizOn();
     updateCaption();
     updateChordPanel();
+    updateFtc();
     updateProgPanel();
     syncSound();
     var svg = stage.firstElementChild;
@@ -3662,6 +3826,215 @@ var KeyboardRender = (function () {
     }
     draw(rotated && fromS != null ? { oldKeyS: fromS } : false, viaKeyboard);
     if (progIndex === 0 && state.chord && progOn()) progStatus.textContent = 'Chord 1 of ' + prog.length + ': ' + progChord(0).symbol;
+  }
+
+  // ---- Study: Find the chord ----------------------------------------------------
+  // A random chord is named in a given key; the player finds it in the chord selector and presses Check.
+  // Two dials set the difficulty (how many keys, how many chord groups); they climb by themselves after a
+  // run of first-try answers unless that is switched off, and can always be moved by hand.
+  var FTC_KEY = 'music-theory-ftc-v1';
+  var FM_IDS = { key: 'fm-key', sig: 'fm-sig', chord: 'fm-chord' };
+  var ftcLv = { major: { keys: 1, chords: 1 }, minor: { keys: 1, chords: 1 } };
+  var ftcAuto = true, ftcNext = 'keys', ftcStreak = 0;
+  var ftcQ = null;                                    // { pc, spell, deg, type }
+  var ftcMissed = false;                              // a wrong Check on this question: no streak credit
+  var ftcPrevChordsOpen = null;                       // the chord selector's state before the quiz opened it
+  var ftcSection = document.getElementById('ftc');
+  var ftcKeyEl = document.getElementById('ftc-key');
+  var ftcChordEl = document.getElementById('ftc-chord');
+  var ftcCheckBtn = document.getElementById('ftc-check');
+  var ftcNextBtn = document.getElementById('ftc-next');
+  var ftcMsg = document.getElementById('ftc-msg');
+  var ftcAutoBox = document.getElementById('ftc-auto');
+  var FTC_PROMPT = 'Pick a degree and a type below, then press Check.';
+
+  function quizOn() { return state.flash && state.cardMode === 'chord'; }
+  function ftcPop() { return level === 'pop'; }
+
+  function loadFtc() {
+    try {
+      var o = JSON.parse(window.localStorage.getItem(FTC_KEY));
+      if (!o || typeof o !== 'object') return;
+      ['major', 'minor'].forEach(function (m) {
+        if (o.levels && o.levels[m]) {
+          ftcLv[m].keys = FindChord.clamp(o.levels[m].keys, 1, FindChord.maxKeys());
+          ftcLv[m].chords = FindChord.clamp(o.levels[m].chords, 1, FindChord.maxChords(m, false));
+        }
+      });
+      ftcAuto = o.auto !== false;
+      ftcNext = o.next === 'chords' ? 'chords' : 'keys';
+    } catch (e) { /* defaults */ }
+  }
+  function saveFtc() {
+    try { window.localStorage.setItem(FTC_KEY, JSON.stringify({ levels: ftcLv, auto: ftcAuto, next: ftcNext })); } catch (e) { /* storage unavailable */ }
+  }
+  function resetFtc() {
+    ftcLv = { major: { keys: 1, chords: 1 }, minor: { keys: 1, chords: 1 } };
+    ftcAuto = true; ftcNext = 'keys'; ftcStreak = 0;
+    ftcAutoBox.checked = true;
+    try { window.localStorage.removeItem(FTC_KEY); } catch (e) { /* storage unavailable */ }
+  }
+  // the levels in force: the chord dial is capped by what this level (Pop / Jazz) offers
+  function ftcLevels() {
+    var l = ftcLv[state.mode];
+    return { keys: FindChord.clamp(l.keys, 1, FindChord.maxKeys()), chords: FindChord.clamp(l.chords, 1, FindChord.maxChords(state.mode, ftcPop())) };
+  }
+  function ftcSpec() { return Theory.specsFor(state.mode, ftcQ.pc)[ftcQ.spell]; }
+  function ftcChord() { return Chords.chordInKey(ftcSpec().name, state.mode, ftcQ.deg, ftcQ.type); }
+  function ftcSay(text, cls) { ftcMsg.textContent = text; ftcMsg.className = 'ftc-msg' + (cls ? ' ' + cls : ''); }
+
+  function ftcNewQuestion(animate) {
+    var l = ftcLevels();
+    var q = FindChord.pick(state.mode, ftcPop(), l.keys, l.chords, Math.random, ftcQ);
+    q.spell = Math.floor(Math.random() * Theory.specsFor(state.mode, q.pc).length);
+    var oldSvg = stage.firstElementChild;
+    var oldKey = animate && oldSvg && state.selected ? oldSvg.querySelector('.key[data-pc="' + q.pc + '"]') : null;
+    ftcQ = q;
+    ftcMissed = false;
+    state.answered = false;
+    state.root = q.pc;
+    state.spell = q.spell;
+    state.selected = true;
+    state.chord = null;                               // nothing pre-selected
+    typePicked = false;
+    chordCleared = false;
+    chordTypes_.full = 'triad';
+    ftcSay(FTC_PROMPT, '');
+    return oldKey ? { oldKeyS: parseInt(oldKey.getAttribute('data-s'), 10) } : (animate ? 'fade' : false);
+  }
+
+  function enterQuiz() {
+    restoring = true;                                 // opening the selector must not wipe what the toggle handler resets
+    setTimeout(function () { restoring = false; }, 80);
+    if (ftcPrevChordsOpen === null) ftcPrevChordsOpen = chordsDetails.open;
+    chordsDetails.open = true;
+    state.scaleKind = 'full';
+    document.getElementById('sk-full').checked = true;
+    state.card = null;
+    ftcQ = null;
+    ftcStreak = 0;
+    ftcNewQuestion(false);
+  }
+  function exitQuiz() {
+    if (ftcPrevChordsOpen !== null) {
+      restoring = true;
+      setTimeout(function () { restoring = false; }, 80);
+      chordsDetails.open = ftcPrevChordsOpen;
+      ftcPrevChordsOpen = null;
+    }
+    ftcQ = null;
+    state.chord = null;
+    typePicked = false;
+  }
+
+  function ftcNextQuestion(viaKeyboard) {
+    if (!quizOn() || !state.answered) return;
+    var anim = ftcNewQuestion(true);
+    updateScore();
+    draw(anim, false);
+    if (viaKeyboard) { var first = chordDegrees.querySelector('.chip'); if (first) first.focus({ preventScroll: true }); }
+  }
+
+  function ftcCheck() {
+    if (!quizOn() || state.answered || !state.chord || !ftcQ) return;
+    var want = ftcChord(), name = ftcSpec().name, got = state.chord;
+    var where = Theory.keyTitle(ftcSpec(), state.mode);
+    if (got.deg === ftcQ.deg && got.type === ftcQ.type) {
+      score.ok++;
+      state.answered = true;
+      var text = 'Correct: ' + want.symbol + ' is ' + want.roman + ' in ' + where + '.';
+      if (ftcMissed) ftcStreak = 0;
+      else {
+        ftcStreak++;
+        if (ftcAuto && ftcStreak >= FindChord.STREAK) {
+          var l = ftcLevels();
+          var up = FindChord.levelUp(state.mode, ftcPop(), l.keys, l.chords, ftcNext);
+          if (up) {
+            ftcLv[state.mode] = { keys: up.keys, chords: up.chords };
+            ftcNext = up.next;
+            text += up.keys > l.keys ? ' Level up: one more key.' : ' Level up: more chords.';
+          }
+          ftcStreak = 0;
+        }
+      }
+      saveFtc();
+      ftcSay(text, 'ok');
+    } else {
+      score.bad++;
+      ftcMissed = true;
+      ftcStreak = 0;
+      var have = Chords.chordInKey(name, state.mode, got.deg, got.type);
+      ftcSay('That is ' + have.symbol + ' (' + have.roman + '), not ' + want.symbol + '. Try again.', 'bad');
+    }
+    updateScore();
+    draw(false, false);
+    if (state.answered) ftcNextBtn.focus({ preventScroll: true });
+  }
+
+  function ftcKeyName(pc) {
+    return Theory.specsFor(state.mode, pc).map(function (sp) { return sp.name + (state.mode === 'minor' ? 'm' : ''); }).join('/');
+  }
+  function ftcStep(dial, delta) {
+    var l = ftcLevels();
+    var max = dial === 'keys' ? FindChord.maxKeys() : FindChord.maxChords(state.mode, ftcPop());
+    var next = FindChord.clamp(l[dial] + delta, 1, max);
+    if (next === l[dial]) return;
+    ftcLv[state.mode] = { keys: dial === 'keys' ? next : l.keys, chords: dial === 'chords' ? next : l.chords };
+    ftcStreak = 0;
+    saveFtc();
+    updateFtc();
+  }
+
+  function updateFtc() {
+    var on = quizOn();
+    ftcSection.hidden = !on;
+    chordsPanel.classList.toggle('quizzing', on);
+    if (!on || !ftcQ) return;
+    ftcKeyEl.textContent = 'Key of ' + Theory.keyTitle(ftcSpec(), state.mode);
+    ftcChordEl.textContent = ftcChord().symbol;
+    ftcCheckBtn.hidden = state.answered;
+    ftcCheckBtn.disabled = !state.chord;
+    ftcNextBtn.hidden = !state.answered;
+    var l = ftcLevels(), maxC = FindChord.maxChords(state.mode, ftcPop());
+    document.getElementById('ftc-keys-n').textContent = l.keys;
+    document.getElementById('ftc-chords-n').textContent = l.chords;
+    document.getElementById('ftc-keys-dn').disabled = l.keys <= 1;
+    document.getElementById('ftc-keys-up').disabled = l.keys >= FindChord.maxKeys();
+    document.getElementById('ftc-chords-dn').disabled = l.chords <= 1;
+    document.getElementById('ftc-chords-up').disabled = l.chords >= maxC;
+    var newestKey = FindChord.keys(state.mode, l.keys).slice(-1)[0];
+    document.getElementById('ftc-keys-list').textContent = l.keys === 1 ? ftcKeyName(newestKey) + ' only' : '+ ' + ftcKeyName(newestKey);
+    var home = state.mode === 'minor' ? 'A' : 'C';
+    var group = FindChord.groups(state.mode, ftcPop())[l.chords - 1].map(function (ch) {
+      return Chords.chordInKey(home, state.mode, ch.deg, ch.type).roman;
+    }).join(' ');
+    document.getElementById('ftc-chords-list').textContent = (l.chords === 1 ? '' : '+ ') + group;
+    document.getElementById('ftc-streak').textContent = ftcAuto ? '(' + ftcStreak + '/' + FindChord.STREAK + ')' : '';
+  }
+
+  ftcCheckBtn.addEventListener('click', ftcCheck);
+  ftcNextBtn.addEventListener('click', function () { ftcNextQuestion(false); });
+  document.getElementById('ftc-keys-dn').addEventListener('click', function () { ftcStep('keys', -1); });
+  document.getElementById('ftc-keys-up').addEventListener('click', function () { ftcStep('keys', 1); });
+  document.getElementById('ftc-chords-dn').addEventListener('click', function () { ftcStep('chords', -1); });
+  document.getElementById('ftc-chords-up').addEventListener('click', function () { ftcStep('chords', 1); });
+  ftcAutoBox.addEventListener('change', function () { ftcAuto = ftcAutoBox.checked; ftcStreak = 0; saveFtc(); updateFtc(); });
+  loadFtc();
+  ftcAutoBox.checked = ftcAuto;
+
+  function setCardMode(m) {
+    state.cardMode = m;
+    var radio = document.getElementById(FM_IDS[m]);
+    if (radio) radio.checked = true;
+  }
+  // Pop studies keys, signatures and chords; Jazz studies chords only
+  function syncStudyOptions() {
+    viewGroup.hidden = false;
+    ['fm-key', 'fm-sig'].forEach(function (id) {
+      var input = document.getElementById(id);
+      input.hidden = level === 'jazz';
+      input.nextElementSibling.hidden = level === 'jazz';
+    });
   }
 
   // ---- flashcards -------------------------------------------------------------
@@ -3813,6 +4186,7 @@ var KeyboardRender = (function () {
   // Next: the solved card slides out to the left while the new one slides in from the right.
   function nextCard(viaKeyboard) {
     if (!state.flash || !state.answered) return;
+    if (quizOn()) { ftcNextQuestion(viaKeyboard); return; }
     if (state.cardMode === 'sig') { nextSigCard(viaKeyboard); return; }
     var oldSvg = stage.firstElementChild;
     var oldCard = oldSvg && oldSvg.querySelector('.flashcard');
@@ -3838,6 +4212,7 @@ var KeyboardRender = (function () {
   }
 
   function press(pc, spell, viaKeyboard, fromS, keyEl) {
+    if (quizOn()) return;                                  // Find the chord: the key is the question's, not the player's
     if (state.flash && state.card) { if (state.cardMode !== 'sig') answer(pc, viaKeyboard, fromS, keyEl); }
     else selectRoot(pc, spell, viaKeyboard, fromS);
   }
@@ -3853,14 +4228,18 @@ var KeyboardRender = (function () {
     state.guess = null;
     state.chord = null;
     chordCleared = false;
-    if (flash) newCard(); else state.card = null;
+    if (flash) {
+      if (level === 'jazz' && state.cardMode !== 'chord') setCardMode('chord');     // Jazz studies chords only
+      if (quizOn()) enterQuiz(); else newCard();
+    } else { exitQuiz(); state.card = null; }
     updateScore();
     draw('fade', false);
   }
 
   function setFlashMode(m) {
     if (m === state.cardMode) return;
-    state.cardMode = m;
+    if (quizOn()) exitQuiz();
+    setCardMode(m);
     state.root = 0;
     state.spell = 0;
     state.selected = false;
@@ -3868,7 +4247,7 @@ var KeyboardRender = (function () {
     state.answered = false;
     state.guess = null;
     state.card = null;
-    newCard();
+    if (m === 'chord') enterQuiz(); else newCard();
     updateScore();
     draw('fade', false);
   }
@@ -3884,7 +4263,8 @@ var KeyboardRender = (function () {
       state.answered = false;
       state.guess = null;
       state.card = null;
-      newCard();
+      if (quizOn()) { ftcQ = null; ftcStreak = 0; state.chord = null; typePicked = false; ftcNewQuestion(false); }
+      else newCard();
     }
     draw(state.flash ? 'fade' : false, false);
   }
@@ -4039,7 +4419,15 @@ var KeyboardRender = (function () {
     if (e.defaultPrevented || !plainKey(e)) return;
     var t = e.target;
     if (t && t.closest && t.closest('input, select, textarea')) return;
-    if (state.selected && !state.flash && !chordsPanel.hidden && chordsDetails.open) {
+    if (quizOn() && e.key === 'Enter') {                  // Find the chord: Enter checks, then goes on
+      var qchip = t && t.closest && t.closest('button[data-deg], button[data-type]');
+      if (qchip || !t || t === document.body || t === document.documentElement) {
+        e.preventDefault();
+        if (state.answered) ftcNextQuestion(true); else ftcCheck();
+        return;
+      }
+    }
+    if (state.selected && (!state.flash || quizOn()) && !chordsPanel.hidden && chordsDetails.open) {
       // chord selector shortcuts: 1-7 pick the degree/mode; A S D F ... pick the type chips in the order shown
       var sc = null;
       if (/^[1-7]$/.test(e.key)) {
@@ -4177,13 +4565,14 @@ var KeyboardRender = (function () {
     input.addEventListener('change', function () {
       if (!input.checked) return;
       level = input.value;
-      viewGroup.hidden = level === 'jazz';          // flashcards are a Pop-only activity
-      if (level === 'jazz' && state.flash) { document.getElementById('view-explore').checked = true; setView(false); }
+      syncStudyOptions();                           // Jazz studies chords only; Pop has all three activities
+      if (level === 'jazz' && state.flash && state.cardMode !== 'chord') setFlashMode('chord');
       if (level === 'pop') {
         if (chordTypes_.full && POP_HIDDEN_TYPES.indexOf(chordTypes_.full) >= 0) chordTypes_.full = 'triad';
         if (state.scaleKind !== 'full') { state.scaleKind = 'full'; document.getElementById('sk-full').checked = true; chordCleared = false; state.chord = null; }
         else if (state.chord && POP_HIDDEN_TYPES.indexOf(state.chord.type) >= 0) state.chord = { deg: state.chord.deg, type: 'triad' };
       }
+      if (quizOn()) { state.chord = null; typePicked = false; ftcNewQuestion(false); }    // the chord pool differs between levels
       updateScore();                    // also shows/hides the scale-type switch
       draw(false, false);
     });
@@ -4230,7 +4619,8 @@ var KeyboardRender = (function () {
     state.clef = 'treble';
     level = 'pop';
     document.getElementById('level-pop').checked = true;
-    viewGroup.hidden = false;
+    syncStudyOptions();
+    resetFtc();
     state.mode = 'major';
     document.getElementById('mode-major').checked = true;
     state.scaleKind = 'full';
@@ -4266,6 +4656,7 @@ var KeyboardRender = (function () {
   resetBtn.addEventListener('click', reset);
 
   restoreState();
+  syncStudyOptions();
   updateScore();
   draw(false, false);
 })();

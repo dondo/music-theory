@@ -226,7 +226,7 @@ with sync_playwright() as p:
     check("level: Jazz restores the scale-type switch, 11th/13th, mode names and the mode sort",
           page.locator("#scalekind-group").is_visible() and page.locator(".chip-type").count() == 8
           and page.locator(".chip-mode").count() == 7 and page.locator("#mode-sort").is_visible() and page.locator("#lbl-deg").text_content() == "Mode")
-    check("level: Jazz hides the Flashcards switch", not page.locator("#view-group").is_visible())
+    check("level: Jazz keeps the Study switch (it offers only Find the chord)", page.locator("#view-group").is_visible())
     check("level: Jazz info shows the mode paragraph", "Ionian" in page.locator("#chord-info").inner_text())
     page.locator('.chip-type[data-type="13"]').click()
     page.locator('label[for="sk-pent"]').click()
@@ -1051,8 +1051,7 @@ with sync_playwright() as p:
     page.wait_for_timeout(200)
     page.reload()
     page.wait_for_selector(".kb-svg")
-    check("persist: mode and level come back too", page.locator("#mode-minor").is_checked() and page.locator("#level-jazz").is_checked()
-          and not page.locator("#view-group").is_visible())
+    check("persist: mode and level come back too", page.locator("#mode-minor").is_checked() and page.locator("#level-jazz").is_checked())
     page.locator("#reset-app").click()
     page.wait_for_timeout(500)
     check("reset app: key, chord, progression, sections, mode and level are back to initial",
@@ -1195,6 +1194,7 @@ with sync_playwright() as p:
     check("clef: the choice is remembered", pn.locator(".clef-hit").get_attribute("data-clef") == "bass")
     pn.locator(".clef-hit").click()
     pn.locator('.clef-opt[data-clef="treble"]').click()
+    pn.wait_for_timeout(400)               # (the page ignores section toggles for a moment while it restores itself)
     # progression inversions from the stave
     if not pn.locator("#prog-details").evaluate("e => e.open"):
         pn.locator("#prog-details summary").click()
@@ -1255,6 +1255,82 @@ with sync_playwright() as p:
     pn.wait_for_timeout(300)
     check("text entry: 'replace' swaps the whole progression", pn.locator(".prog-item").count() == 3)
     pn.close()
+
+    # ---- Study: Find the chord ----
+    fc_ctx = browser.new_context(viewport={"width": 1000, "height": 900}, reduced_motion="reduce")   # (a clean profile: no remembered mode or level)
+    fc = fc_ctx.new_page()
+    fc_errors = []
+    fc.on("pageerror", lambda e: fc_errors.append(str(e)))
+    fc.goto("file://" + page_path)
+    fc.wait_for_selector(".kb-svg")
+    fc.locator("label[for=view-flash]").click()
+    fc.locator("label[for=fm-chord]").click()
+    fc.wait_for_timeout(300)
+
+    def solve(wrong=False):
+        """find the prompted chord in the selector (or deliberately a different one), then press Check"""
+        sym = fc.locator("#ftc-chord").text_content()
+        n_types = fc.locator("#chord-types .chip").count()
+        for ti in range(n_types):
+            fc.locator("#chord-types .chip").nth(ti).click()
+            chips = fc.locator("#chord-degrees .chip")
+            for di in range(chips.count()):
+                same = chips.nth(di).locator(".chip-sym").text_content() == sym
+                if same != wrong:
+                    chips.nth(di).click()
+                    fc.locator("#ftc-check").click()
+                    return sym
+        return sym
+
+    check("find the chord: the prompt and the chord selector show", fc.locator("#ftc").is_visible() and fc.locator("#chords").is_visible()
+          and "Key of C major" in fc.locator("#ftc-key").text_content()
+          and fc.locator("#ftc-chord").text_content() in ("C", "F", "G", "G7"), fc.locator("#ftc-chord").text_content())
+    check("find the chord: Check waits for a chord", fc.locator("#ftc-check").is_disabled())
+    solve(wrong=True)
+    check("find the chord: a wrong answer is reported and can be retried", "Try again" in fc.locator("#ftc-msg").text_content()
+          and fc.locator("#n-bad").text_content() == "1" and fc.locator("#ftc-next").is_hidden(), fc.locator("#ftc-msg").text_content())
+    solve()
+    check("find the chord: the right answer scores and offers Next", "Correct" in fc.locator("#ftc-msg").text_content()
+          and fc.locator("#n-ok").text_content() == "1" and fc.locator("#ftc-next").is_visible(), fc.locator("#ftc-msg").text_content())
+    fc.locator("#ftc-next").click()
+    fc.wait_for_timeout(200)
+    check("find the chord: Next deals a fresh question with nothing selected", fc.locator("#ftc-check").is_disabled()
+          and fc.locator("#chord-degrees .chip[aria-pressed=true]").count() == 0)
+    for i in range(5):                       # five first-try answers in a row: a key is added
+        solve()
+        fc.locator("#ftc-next").click()
+        fc.wait_for_timeout(100)
+    check("find the chord: five first-try answers in a row level up (a second key)", fc.locator("#ftc-keys-n").text_content() == "2"
+          and fc.locator("#ftc-chords-n").text_content() == "1", fc.locator("#ftc-keys-n").text_content())
+    fc.locator("#ftc-chords-up").click()
+    fc.locator("#ftc-chords-up").click()
+    check("find the chord: the chord dial moves by hand", fc.locator("#ftc-chords-n").text_content() == "3")
+    fc.locator("#ftc-chords-dn").click()
+    fc.locator("#ftc-keys-dn").click()
+    check("find the chord: and back down", fc.locator("#ftc-chords-n").text_content() == "2" and fc.locator("#ftc-keys-n").text_content() == "1")
+    check("find the chord: the dials stop at 1", fc.locator("#ftc-keys-n").text_content() == "1" and fc.locator("#ftc-keys-dn").is_disabled())
+    fc.locator("label[for=mode-minor]").click()
+    fc.wait_for_timeout(200)
+    check("find the chord: minor has its own questions and levels", "minor" in fc.locator("#ftc-key").text_content()
+          and fc.locator("#ftc-chords-n").text_content() == "1", fc.locator("#ftc-key").text_content())
+    fc.locator("label[for=mode-major]").click()
+    fc.locator("label[for=level-jazz]").click()
+    fc.wait_for_timeout(200)
+    check("find the chord: Jazz studies chords only", fc.locator("#ftc").is_visible() and fc.locator("label[for=fm-key]").is_hidden()
+          and fc.locator("label[for=fm-sig]").is_hidden() and fc.locator("#fm-chord").is_checked())
+    for _ in range(20):
+        fc.locator("#ftc-chords-up").click() if fc.locator("#ftc-chords-up").is_enabled() else None
+    check("find the chord: Jazz offers more chord levels than Pop", int(fc.locator("#ftc-chords-n").text_content()) == 17,
+          fc.locator("#ftc-chords-n").text_content())
+    fc.locator("label[for=level-pop]").click()
+    fc.wait_for_timeout(200)
+    check("find the chord: back in Pop the chord dial is capped at 13", fc.locator("#ftc-chords-n").text_content() == "13"
+          and fc.locator("label[for=fm-key]").is_visible())
+    fc.locator("label[for=view-explore]").click()
+    fc.wait_for_timeout(200)
+    check("find the chord: leaving Study hides the prompt", fc.locator("#ftc").is_hidden())
+    check("find the chord: no script errors", not fc_errors, fc_errors)
+    fc.close()
 
     browser.close()
 

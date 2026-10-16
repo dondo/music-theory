@@ -509,3 +509,31 @@ button, .inv-zone, .clef-hit, .key, svg { touch-action: manipulation; }
   .inv-zone .inv-bg { fill: rgba(37, 99, 235, 0.04); }
   .prog-text-btn { width: 44px; height: 44px; }
 }
+
+/* Study: Find the chord */
+.segmented [hidden] { display: none; }
+.ftc { margin-top: 14px; padding: 14px 16px; background: var(--card); border: 1px solid var(--line); border-radius: 16px;
+       box-shadow: 0 1px 2px rgba(20, 30, 60, 0.04), 0 8px 24px rgba(20, 30, 60, 0.05); }
+.ftc[hidden] { display: none; }
+.ftc-main { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.ftc-prompt { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.ftc-key { font-size: 1.05rem; font-weight: 600; color: var(--muted); }
+.ftc-find { color: var(--muted); }
+.ftc-chord { font-size: 2.1rem; font-weight: 700; line-height: 1; color: var(--ink); }
+.ftc-actions { display: flex; gap: 8px; }
+.ftc-actions .btn-reset { padding: 9px 22px; font-weight: 600; }
+.ftc-actions button:disabled { opacity: 0.45; cursor: default; }
+.ftc-msg { margin: 10px 0 0; min-height: 1.4em; color: var(--muted); }
+.ftc-msg.ok { color: #15803d; font-weight: 600; }
+.ftc-msg.bad { color: #b91c1c; }
+.ftc-levels { display: flex; flex-wrap: wrap; gap: 8px 24px; align-items: center; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); font-size: 0.9rem; }
+.ftc-step { display: inline-flex; align-items: center; gap: 8px; }
+.ftc-step-name { font-weight: 600; min-width: 3.6em; }
+.ftc-step b { min-width: 1.6em; text-align: center; font-variant-numeric: tabular-nums; }
+.ftc-btn { width: 32px; height: 32px; padding: 0; font-size: 1.1rem; line-height: 1; }
+.ftc-btn:disabled { opacity: 0.35; cursor: default; }
+.ftc-list { color: var(--muted); max-width: 22ch; }
+.ftc-auto { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); cursor: pointer; }
+.ftc-auto small { color: var(--muted); font-variant-numeric: tabular-nums; }
+#chords.quizzing summary { pointer-events: none; }
+@media (hover: none) { .ftc-btn { width: 40px; height: 40px; } }

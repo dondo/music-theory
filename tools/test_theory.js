@@ -450,5 +450,50 @@ check('progtext: reports what it cannot read', function () {
   assert.strictEqual(P.parse('Isus9').errors.length, 1);
 });
 
+// ---- Find the chord: the difficulty ladder ----
+var FC = require('../js/findchord.js');
+check('find the chord: starts with I IV V V7 in C', function () {
+  assert.deepStrictEqual(FC.keys('major', 1), [0]);
+  assert.deepStrictEqual(FC.chords('major', true, 1).map(function (c) { return c.deg + c.type; }), ['0triad', '3triad', '4triad', '47']);
+});
+check('find the chord: keys grow from the most familiar and are all distinct', function () {
+  ['major', 'minor'].forEach(function (m) {
+    var all = FC.keys(m, 12);
+    assert.strictEqual(all.length, 12);
+    assert.strictEqual(new Set(all).size, 12);
+  });
+  assert.deepStrictEqual(FC.keys('major', 3), [0, 7, 5]);
+  assert.strictEqual(FC.keys('minor', 1)[0], 9);
+});
+check('find the chord: Pop never offers 11ths or 13ths, Jazz does; no chord repeats', function () {
+  ['major', 'minor'].forEach(function (m) {
+    var pop = FC.chords(m, true, 99), jazz = FC.chords(m, false, 99);
+    assert.ok(pop.every(function (c) { return c.type !== '11' && c.type !== '13'; }));
+    assert.ok(jazz.some(function (c) { return c.type === '13'; }));
+    [pop, jazz].forEach(function (l) { assert.strictEqual(new Set(l.map(function (c) { return c.deg + c.type; })).size, l.length); });
+    assert.strictEqual(pop.length, 42);
+    assert.strictEqual(jazz.length, 56);
+  });
+});
+check('find the chord: pick stays inside the levels and avoids an immediate repeat', function () {
+  var avoid = null;
+  for (var i = 0; i < 200; i++) {
+    var q = FC.pick('major', true, 2, 1, Math.random, avoid);
+    assert.ok([0, 7].indexOf(q.pc) >= 0);
+    assert.ok(FC.chords('major', true, 1).some(function (c) { return c.deg === q.deg && c.type === q.type; }));
+    if (avoid) assert.ok(!(q.pc === avoid.pc && q.deg === avoid.deg && q.type === avoid.type));
+    avoid = q;
+  }
+});
+check('find the chord: levelling up alternates keys and chords and stops at the top', function () {
+  var u = FC.levelUp('major', true, 1, 1, 'keys');
+  assert.deepStrictEqual([u.keys, u.chords, u.next], [2, 1, 'chords']);
+  u = FC.levelUp('major', true, 2, 1, 'chords');
+  assert.deepStrictEqual([u.keys, u.chords, u.next], [2, 2, 'keys']);
+  u = FC.levelUp('major', true, 12, 3, 'keys');            // keys are full: chords go up instead
+  assert.deepStrictEqual([u.keys, u.chords], [12, 4]);
+  assert.strictEqual(FC.levelUp('major', true, 12, FC.maxChords('major', true), 'keys'), null);
+});
+
 console.log(failures ? '\n' + failures + ' FAILED' : '\nall tests passed');
 process.exit(failures ? 1 : 0);

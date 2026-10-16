@@ -143,3 +143,9 @@ The app icon (a keyboard with a note over it) is `icon.svg`; the same SVG is inl
 2. Repo > Settings > Pages > Source: "Deploy from a branch", branch `main`, folder `/docs`.
 3. On the iPad, open `https://<you>.github.io/music-theory/` in Safari > Share > Add to Home Screen.
 4. After updating: rebuild, commit, push; the app picks up the new version the next time it is opened online (close and reopen it once).
+
+## Study: Find the chord
+
+Study > "Find the chord" names a chord in a key (e.g. "Key of C major, find G7"); find it in the chord selector (type, then degree) and press Check or Enter. Works in Pop and Jazz (Jazz offers only this Study activity) and in major and minor, each with its own levels.
+
+Two difficulty dials, adjustable by hand with the − / + buttons: **Keys** (1-12, most familiar first: C G F D B♭ ...; A E D B G ... in minor) and **Chords** (groups: I IV V V7, then vi ii, then the sevenths, iii and vii°, then sus4, sus2, add9, 9ths, and in Jazz 11ths and 13ths). "Level up automatically" adds a key, then a chord group, alternately, after five first-try answers in a row. Levels are remembered. The ladder lives in `js/findchord.js`.

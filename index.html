@@ -60,6 +60,8 @@
         <label for="fm-key">Find the key</label>
         <input type="radio" name="flashmode" id="fm-sig" value="sig">
         <label for="fm-sig">Find the signature</label>
+        <input type="radio" name="flashmode" id="fm-chord" value="chord">
+        <label for="fm-chord">Find the chord</label>
       </fieldset>
       <button type="button" id="reset" class="btn-reset" hidden>Reset view</button>
       <div id="score" class="score" hidden aria-label="Score">
@@ -71,6 +73,38 @@
 
     <section class="stage-card" aria-label="Keyboard">
       <div id="stage" class="stage"></div>
+    </section>
+
+    <section id="ftc" class="ftc" aria-label="Find the chord" hidden>
+      <div class="ftc-main">
+        <div class="ftc-prompt">
+          <span class="ftc-key" id="ftc-key"></span>
+          <span class="ftc-find">find</span>
+          <span class="ftc-chord" id="ftc-chord"></span>
+        </div>
+        <div class="ftc-actions">
+          <button type="button" id="ftc-check" class="btn-reset btn-primary" disabled>Check</button>
+          <button type="button" id="ftc-next" class="btn-reset btn-primary" hidden>Next &#9654;</button>
+        </div>
+      </div>
+      <p id="ftc-msg" class="ftc-msg" role="status" aria-live="polite">Pick a degree and a type below, then press Check.</p>
+      <div class="ftc-levels" role="group" aria-label="Difficulty">
+        <div class="ftc-step">
+          <span class="ftc-step-name">Keys</span>
+          <button type="button" id="ftc-keys-dn" class="btn-reset ftc-btn" aria-label="Fewer keys">&minus;</button>
+          <b id="ftc-keys-n" aria-live="polite">1</b>
+          <button type="button" id="ftc-keys-up" class="btn-reset ftc-btn" aria-label="More keys">+</button>
+          <small id="ftc-keys-list" class="ftc-list"></small>
+        </div>
+        <div class="ftc-step">
+          <span class="ftc-step-name">Chords</span>
+          <button type="button" id="ftc-chords-dn" class="btn-reset ftc-btn" aria-label="Fewer chords">&minus;</button>
+          <b id="ftc-chords-n" aria-live="polite">1</b>
+          <button type="button" id="ftc-chords-up" class="btn-reset ftc-btn" aria-label="More chords">+</button>
+          <small id="ftc-chords-list" class="ftc-list"></small>
+        </div>
+        <label class="ftc-auto"><input type="checkbox" id="ftc-auto" checked> Level up automatically <small id="ftc-streak"></small></label>
+      </div>
     </section>
 
     <section id="chords" class="chords" aria-label="Chords in this key" hidden>
@@ -217,6 +251,7 @@
   <script src="js/theory.js"></script>
   <script src="js/chords.js"></script>
   <script src="js/weights.js"></script>
+  <script src="js/findchord.js"></script>
   <script src="js/fingering.js"></script>
   <script src="js/progtext.js"></script>
   <script src="js/audio.js"></script>
