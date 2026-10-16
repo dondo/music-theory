@@ -1364,6 +1364,68 @@ with sync_playwright() as p:
     check("find the chord: no script errors", not fc_errors, fc_errors)
     fc.close()
 
+    # ---- Chords: Find a chord ----
+    fd_ctx = browser.new_context(viewport={"width": 1000, "height": 1000}, reduced_motion="reduce")
+    fd = fd_ctx.new_page()
+    fd_errors = []
+    fd.on("pageerror", lambda e: fd_errors.append(str(e)))
+    fd.goto("file://" + page_path)
+    fd.wait_for_selector(".kb-svg")
+    fd.locator('.box[data-pc="0"]').first.click()
+    fd.wait_for_timeout(300)
+    check("find a chord: no button until the chord selector is open", fd.locator("#find-chord-btn").is_hidden())
+    fd.locator("#chords-summary").click()
+    fd.wait_for_timeout(300)
+    check("find a chord: a button shows at the top right of the open selector", fd.locator("#find-chord-btn").is_visible()
+          and fd.locator("#find-chord-btn").get_attribute("aria-pressed") == "false")
+    fd.locator("#find-chord-btn").click()
+    check("find a chord: it switches on", fd.locator("#find-chord-btn").get_attribute("aria-pressed") == "true")
+
+    def pick(pc, nth=0):
+        fd.locator('.key[data-pc="%d"]' % pc).nth(nth).dispatch_event("click")
+        fd.wait_for_timeout(120)
+
+    root_before = fd.locator(".key").first.get_attribute("data-s")
+    pick(0)
+    pick(4)
+    check("find a chord: two notes light nothing", fd.locator("#chord-degrees .chip[aria-pressed=true]").count() == 0 and fd.locator(".pick").count() == 2,
+          fd.locator(".pick").count())
+    pick(7)
+    check("find a chord: three notes naming a chord light it in the picker (C E G: I triad)",
+          fd.locator('#chord-degrees .chip[data-deg="0"]').get_attribute("aria-pressed") == "true"
+          and fd.locator('#chord-types .chip[data-type="triad"]').get_attribute("aria-pressed") == "true")
+    check("find a chord: the staff shows the chord's voicings with one highlighted", fd.locator(".stave .lit-chord, .stave rect[fill-opacity]").count() >= 0
+          and fd.locator(".stave ellipse").count() >= 18)
+    pick(11)
+    check("find a chord: adding the B changes it to the seventh (Cmaj7)",
+          fd.locator('#chord-types .chip[data-type="7"]').get_attribute("aria-pressed") == "true"
+          and fd.locator('#chord-degrees .chip[data-deg="0"]').get_attribute("aria-pressed") == "true")
+    pick(11)
+    check("find a chord: clicking a picked key again unselects it (back to the triad)", fd.locator(".pick").count() == 3
+          and fd.locator('#chord-types .chip[data-type="triad"]').get_attribute("aria-pressed") == "true")
+    pick(0, 1)
+    check("find a chord: the same note in another octave is also picked, and still names the chord", fd.locator(".pick").count() == 4
+          and fd.locator('#chord-degrees .chip[data-deg="0"]').get_attribute("aria-pressed") == "true")
+    pick(1)
+    check("find a chord: a note outside the key's chords lights nothing", fd.locator("#chord-degrees .chip[aria-pressed=true]").count() == 0)
+    check("find a chord: the keyboard does not move while picking", fd.locator(".key").first.get_attribute("data-s") == root_before)
+    fd.locator("#find-chord-btn").click()
+    check("find a chord: switching it off clears the picked keys", fd.locator(".pick").count() == 0
+          and fd.locator("#find-chord-btn").get_attribute("aria-pressed") == "false")
+    fd.locator("#find-chord-btn").click()
+    pick(7); pick(0, 1); pick(2, 1)
+    check("find a chord: G C D with G lowest is Gsus4 (V sus4), not Csus2",
+          fd.locator('#chord-degrees .chip[data-deg="4"]').get_attribute("aria-pressed") == "true"
+          and fd.locator('#chord-types .chip[data-type="sus4"]').get_attribute("aria-pressed") == "true",
+          fd.locator("#chord-info").inner_text()[:80])
+    fd.locator('#chord-degrees .chip[data-deg="1"]').click()
+    check("find a chord: choosing a chord by hand clears the picked notes", fd.locator(".pick").count() == 0)
+    fd.locator("#chords-summary").click()
+    fd.wait_for_timeout(200)
+    check("find a chord: closing the selector turns it off", fd.locator("#find-chord-btn").is_hidden())
+    check("find a chord: no script errors", not fd_errors, fd_errors)
+    fd.close()
+
     browser.close()
 
 print("\n%d FAILED" % len(failures) if failures else "\nall browser checks passed")

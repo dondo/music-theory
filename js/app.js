@@ -248,6 +248,10 @@
   function updateChordPanel() {
     var show = state.selected && (!state.flash || quizOn());
     chordsPanel.hidden = !show;
+    var canFind = show && !state.flash && chordsDetails.open;          // "Find a chord" lives in the open selector
+    findBtn.hidden = !canFind;
+    if (!canFind && findOn) { findOn = false; picks = []; }
+    findBtn.setAttribute('aria-pressed', findOn ? 'true' : 'false');
     var active = show && state.chord;
     Array.prototype.forEach.call(legendChord, function (li) { li.hidden = !active; });
     if (!show) return;
@@ -344,7 +348,7 @@
 
     chordInfo.textContent = '';
     if (!state.chord) {
-      chordInfo.appendChild(el('p', 'chord-hint', quizOn() ? 'Choose a type and a degree, in either order. The second one you choose is your answer.' : alt
+      chordInfo.appendChild(el('p', 'chord-hint', findOn ? findHint() : quizOn() ? 'Choose a type and a degree, in either order. The second one you choose is your answer.' : alt
         ? 'Pick a note to light up the chord built on it, then try the other types. Only chords whose notes all belong to this scale are offered.'
         : 'Pick a type and a degree to light up the chord on the keyboard. ' +
           'Each chip shows the roman numeral and chord name for the chosen type.'));
@@ -404,6 +408,7 @@
       if (kept) kept.focus({ preventScroll: true });
       return;
     }
+    if (findOn && picks.length) picks = [];             // choosing a chord by hand replaces the picked notes
     if (b.hasAttribute('data-deg')) {
       var deg = parseInt(b.getAttribute('data-deg'), 10);
       state.chord = (state.chord && state.chord.deg === deg) ? null : { deg: deg, type: curType() };
@@ -1077,6 +1082,14 @@
       }
     }
     chords.sort(function (x, y) { return x.bass - y.bass; });
+    if (findOn && picks.length) {                         // Find a chord: highlight the voicing nearest the notes picked (same lowest note)
+      var lm = tonic + (Math.min.apply(null, picks) - state.root), bi = -1, bd = 1e9;
+      chords.forEach(function (c, i) {
+        var dist = Math.abs(c.bass - lm);
+        if (c.bass % 12 === ((lm % 12) + 12) % 12 && dist < bd) { bd = dist; bi = i; }
+      });
+      if (bi >= 0) chords[bi].lit = true;
+    }
     return { kind: 'chord', clef: clefId, chords: chords, slots: slots };
   }
 
@@ -1105,6 +1118,8 @@
       state.fingering = vp ? vp.notes : null;
     }
     if (textPop && (!progDetails.open || !state.selected || state.flash)) closeTextPop(false);
+    if (findOn && picks.length) syncPicks();
+    state.picked = findOn ? picks : null;
     state.staff = buildStaff();
     stage.innerHTML = KeyboardRender.render(quizOn() ? Object.assign({}, state, { selected: false }) : state);
     resetBtn.hidden = !state.selected || (state.flash && state.cardMode === 'sig') || quizOn();
@@ -1405,6 +1420,65 @@
     });
   }
 
+  // ---- Chords: find a chord from keys picked on the keyboard ------------------------
+  var findBtn = document.getElementById('find-chord-btn');
+  var findOn = false;
+  var picks = [];                                     // picked keys, as absolute semitones (the keys' data-s)
+
+  // every chord the selector offers in this key, as pitch classes, for Find a chord
+  function findCands() {
+    var out = [], rank = {};
+    Chords.TYPE_COMMON_TO_RARE.forEach(function (id, n) { rank[id] = n; });
+    function pcOf(o) { return (state.root + o) % 12; }
+    if (isAlt()) {
+      var sc = altScale();
+      for (var i = 0; i < sc.offsets.length; i++) {
+        Chords.ALT_TYPES.forEach(function (t, ti) {
+          var c = Chords.chordInScale(sc, i, t.id);
+          if (c) out.push({ deg: i, type: t.id, pcs: c.pcOffsets.map(pcOf), rootPc: pcOf(c.pcOffsets[0]), rank: ti * 10 + i });
+        });
+      }
+    } else {
+      var name = currentSpec().name;
+      for (var deg = 0; deg < 7; deg++) {
+        Chords.TYPES.forEach(function (t) {
+          if (level === 'pop' && POP_HIDDEN_TYPES.indexOf(t.id) >= 0) return;
+          var c = Chords.chordInKey(name, state.mode, deg, t.id);
+          out.push({ deg: deg, type: t.id, pcs: c.pcOffsets.map(pcOf), rootPc: pcOf(c.rootOffset), rank: rank[t.id] * 10 + deg });
+        });
+      }
+    }
+    return out;
+  }
+  // light up the chord the picked notes name (none lit when they name no chord in this key)
+  function syncPicks() {
+    var best = FindChord.identify(findCands(), picks);
+    if (best) {
+      state.chord = { deg: best.deg, type: best.type };
+      chordTypes_[state.scaleKind] = best.type;
+      typePicked = true;
+      chordCleared = false;
+    } else {
+      state.chord = null;
+      typePicked = false;
+    }
+  }
+  function togglePick(s) {
+    var i = picks.indexOf(s);
+    if (i >= 0) picks.splice(i, 1); else picks.push(s);
+    if (!picks.length) { state.chord = null; typePicked = false; }
+    draw(false, false);
+  }
+  function findHint() {
+    return 'Find a chord: click keys on the keyboard to pick notes (click a key again to unselect it). The chord lights up here as soon as the notes name one in this key.' +
+      (picks.length ? ' Picked so far: ' + picks.length + ' key' + (picks.length === 1 ? '' : 's') + '.' : '');
+  }
+  findBtn.addEventListener('click', function () {
+    findOn = !findOn;
+    picks = [];
+    draw(false, false);
+  });
+
   // ---- flashcards -------------------------------------------------------------
   function newCard() {
     var avoid = state.card ? state.card.pc : -1;
@@ -1581,6 +1655,7 @@
 
   function press(pc, spell, viaKeyboard, fromS, keyEl) {
     if (quizOn()) return;                                  // Find the chord: the key is the question's, not the player's
+    if (findOn && state.selected && keyEl && fromS != null) { togglePick(fromS); return; }   // Find a chord: keys are picked, not rooted
     if (state.flash && state.card) { if (state.cardMode !== 'sig') answer(pc, viaKeyboard, fromS, keyEl); }
     else selectRoot(pc, spell, viaKeyboard, fromS);
   }

@@ -708,6 +708,19 @@ var KeyboardRender = (function () {
     return out.join('');
   }
 
+  // "Find a chord": the keys picked so far, marked in blue above whatever else is lit
+  function pickedOverlay(whites, blacks, picked) {
+    var out = ['<g class="picked" clip-path="url(#kbclip)" pointer-events="none">'];
+    function mark(k, x, w, h, cy) {
+      out.push('<g class="pick" data-s="' + k.s + '"><rect x="' + f(x) + '" y="' + KEY_TOP + '" width="' + w + '" height="' + h + '" rx="4" fill="rgba(37,99,235,0.30)" stroke="#2563eb" stroke-width="3"/>' +
+        '<circle cx="' + f(k.cx) + '" cy="' + cy + '" r="8" fill="#2563eb" stroke="#ffffff" stroke-width="2"/></g>');
+    }
+    whites.forEach(function (k) { if (picked.indexOf(k.s) >= 0) mark(k, k.x, W, WH + 12, KEY_TOP + WH - 52); });
+    blacks.forEach(function (k) { if (picked.indexOf(k.s) >= 0) mark(k, k.cx - BW / 2, BW, BH, KEY_TOP + BH - 16); });
+    out.push('</g>');
+    return out.join('');
+  }
+
   function bigStave(data, winL, winR, rootSpec, mode) {
     var out = ['<g class="stave" aria-label="Notation">'];
     var under = [];
@@ -870,6 +883,7 @@ var KeyboardRender = (function () {
       whites.forEach(function (k) { parts.push(whiteKey(k, ctx)); });
       blacks.forEach(function (k) { parts.push(blackKey(k, ctx)); });
       parts.push('</g>');
+      if (state.picked && state.picked.length) parts.push(pickedOverlay(whites, blacks, state.picked));
     }
 
     if (sig) {

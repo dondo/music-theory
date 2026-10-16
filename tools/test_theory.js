@@ -495,5 +495,42 @@ check('find the chord: levelling up alternates keys and chords and stops at the 
   assert.strictEqual(FC.levelUp('major', true, 12, FC.maxChords('major', true), 'keys'), null);
 });
 
+// ---- Find a chord: identifying the picked notes ----
+var CH = require('../js/chords.js');
+function keyCands(root, mode) {
+  var out = [], name = T.specsFor(mode, root)[0].name;
+  for (var deg = 0; deg < 7; deg++) CH.TYPES.forEach(function (t) {
+    var c = CH.chordInKey(name, mode, deg, t.id);
+    out.push({ deg: deg, type: t.id, pcs: c.pcOffsets.map(function (o) { return (root + o) % 12; }), rootPc: (root + c.rootOffset) % 12,
+               rank: CH.TYPE_COMMON_TO_RARE.indexOf(t.id) * 10 + deg });
+  });
+  return out;
+}
+check('find a chord: C E G in C major is the I triad, in any order or octave', function () {
+  var c = keyCands(0, 'major');
+  [[60, 64, 67], [67, 64, 60], [64, 67, 72], [48, 64, 79]].forEach(function (p) {
+    var r = FC.identify(c, p); assert.ok(r && r.deg === 0 && r.type === 'triad', JSON.stringify(p));
+  });
+});
+check('find a chord: adding the B makes it Cmaj7; G B D is the V triad', function () {
+  var c = keyCands(0, 'major');
+  var r = FC.identify(c, [60, 64, 67, 71]); assert.ok(r.deg === 0 && r.type === '7');
+  r = FC.identify(c, [55, 59, 62]); assert.ok(r.deg === 4 && r.type === 'triad');
+});
+check('find a chord: two notes, or notes that name no chord in the key, find nothing', function () {
+  var c = keyCands(0, 'major');
+  assert.strictEqual(FC.identify(c, [60, 64]), null);
+  assert.strictEqual(FC.identify(c, [61, 65, 68]), null);
+  assert.strictEqual(FC.identify(c, []), null);
+});
+check('find a chord: C D G is Csus2 or Gsus4 depending on the lowest key', function () {
+  var c = keyCands(0, 'major');
+  var r = FC.identify(c, [60, 62, 67]); assert.ok(r.deg === 0 && r.type === 'sus2');
+  r = FC.identify(c, [55, 60, 62]); assert.ok(r.deg === 4 && r.type === 'sus4');
+});
+check('find a chord: minor keys work too (A C E is i)', function () {
+  var r = FC.identify(keyCands(9, 'minor'), [57, 60, 64]); assert.ok(r.deg === 0 && r.type === 'triad');
+});
+
 console.log(failures ? '\n' + failures + ' FAILED' : '\nall tests passed');
 process.exit(failures ? 1 : 0);

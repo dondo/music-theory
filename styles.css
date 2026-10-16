@@ -537,3 +537,9 @@ button, .inv-zone, .clef-hit, .key, svg { touch-action: manipulation; }
 .ftc-auto small { color: var(--muted); font-variant-numeric: tabular-nums; }
 #chords.quizzing summary { pointer-events: none; }
 @media (hover: none) { .ftc-btn { width: 40px; height: 40px; } }
+
+/* Chords: find a chord from keys picked on the keyboard */
+#chords { position: relative; }
+.find-chord-btn { position: absolute; top: 12px; right: 16px; z-index: 2; }
+.find-chord-btn[hidden] { display: none; }
+.find-chord-btn[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }

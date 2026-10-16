@@ -94,6 +94,32 @@
     return null;
   }
 
+  // "Find a chord": which of the key's chords is exactly the notes picked on the keyboard?
+  // `cands`: [{ deg, type, pcs: [absolute pitch classes], rootPc, rank }] (lower rank = more common);
+  // `picked`: absolute key numbers (semitones), any octave. The picked pitch classes must equal a chord's;
+  // when several chords share them (C sus2 / G sus4 are both C D G) the one rooted on the lowest key wins,
+  // then the more common type. Returns the candidate or null.
+  function identify(cands, picked) {
+    if (!picked || !picked.length) return null;
+    var pcs = {}, bass = Infinity, n = 0;
+    picked.forEach(function (s) {
+      var pc = ((s % 12) + 12) % 12;
+      if (!pcs[pc]) { pcs[pc] = true; n++; }
+      if (s < bass) bass = s;
+    });
+    var bassPc = ((bass % 12) + 12) % 12;
+    var hits = cands.filter(function (c) {
+      if (c.pcs.length !== n) return false;
+      return c.pcs.every(function (pc) { return pcs[((pc % 12) + 12) % 12]; });
+    });
+    if (!hits.length) return null;
+    hits.sort(function (a, b) {
+      var ra = a.rootPc === bassPc ? 0 : 1, rb = b.rootPc === bassPc ? 0 : 1;
+      return (ra - rb) || (a.rank - b.rank);
+    });
+    return hits[0];
+  }
+
   return { KEY_ORDER: KEY_ORDER, STREAK: STREAK, groups: groups, maxKeys: maxKeys, maxChords: maxChords,
-           clamp: clamp, keys: keys, chords: chords, pick: pick, levelUp: levelUp };
+           clamp: clamp, keys: keys, chords: chords, pick: pick, levelUp: levelUp, identify: identify };
 });
