@@ -1327,6 +1327,20 @@ with sync_playwright() as p:
     fc.locator("#ftc-keys-dn").click()
     check("find the chord: and back down", fc.locator("#ftc-chords-n").text_content() == "2" and fc.locator("#ftc-keys-n").text_content() == "1")
     check("find the chord: the dials stop at 1", fc.locator("#ftc-keys-n").text_content() == "1" and fc.locator("#ftc-keys-dn").is_disabled())
+    check("find the chord: an I give up button sits beside the card", fc.locator(".giveup-btn").count() == 1 and fc.locator(".next-btn").count() == 0)
+    nb0, ng0 = fc.locator("#n-bad").text_content(), fc.locator("#n-ok").text_content()
+    fc.locator(".giveup-btn").dispatch_event("click")
+    fc.wait_for_timeout(200)
+    qd, qt = fc.locator(".chordcard").get_attribute("data-qdeg"), fc.locator(".chordcard").get_attribute("data-qtype")
+    check("find the chord: giving up lights the right type and degree and offers Next",
+          fc.locator('#chord-degrees .chip[data-deg="%s"]' % qd).get_attribute("aria-pressed") == "true"
+          and fc.locator('#chord-types .chip[data-type="%s"]' % qt).get_attribute("aria-pressed") == "true"
+          and fc.locator(".next-btn").count() == 1 and fc.locator(".giveup-btn").count() == 0
+          and fc.locator("#n-ok").text_content() == ng0 and int(fc.locator("#n-bad").text_content()) == int(nb0) + 1)
+    fc.locator(".next-btn").dispatch_event("click")
+    fc.wait_for_timeout(200)
+    check("find the chord: Next then deals a new question with the give-up button back", fc.locator(".giveup-btn").count() == 1
+          and fc.locator("#chord-degrees .chip[aria-pressed=true]").count() == 0)
     fc.locator("label[for=mode-minor]").click()
     fc.wait_for_timeout(200)
     check("find the chord: minor has its own questions and levels", "minor" in fc.locator("#chords-summary").text_content()

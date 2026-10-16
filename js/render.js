@@ -424,6 +424,12 @@ var KeyboardRender = (function () {
       '<text x="' + (w / 2) + '" y="' + (h / 2 + 6) + '" text-anchor="middle" font-size="20" font-weight="bold" ' +
         'fill="#ffffff" pointer-events="none">Next →</text></g>';
   }
+  function giveUpButton(x, cy) {            // "find the chord": shows the answer instead
+    var w = 132, h = 40;
+    return '<g class="giveup-btn" role="button" tabindex="0" aria-label="I give up: show the answer" transform="translate(' + f(x) + ',' + (cy - h / 2) + ')">' +
+      '<rect width="' + w + '" height="' + h + '" rx="20" fill="#ffffff" stroke="#c3cadb" stroke-width="1.5"/>' +
+      '<text x="' + (w / 2) + '" y="' + (h / 2 + 6) + '" text-anchor="middle" font-size="17" font-weight="bold" fill="#5d6475" pointer-events="none">I give up</text></g>';
+  }
   function flashCard(card, mode, answered) {
     if (!card) return '';
     var all = T.specsFor(mode, card.pc);
@@ -695,7 +701,8 @@ var KeyboardRender = (function () {
     } else {
       out.push('<text x="' + cx + '" y="' + ty + '" text-anchor="middle" font-size="16" fill="#5d6475" pointer-events="none">Find this chord in the Chords section below.</text>');
     }
-    out.push('<text class="fb-nope" x="' + f(left + boxW + 28) + '" y="' + ((top + bot) / 2 + 10) + '" font-size="34" font-weight="bold" fill="#dc2626" opacity="0" pointer-events="none">✗ Nope</text>');
+    if (!answered) out.push(giveUpButton(left + boxW + 28, (top + bot) / 2));
+    out.push('<text class="fb-nope" x="' + f(left + boxW + 28) + '" y="' + ((top + bot) / 2 - 36) + '" font-size="34" font-weight="bold" fill="#dc2626" opacity="0" pointer-events="none">✗ Nope</text>');
     out.push('<text class="fb-yes" x="' + f(left - 28) + '" y="' + ((top + bot) / 2 + 10) + '" text-anchor="end" font-size="34" font-weight="bold" fill="#16a34a" opacity="0" pointer-events="none">✓ Yes!</text>');
     out.push('</g>');
     return out.join('');

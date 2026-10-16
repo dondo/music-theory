@@ -2216,6 +2216,12 @@ var KeyboardRender = (function () {
       '<text x="' + (w / 2) + '" y="' + (h / 2 + 6) + '" text-anchor="middle" font-size="20" font-weight="bold" ' +
         'fill="#ffffff" pointer-events="none">Next →</text></g>';
   }
+  function giveUpButton(x, cy) {            // "find the chord": shows the answer instead
+    var w = 132, h = 40;
+    return '<g class="giveup-btn" role="button" tabindex="0" aria-label="I give up: show the answer" transform="translate(' + f(x) + ',' + (cy - h / 2) + ')">' +
+      '<rect width="' + w + '" height="' + h + '" rx="20" fill="#ffffff" stroke="#c3cadb" stroke-width="1.5"/>' +
+      '<text x="' + (w / 2) + '" y="' + (h / 2 + 6) + '" text-anchor="middle" font-size="17" font-weight="bold" fill="#5d6475" pointer-events="none">I give up</text></g>';
+  }
   function flashCard(card, mode, answered) {
     if (!card) return '';
     var all = T.specsFor(mode, card.pc);
@@ -2487,7 +2493,8 @@ var KeyboardRender = (function () {
     } else {
       out.push('<text x="' + cx + '" y="' + ty + '" text-anchor="middle" font-size="16" fill="#5d6475" pointer-events="none">Find this chord in the Chords section below.</text>');
     }
-    out.push('<text class="fb-nope" x="' + f(left + boxW + 28) + '" y="' + ((top + bot) / 2 + 10) + '" font-size="34" font-weight="bold" fill="#dc2626" opacity="0" pointer-events="none">✗ Nope</text>');
+    if (!answered) out.push(giveUpButton(left + boxW + 28, (top + bot) / 2));
+    out.push('<text class="fb-nope" x="' + f(left + boxW + 28) + '" y="' + ((top + bot) / 2 - 36) + '" font-size="34" font-weight="bold" fill="#dc2626" opacity="0" pointer-events="none">✗ Nope</text>');
     out.push('<text class="fb-yes" x="' + f(left - 28) + '" y="' + ((top + bot) / 2 + 10) + '" text-anchor="end" font-size="34" font-weight="bold" fill="#16a34a" opacity="0" pointer-events="none">✓ Yes!</text>');
     out.push('</g>');
     return out.join('');
@@ -4000,6 +4007,27 @@ var KeyboardRender = (function () {
     if (viaKeyboard) { var first = chordTypes.querySelector('.chip'); if (first) first.focus({ preventScroll: true }); }
   }
 
+  // "I give up": light the right type and degree and go on as if it had been answered (it counts as one miss)
+  function ftcGiveUp(viaKeyboard) {
+    if (!quizOn() || state.answered || !ftcQ) return;
+    var want = ftcChord();
+    if (!ftcMissed) score.bad++;
+    ftcMissed = true;
+    ftcStreak = 0;
+    ftcWrong = false;
+    ftcSel = { deg: ftcQ.deg, type: ftcQ.type };
+    typePicked = true;
+    chordTypes_.full = ftcQ.type;
+    state.chord = { deg: ftcQ.deg, type: ftcQ.type };
+    state.answered = true;
+    state.card.status = '';
+    state.card.title = want.symbol + ' is ' + want.roman + ' in ' + Theory.keyTitle(ftcSpec(), state.mode);
+    ftcSay('The answer: ' + state.card.title + '.');
+    updateScore();
+    draw(false, false);
+    if (viaKeyboard) { var nb = stage.querySelector('.next-btn'); if (nb) nb.focus({ preventScroll: true }); }
+  }
+
   // a chip was chosen: type and degree can come in either order; the second one is the guess
   function ftcPick(kind, value) {
     if (!quizOn() || state.answered || !ftcQ) return;
@@ -4429,6 +4457,7 @@ var KeyboardRender = (function () {
     var iz = e.target.closest && e.target.closest('.inv-zone');
     if (iz) { moveInversion(parseInt(iz.getAttribute('data-chord'), 10), iz.getAttribute('data-dir')); return; }
     if (e.target.closest && e.target.closest('.next-btn')) { nextCard(e.detail === 0); return; }
+    if (e.target.closest && e.target.closest('.giveup-btn')) { ftcGiveUp(e.detail === 0); return; }
     var sb = e.target.closest('.sigbox');
     if (sb && stage.contains(sb)) { if (e.detail === 0) sb.setAttribute('data-kbd', '1'); answerSig(sb); return; }
     var t = e.target.closest('[data-pc]');
@@ -4447,6 +4476,8 @@ var KeyboardRender = (function () {
     }
     var chk = e.target.closest ? e.target.closest('.clef-hit') : null;
     if (chk && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); openClefPop(chk); return; }
+    var gb = e.target.closest ? e.target.closest('.giveup-btn') : null;
+    if (gb && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); ftcGiveUp(true); return; }
     var nb = e.target.closest ? e.target.closest('.next-btn') : null;
     if (nb && (e.key === 'Enter' || e.key === ' ')) {
       e.preventDefault();
