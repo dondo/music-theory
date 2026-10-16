@@ -1267,38 +1267,52 @@ with sync_playwright() as p:
     fc.locator("label[for=fm-chord]").click()
     fc.wait_for_timeout(300)
 
-    def solve(wrong=False):
-        """find the prompted chord in the selector (or deliberately a different one), then press Check"""
-        sym = fc.locator("#ftc-chord").text_content()
-        n_types = fc.locator("#chord-types .chip").count()
-        for ti in range(n_types):
-            fc.locator("#chord-types .chip").nth(ti).click()
-            chips = fc.locator("#chord-degrees .chip")
-            for di in range(chips.count()):
-                same = chips.nth(di).locator(".chip-sym").text_content() == sym
-                if same != wrong:
-                    chips.nth(di).click()
-                    fc.locator("#ftc-check").click()
-                    return sym
-        return sym
+    def answer_symbol():
+        return fc.locator(".chordcard").get_attribute("data-chord")
 
-    check("find the chord: the prompt and the chord selector show", fc.locator("#ftc").is_visible() and fc.locator("#chords").is_visible()
-          and "Key of C major" in fc.locator("#ftc-key").text_content()
-          and fc.locator("#ftc-chord").text_content() in ("C", "F", "G", "G7"), fc.locator("#ftc-chord").text_content())
-    check("find the chord: Check waits for a chord", fc.locator("#ftc-check").is_disabled())
+    def solve(wrong=False, order="type-first"):
+        """pick the question's chord (or deliberately a different degree), type and degree in either order"""
+        card = fc.locator(".chordcard")
+        deg = int(card.get_attribute("data-qdeg"))
+        typ = card.get_attribute("data-qtype")
+        if wrong:
+            deg = (deg + 1) % 7
+        d = fc.locator('#chord-degrees .chip[data-deg="%d"]' % deg)
+        t = fc.locator('#chord-types .chip[data-type="%s"]' % typ)
+        first, second = (t, d) if order == "type-first" else (d, t)
+        first.click()
+        second.click()
+        return card.get_attribute("data-chord")
+
+    check("find the chord: a staff card with the key signature and a chord, and no question box",
+          fc.locator(".chordcard").count() == 1 and fc.locator(".chordcard ellipse").count() >= 3 and fc.locator("#chords").is_visible()
+          and fc.locator("#ftc-chord").count() == 0 and fc.locator("#ftc-check").count() == 0 and fc.locator(".ftc-prompt").count() == 0,
+          fc.locator(".chordcard ellipse").count())
+    check("find the chord: at first the chord is one of I IV V V7 in C", answer_symbol() in ("C", "F", "G", "G7")
+          and "Chords in the key of C" in fc.locator("#chords-summary").text_content(), answer_symbol())
+    fc.locator("#chord-types .chip").nth(1).click()
+    check("find the chord: one pick is not a guess", fc.locator("#n-bad").text_content() == "0" and fc.locator("#n-ok").text_content() == "0")
     solve(wrong=True)
-    check("find the chord: a wrong answer is reported and can be retried", "Try again" in fc.locator("#ftc-msg").text_content()
-          and fc.locator("#n-bad").text_content() == "1" and fc.locator("#ftc-next").is_hidden(), fc.locator("#ftc-msg").text_content())
-    solve()
-    check("find the chord: the right answer scores and offers Next", "Correct" in fc.locator("#ftc-msg").text_content()
-          and fc.locator("#n-ok").text_content() == "1" and fc.locator("#ftc-next").is_visible(), fc.locator("#ftc-msg").text_content())
-    fc.locator("#ftc-next").click()
-    fc.wait_for_timeout(200)
-    check("find the chord: Next deals a fresh question with nothing selected", fc.locator("#ftc-check").is_disabled()
+    check("find the chord: the second pick is a (wrong) guess and is reported", fc.locator("#n-bad").text_content() == "1"
+          and "Try again" in fc.locator(".chordcard").text_content(), fc.locator(".chordcard").text_content())
+    fc.locator("#chord-types .chip").nth(0).click()
+    check("find the chord: after a wrong guess a single click starts a new attempt", fc.locator("#n-bad").text_content() == "1"
           and fc.locator("#chord-degrees .chip[aria-pressed=true]").count() == 0)
-    for i in range(5):                       # five first-try answers in a row: a key is added
+    solve()
+    check("find the chord: the right chord scores, names itself and offers Next", fc.locator("#n-ok").text_content() == "1"
+          and " is " in fc.locator(".chordcard text[fill='#15803d']").text_content() and fc.locator(".next-btn").count() == 1,
+          fc.locator("#n-ok").text_content())
+    fc.locator(".next-btn").dispatch_event("click")
+    fc.wait_for_timeout(200)
+    check("find the chord: Next deals a fresh question with nothing selected", fc.locator(".next-btn").count() == 0
+          and fc.locator("#chord-degrees .chip[aria-pressed=true]").count() == 0)
+    solve(order="degree-first")
+    check("find the chord: degree first, then type, also makes the guess", fc.locator("#n-ok").text_content() == "2", fc.locator("#n-ok").text_content())
+    fc.locator(".next-btn").dispatch_event("click")
+    fc.wait_for_timeout(200)
+    for i in range(4):                       # a streak of five first-try answers (the wrong guess and the retry above broke the first run): a key is added
         solve()
-        fc.locator("#ftc-next").click()
+        fc.locator(".next-btn").dispatch_event("click")
         fc.wait_for_timeout(100)
     check("find the chord: five first-try answers in a row level up (a second key)", fc.locator("#ftc-keys-n").text_content() == "2"
           and fc.locator("#ftc-chords-n").text_content() == "1", fc.locator("#ftc-keys-n").text_content())
@@ -1311,8 +1325,8 @@ with sync_playwright() as p:
     check("find the chord: the dials stop at 1", fc.locator("#ftc-keys-n").text_content() == "1" and fc.locator("#ftc-keys-dn").is_disabled())
     fc.locator("label[for=mode-minor]").click()
     fc.wait_for_timeout(200)
-    check("find the chord: minor has its own questions and levels", "minor" in fc.locator("#ftc-key").text_content()
-          and fc.locator("#ftc-chords-n").text_content() == "1", fc.locator("#ftc-key").text_content())
+    check("find the chord: minor has its own questions and levels", "minor" in fc.locator("#chords-summary").text_content()
+          and fc.locator("#ftc-chords-n").text_content() == "1" and fc.locator(".chordcard").count() == 1, fc.locator("#chords-summary").text_content())
     fc.locator("label[for=mode-major]").click()
     fc.locator("label[for=level-jazz]").click()
     fc.wait_for_timeout(200)
@@ -1328,7 +1342,7 @@ with sync_playwright() as p:
           and fc.locator("label[for=fm-key]").is_visible())
     fc.locator("label[for=view-explore]").click()
     fc.wait_for_timeout(200)
-    check("find the chord: leaving Study hides the prompt", fc.locator("#ftc").is_hidden())
+    check("find the chord: leaving Study hides the difficulty controls", fc.locator("#ftc").is_hidden())
     check("find the chord: no script errors", not fc_errors, fc_errors)
     fc.close()
 

@@ -662,6 +662,45 @@ var KeyboardRender = (function () {
     return out.join('');
   }
 
+  // ---- "find the chord" card: clef, key signature and one chord, to be found in the Chords section ----
+  function chordCard(card, mode, answered) {
+    if (!card || !card.chord) return '';
+    var specs = T.specsFor(mode, card.pc), sp = specs[card.spell] || specs[0];
+    var clef = clefDef('treble'), k = KB.toFixed(5);
+    var cx = WIDTH / 2, boxW = 260, left = cx - boxW / 2, top = 30, bot = 200;
+    var dy = 150 - YB;                                  // the stave helpers draw around YB; slide them to this card
+    var x0 = left + 14, x1 = left + boxW - 14;
+    var out = ['<g class="flashcard chordcard" data-answer-pc="' + card.pc + '" data-chord="' + esc(card.symbol || '') + '" data-qdeg="' + card.deg + '" data-qtype="' + esc(card.type || '') + '">',
+      '<rect x="' + f(left) + '" y="' + top + '" width="' + boxW + '" height="' + (bot - top) + '" rx="10" fill="#ffffff" stroke="#c3cadb" stroke-width="1.2"/>',
+      '<g transform="translate(0,' + f(dy) + ')">'];
+    for (var i = 0; i < 5; i++) {
+      out.push('<line x1="' + f(x0) + '" y1="' + f(YB - i * SB) + '" x2="' + f(x1) + '" y2="' + f(YB - i * SB) + '" stroke="' + INK + '" stroke-width="1"/>');
+    }
+    out.push('<use href="#' + clef.glyph + '" transform="translate(' + f(x0 + 8) + ',' + f(YB - clef.line * SB) + ') scale(' + k + ',-' + k + ')" fill="' + INK + '"/>');
+    var steps = sp.kind === 'sharp' ? clef.sharp : clef.flat;
+    var ax = x0 + 8 + clef.w * KB + 8, adv = 1.15 * SB;
+    for (i = 0; i < sp.n; i++) {
+      out.push('<use href="#' + sp.kind + '" transform="translate(' + f(ax + i * adv) + ',' + f(YB - steps[i] * SB / 2) + ') scale(' + k + ',-' + k + ')" fill="' + INK + '"/>');
+    }
+    var sigVal = {};
+    (sp.kind === 'sharp' ? SHARP_ORDER : FLAT_ORDER).slice(0, sp.n).forEach(function (l) { sigVal[l] = sp.kind === 'sharp' ? 1 : -1; });
+    out.push(chordOnStave(ax + Math.max(sp.n, 1) * adv + 36, card.chord.notes, sigVal, INK, clef));
+    out.push('</g>');
+    var ty = bot + 24;
+    if (answered && card.title) {
+      out.push('<text x="' + cx + '" y="' + ty + '" text-anchor="middle" font-size="16" font-weight="bold" fill="#15803d" pointer-events="none">' + esc(card.title) + '</text>');
+      out.push(nextButton(left + boxW + 28, (top + bot) / 2));
+    } else if (card.status) {
+      out.push('<text x="' + cx + '" y="' + ty + '" text-anchor="middle" font-size="16" fill="#b91c1c" pointer-events="none">' + esc(card.status) + '</text>');
+    } else {
+      out.push('<text x="' + cx + '" y="' + ty + '" text-anchor="middle" font-size="16" fill="#5d6475" pointer-events="none">Find this chord in the Chords section below.</text>');
+    }
+    out.push('<text class="fb-nope" x="' + f(left + boxW + 28) + '" y="' + ((top + bot) / 2 + 10) + '" font-size="34" font-weight="bold" fill="#dc2626" opacity="0" pointer-events="none">✗ Nope</text>');
+    out.push('<text class="fb-yes" x="' + f(left - 28) + '" y="' + ((top + bot) / 2 + 10) + '" text-anchor="end" font-size="34" font-weight="bold" fill="#16a34a" opacity="0" pointer-events="none">✓ Yes!</text>');
+    out.push('</g>');
+    return out.join('');
+  }
+
   function bigStave(data, winL, winR, rootSpec, mode) {
     var out = ['<g class="stave" aria-label="Notation">'];
     var under = [];
@@ -826,7 +865,7 @@ var KeyboardRender = (function () {
     if (sig) {
       parts.push(sigGrid(state, mode));
     } else if (flash) {
-      parts.push(flashCard(state.card, mode, !!state.answered));
+      parts.push(state.cardMode === 'chord' ? chordCard(state.card, mode, !!state.answered) : flashCard(state.card, mode, !!state.answered));
       if (typeof state.guess === 'number' && !state.answered) parts.push(guessRow(state.guess, mode));
     } else if (state.staff && selected) {
       parts.push(bigStave(state.staff, winL, winR, rootSpec, mode));    // chords or a progression: one big stave instead of the boxes
