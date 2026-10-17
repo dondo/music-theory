@@ -276,6 +276,8 @@ check('chords inside pentatonic and whole-tone scales', function () {
 check('mode descriptions and brightness order', function () {
   var C = require('../js/chords.js');
   C.MODE_NAMES.forEach(function (m) { assert.ok(C.MODE_INFO[m] && C.MODE_INFO[m].length > 40, m); });
+  C.MODE_NAMES.forEach(function (m) { assert.ok(C.MODE_INFO[m].indexOf('The ' + m.toLowerCase() + ' scale is ') === 0, m); });
+  assert.ok(C.chordInKey('C', 'major', 4, '7').modeInfo.indexOf('The mixolydian scale is major but relaxed and earthy.') === 0);
   assert.deepStrictEqual(C.BRIGHT_TO_DARK, ['Lydian', 'Ionian', 'Mixolydian', 'Dorian', 'Aeolian', 'Phrygian', 'Locrian']);
   var seen = [];
   for (var d = 0; d < 7; d++) { var c = C.chordInKey('C', 'major', d, 'triad'); seen.push(c.darkness); assert.ok(c.modeInfo); }

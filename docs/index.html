@@ -1028,6 +1028,11 @@ var Chords = (function () {
     Aeolian: 'Sad, serious, dark but settled. The flat 3rd, 6th, and 7th make the whole scale lean minor, with a melancholy, somber, or dramatic feel. Unlike Phrygian, its sadness is more resigned than menacing.',
     Locrian: 'Unstable, dissonant, unresolved. The flat 2nd and flat 5th mean the tonic chord is diminished rather than a stable major or minor triad, so there\u2019s no firm sense of home. It\u2019s rarely used as a true tonal center, and when it is, it sounds tense and eerie.'
   };
+  // Every description opens "The <mode> scale is ..." (e.g. "The mixolydian scale is major but relaxed and earthy.").
+  MODE_NAMES.forEach(function (m) {
+    var d = MODE_INFO[m];
+    MODE_INFO[m] = 'The ' + m.toLowerCase() + ' scale is ' + d.charAt(0).toLowerCase() + d.slice(1);
+  });
   // How each chord type sounds. Triads and sevenths vary with quality (see typeInfo below).
   var TYPE_INFO = {
     triad: 'The foundation of Western harmony, with a stable, complete, unembellished sound.',
@@ -2521,6 +2526,7 @@ var KeyboardRender = (function () {
     var ty = bot + 24;
     if (answered && card.title) {
       out.push('<text x="' + cx + '" y="' + ty + '" text-anchor="middle" font-size="16" font-weight="bold" fill="#15803d" pointer-events="none">' + esc(card.title) + '</text>');
+      if (card.modeLine) out.push('<text class="mode-line" x="' + cx + '" y="' + (ty + 24) + '" text-anchor="middle" font-size="15" fill="#5d6475" pointer-events="none">' + esc(card.modeLine) + '</text>');
       out.push(nextButton(left + boxW + 28, (top + bot) / 2));
     } else if (card.status) {
       out.push('<text x="' + cx + '" y="' + ty + '" text-anchor="middle" font-size="16" fill="#b91c1c" pointer-events="none">' + esc(card.status) + '</text>');
@@ -2690,7 +2696,7 @@ var KeyboardRender = (function () {
 
     var parts = [];
     var noKeys = flash && state.cardMode === 'chord';                  // Find the chord: just the staff card, no keyboard
-    var svgH = sig ? HEIGHT_SIG : (noKeys ? 244 : (flash ? HEIGHT_FLASH : HEIGHT));
+    var svgH = sig ? HEIGHT_SIG : (noKeys ? 276 : (flash ? HEIGHT_FLASH : HEIGHT));
     var cut = (sig || flash) ? 0 : (state.staff && selected ? 30 : TOP_CUT);   // explore: no empty strip above the boxes; the big stave needs headroom for high chords
     parts.push('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 ' + cut + ' ' + WIDTH + ' ' + (svgH - cut) + '" width="' + WIDTH +
       '" height="' + (svgH - cut) + '" class="kb-svg' + (sig ? ' sig' : '') + '" role="group" aria-label="Piano keyboard with key signatures" ' +
@@ -4085,6 +4091,7 @@ var KeyboardRender = (function () {
     state.answered = true;
     state.card.status = '';
     state.card.title = want.symbol + ' is ' + want.roman + ' in ' + Theory.keyTitle(ftcSpec(), state.mode);
+    state.card.modeLine = ftcPop() ? '' : 'Mode: ' + want.mode;
     ftcSay('The answer: ' + state.card.title + '.');
     updateScore();
     draw(false, false);
@@ -4106,6 +4113,7 @@ var KeyboardRender = (function () {
       score.ok++;
       state.answered = true;
       state.card.title = want.symbol + ' is ' + want.roman + ' in ' + where;
+      state.card.modeLine = ftcPop() ? '' : 'Mode: ' + want.mode;
       state.card.status = '';
       var text = 'Correct: ' + state.card.title + '.';
       if (ftcMissed) ftcStreak = 0;

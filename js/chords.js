@@ -39,6 +39,11 @@ var Chords = (function () {
     Aeolian: 'Sad, serious, dark but settled. The flat 3rd, 6th, and 7th make the whole scale lean minor, with a melancholy, somber, or dramatic feel. Unlike Phrygian, its sadness is more resigned than menacing.',
     Locrian: 'Unstable, dissonant, unresolved. The flat 2nd and flat 5th mean the tonic chord is diminished rather than a stable major or minor triad, so there\u2019s no firm sense of home. It\u2019s rarely used as a true tonal center, and when it is, it sounds tense and eerie.'
   };
+  // Every description opens "The <mode> scale is ..." (e.g. "The mixolydian scale is major but relaxed and earthy.").
+  MODE_NAMES.forEach(function (m) {
+    var d = MODE_INFO[m];
+    MODE_INFO[m] = 'The ' + m.toLowerCase() + ' scale is ' + d.charAt(0).toLowerCase() + d.slice(1);
+  });
   // How each chord type sounds. Triads and sevenths vary with quality (see typeInfo below).
   var TYPE_INFO = {
     triad: 'The foundation of Western harmony, with a stable, complete, unembellished sound.',

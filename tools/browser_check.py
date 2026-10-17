@@ -256,7 +256,7 @@ with sync_playwright() as p:
     page.locator('.chip-deg[data-deg="1"]').click()                 # ii
     check("chords: ii chord info (Em, ii, E Dorian)", all(x in page.locator("#chord-info").inner_text() for x in ("Em", "ii", "E Dorian", "minor triad")),
           page.locator("#chord-info").inner_text())
-    check("chords: info shows the mode description, not 'uses the notes'", "Minor, but less sad" in page.locator("#chord-info").inner_text()
+    check("chords: info shows the mode description, not 'uses the notes'", "The dorian scale is minor, but less sad" in page.locator("#chord-info").inner_text()
           and "uses the notes" not in page.locator("#chord-info").inner_text())
     check("chords: each degree chip names its mode (D major)", page.locator(".chip-deg .chip-mode").all_inner_texts()
           == ["Ionian", "Dorian", "Phrygian", "Lydian", "Mixolydian", "Aeolian", "Locrian"], page.locator(".chip-deg .chip-mode").all_inner_texts())
@@ -1337,6 +1337,7 @@ with sync_playwright() as p:
           and fc.locator('#chord-types .chip[data-type="%s"]' % qt).get_attribute("aria-pressed") == "true"
           and fc.locator(".next-btn").count() == 1 and fc.locator(".giveup-btn").count() == 0
           and fc.locator("#n-ok").text_content() == ng0 and int(fc.locator("#n-bad").text_content()) == int(nb0) + 1)
+    check("find the chord: Pop shows no mode line", fc.locator(".mode-line").count() == 0)
     fc.locator(".next-btn").dispatch_event("click")
     fc.wait_for_timeout(200)
     check("find the chord: Next then deals a new question with the give-up button back", fc.locator(".giveup-btn").count() == 1
@@ -1350,6 +1351,15 @@ with sync_playwright() as p:
     fc.wait_for_timeout(200)
     check("find the chord: Jazz studies chords only", fc.locator("#ftc").is_visible() and fc.locator("label[for=fm-key]").is_hidden()
           and fc.locator("label[for=fm-sig]").is_hidden() and fc.locator("#fm-chord").is_checked())
+    check("find the chord: Jazz shows no mode line while guessing", fc.locator(".mode-line").count() == 0)
+    fc.locator(".giveup-btn").dispatch_event("click")
+    fc.wait_for_timeout(200)
+    mdeg = int(fc.locator(".chordcard").get_attribute("data-qdeg"))
+    mnames = ["Ionian", "Dorian", "Phrygian", "Lydian", "Mixolydian", "Aeolian", "Locrian"]
+    check("find the chord: Jazz answer shows 'Mode: <mode>' under the title",
+          fc.locator(".mode-line").count() == 1 and fc.locator(".mode-line").text_content() == "Mode: " + mnames[mdeg], fc.locator(".mode-line").text_content())
+    fc.locator(".next-btn").dispatch_event("click")
+    fc.wait_for_timeout(200)
     for _ in range(20):
         fc.locator("#ftc-chords-up").click() if fc.locator("#ftc-chords-up").is_enabled() else None
     check("find the chord: Jazz offers more chord levels than Pop", int(fc.locator("#ftc-chords-n").text_content()) == 17,

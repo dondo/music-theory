@@ -1305,6 +1305,7 @@
     state.answered = true;
     state.card.status = '';
     state.card.title = want.symbol + ' is ' + want.roman + ' in ' + Theory.keyTitle(ftcSpec(), state.mode);
+    state.card.modeLine = ftcPop() ? '' : 'Mode: ' + want.mode;
     ftcSay('The answer: ' + state.card.title + '.');
     updateScore();
     draw(false, false);
@@ -1326,6 +1327,7 @@
       score.ok++;
       state.answered = true;
       state.card.title = want.symbol + ' is ' + want.roman + ' in ' + where;
+      state.card.modeLine = ftcPop() ? '' : 'Mode: ' + want.mode;
       state.card.status = '';
       var text = 'Correct: ' + state.card.title + '.';
       if (ftcMissed) ftcStreak = 0;

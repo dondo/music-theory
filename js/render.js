@@ -695,6 +695,7 @@ var KeyboardRender = (function () {
     var ty = bot + 24;
     if (answered && card.title) {
       out.push('<text x="' + cx + '" y="' + ty + '" text-anchor="middle" font-size="16" font-weight="bold" fill="#15803d" pointer-events="none">' + esc(card.title) + '</text>');
+      if (card.modeLine) out.push('<text class="mode-line" x="' + cx + '" y="' + (ty + 24) + '" text-anchor="middle" font-size="15" fill="#5d6475" pointer-events="none">' + esc(card.modeLine) + '</text>');
       out.push(nextButton(left + boxW + 28, (top + bot) / 2));
     } else if (card.status) {
       out.push('<text x="' + cx + '" y="' + ty + '" text-anchor="middle" font-size="16" fill="#b91c1c" pointer-events="none">' + esc(card.status) + '</text>');
@@ -864,7 +865,7 @@ var KeyboardRender = (function () {
 
     var parts = [];
     var noKeys = flash && state.cardMode === 'chord';                  // Find the chord: just the staff card, no keyboard
-    var svgH = sig ? HEIGHT_SIG : (noKeys ? 244 : (flash ? HEIGHT_FLASH : HEIGHT));
+    var svgH = sig ? HEIGHT_SIG : (noKeys ? 276 : (flash ? HEIGHT_FLASH : HEIGHT));
     var cut = (sig || flash) ? 0 : (state.staff && selected ? 30 : TOP_CUT);   // explore: no empty strip above the boxes; the big stave needs headroom for high chords
     parts.push('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 ' + cut + ' ' + WIDTH + ' ' + (svgH - cut) + '" width="' + WIDTH +
       '" height="' + (svgH - cut) + '" class="kb-svg' + (sig ? ' sig' : '') + '" role="group" aria-label="Piano keyboard with key signatures" ' +
