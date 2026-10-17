@@ -1306,6 +1306,11 @@ with sync_playwright() as p:
     check("find the chord: the right chord scores, names itself and offers Next", fc.locator("#n-ok").text_content() == "1"
           and " is " in fc.locator(".chordcard text[fill='#15803d']").text_content() and fc.locator(".next-btn").count() == 1,
           fc.locator("#n-ok").text_content())
+    check("find the chord: a correct guess opens the card out into every voicing, the shown one highlighted",
+          fc.locator(".chordcard.opened .stave").count() == 1 and fc.locator(".chordcard.opened .stave rect[rx='8']").count() == 1
+          and fc.locator(".chordcard.opened .stave ellipse").count() >= 12 and "Root" in fc.locator(".chordcard.opened .stave").text_content()
+          and fc.locator(".chordcard.opened .clef-hit").count() == 0 and fc.locator(".next-btn").count() == 1,
+          fc.locator(".chordcard.opened .stave ellipse").count())
     check("find the chord: a correct guess reveals the chord names", any(t.strip() for t in fc.locator(".chip-deg .chip-sym").all_inner_texts()))
     fc.locator(".next-btn").dispatch_event("click")
     fc.wait_for_timeout(200)
@@ -1337,7 +1342,8 @@ with sync_playwright() as p:
           fc.locator('#chord-degrees .chip[data-deg="%s"]' % qd).get_attribute("aria-pressed") == "true"
           and fc.locator('#chord-types .chip[data-type="%s"]' % qt).get_attribute("aria-pressed") == "true"
           and fc.locator(".next-btn").count() == 1 and fc.locator(".giveup-btn").count() == 0
-          and fc.locator("#n-ok").text_content() == ng0 and int(fc.locator("#n-bad").text_content()) == int(nb0) + 1)
+          and fc.locator("#n-ok").text_content() == ng0 and int(fc.locator("#n-bad").text_content()) == int(nb0) + 1
+          and fc.locator(".chordcard.opened .stave rect[rx='8']").count() == 1)
     check("find the chord: Pop shows no mode line", fc.locator(".mode-line").count() == 0)
     fc.locator(".next-btn").dispatch_event("click")
     fc.wait_for_timeout(200)

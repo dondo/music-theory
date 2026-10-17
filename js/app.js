@@ -1056,6 +1056,20 @@
     var cd = isAlt() ? Chords.chordInScale(altScale(), state.chord.deg, state.chord.type)
                      : Chords.chordInKey(currentSpec().name, state.mode, state.chord.deg, state.chord.type);
     if (!cd) return { kind: 'empty', clef: clefId, hint: 'Select a chord to see it here', chords: [] };
+    var vo = chordVoicings(cd, tonic, clefCfg), chords = vo.chords, slots = vo.slots;
+    if (findOn && picks.length) {                         // Find a chord: highlight the voicing nearest the notes picked (same lowest note)
+      var lm = tonic + (Math.min.apply(null, picks) - state.root), bi = -1, bd = 1e9;
+      chords.forEach(function (c, i) {
+        var dist = Math.abs(c.bass - lm);
+        if (c.bass % 12 === ((lm % 12) + 12) % 12 && dist < bd) { bd = dist; bi = i; }
+      });
+      if (bi >= 0) chords[bi].lit = true;
+    }
+    return { kind: 'chord', clef: clefId, chords: chords, slots: slots };
+  }
+
+  // every closed-position voicing of a chord on the stave, lowest bass first
+  function chordVoicings(cd, tonic, clefCfg) {
     var offs = cd.pcOffsets, n = offs.length;
     var pcs = offs.map(function (o) { return (tonic + o) % 12; });
     // the widest chord this level offers fixes the slot width (two octaves of voicings = 2 x notes per chord)
@@ -1082,15 +1096,23 @@
       }
     }
     chords.sort(function (x, y) { return x.bass - y.bass; });
-    if (findOn && picks.length) {                         // Find a chord: highlight the voicing nearest the notes picked (same lowest note)
-      var lm = tonic + (Math.min.apply(null, picks) - state.root), bi = -1, bd = 1e9;
-      chords.forEach(function (c, i) {
-        var dist = Math.abs(c.bass - lm);
-        if (c.bass % 12 === ((lm % 12) + 12) % 12 && dist < bd) { bd = dist; bi = i; }
-      });
-      if (bi >= 0) chords[bi].lit = true;
-    }
-    return { kind: 'chord', clef: clefId, chords: chords, slots: slots };
+    return { chords: chords, slots: slots };
+  }
+
+  // Find the chord, once answered: all the voicings, the card's own one highlighted
+  function buildQuizStave() {
+    var cd = ftcChord(), tonic = ChordAudio.tonicMidi(ftcQ.pc);
+    var clefCfg = KeyboardRender.CLEFS.filter(function (c) { return c.id === 'treble'; })[0] || KeyboardRender.CLEFS[0];
+    var vo = chordVoicings(cd, tonic, clefCfg), shown = state.card.chord.notes;
+    var hit = -1;
+    vo.chords.forEach(function (c, i) {
+      if (c.notes.length === shown.length && c.notes.every(function (nt, j) { return nt.midi === shown[j].midi; })) hit = i;
+    });
+    if (hit < 0) {                                        // (a wide chord whose card voicing starts below the clef's range)
+      vo.chords.push({ bass: shown[0].midi, notes: shown, top: 'Root position', sub: cd.symbol, lit: true });
+      vo.chords.sort(function (x, y) { return x.bass - y.bass; });
+    } else vo.chords[hit].lit = true;
+    return { kind: 'chord', clef: 'treble', chords: vo.chords, slots: vo.slots, fixedClef: true };
   }
 
   // fade used when nothing is "clicked" (reset)
@@ -1121,6 +1143,7 @@
     if (findOn && picks.length) syncPicks();
     state.picked = findOn ? picks : null;
     state.staff = buildStaff();
+    state.quizStave = quizOn() && state.answered && state.card && state.card.chord ? buildQuizStave() : null;
     stage.innerHTML = KeyboardRender.render(quizOn() ? Object.assign({}, state, { selected: false }) : state);
     resetBtn.hidden = !state.selected || (state.flash && state.cardMode === 'sig') || quizOn();
     updateCaption();

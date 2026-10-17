@@ -669,6 +669,20 @@ var KeyboardRender = (function () {
   }
 
   // ---- "find the chord" card: clef, key signature and one chord, to be found in the Chords section ----
+  // once answered, the card opens out into the big stave: every voicing of the chord, the one shown highlighted
+  function chordAnswer(card, stave, winL, winR, rootSpec, mode) {
+    var cx = WIDTH / 2, ty = 272;
+    var out = ['<g class="flashcard chordcard opened" data-answer-pc="' + card.pc + '" data-chord="' + esc(card.symbol || '') + '" data-qdeg="' + card.deg + '" data-qtype="' + esc(card.type || '') + '">',
+      bigStave(stave, winL, winR, rootSpec, mode)];
+    out.push('<text x="' + cx + '" y="' + ty + '" text-anchor="middle" font-size="16" font-weight="bold" fill="#15803d" pointer-events="none">' + esc(card.title || '') + '</text>');
+    if (card.modeLine) out.push('<text class="mode-line" x="' + cx + '" y="' + (ty + 24) + '" text-anchor="middle" font-size="15" fill="#5d6475" pointer-events="none">' + esc(card.modeLine) + '</text>');
+    out.push(nextButton(winR - 132 - 12, ty + 6));
+    out.push('<text class="fb-nope" x="' + f(winR - 150) + '" y="' + (ty - 8) + '" font-size="34" font-weight="bold" fill="#dc2626" opacity="0" pointer-events="none">✗ Nope</text>');
+    out.push('<text class="fb-yes" x="' + f(winL + 12) + '" y="' + (ty - 4) + '" font-size="34" font-weight="bold" fill="#16a34a" opacity="0" pointer-events="none">✓ Yes!</text>');
+    out.push('</g>');
+    return out.join('');
+  }
+
   function chordCard(card, mode, answered) {
     if (!card || !card.chord) return '';
     var specs = T.specsFor(mode, card.pc), sp = specs[card.spell] || specs[0];
@@ -740,7 +754,7 @@ var KeyboardRender = (function () {
     var clefX = x0 + 8;
     out.push('<use href="#' + clef.glyph + '" transform="translate(' + f(clefX) + ',' + f(YB - clef.line * SB) + ') scale(' + k + ',-' + k + ')" fill="' + INK + '"/>');
     // the clef is a button: clicking it opens the clef picker
-    out.push('<rect class="clef-hit" data-clef="' + clef.id + '" tabindex="0" role="button" aria-haspopup="true" aria-label="Clef: ' + clef.name +
+    if (!data.fixedClef) out.push('<rect class="clef-hit" data-clef="' + clef.id + '" tabindex="0" role="button" aria-haspopup="true" aria-label="Clef: ' + clef.name +
       '. Press to change." x="' + f(x0 + 2) + '" y="' + f(YB - 4 * SB - 1.6 * SB) + '" width="' + f(clef.w * KB + 14) + '" height="' + f(4 * SB + 6.2 * SB) +
       '" rx="5"><title>Clef: ' + esc(clef.name) + ' (click to change)</title></rect>');
     var steps = sp.kind === 'sharp' ? clef.sharp : clef.flat;
@@ -865,8 +879,9 @@ var KeyboardRender = (function () {
 
     var parts = [];
     var noKeys = flash && state.cardMode === 'chord';                  // Find the chord: just the staff card, no keyboard
-    var svgH = sig ? HEIGHT_SIG : (noKeys ? 276 : (flash ? HEIGHT_FLASH : HEIGHT));
-    var cut = (sig || flash) ? 0 : (state.staff && selected ? 30 : TOP_CUT);   // explore: no empty strip above the boxes; the big stave needs headroom for high chords
+    var opened = noKeys && !!state.answered && !!state.quizStave;      // answered: the card opens out into the big stave
+    var svgH = sig ? HEIGHT_SIG : (opened ? 316 : (noKeys ? 276 : (flash ? HEIGHT_FLASH : HEIGHT)));
+    var cut = opened ? 30 : (sig || flash) ? 0 : (state.staff && selected ? 30 : TOP_CUT);   // explore: no empty strip above the boxes; the big stave needs headroom for high chords
     parts.push('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 ' + cut + ' ' + WIDTH + ' ' + (svgH - cut) + '" width="' + WIDTH +
       '" height="' + (svgH - cut) + '" class="kb-svg' + (sig ? ' sig' : '') + '" role="group" aria-label="Piano keyboard with key signatures" ' +
       'font-family="-apple-system, \'Segoe UI\', Roboto, \'Helvetica Neue\', \'DejaVu Sans\', Arial, sans-serif">');
@@ -890,7 +905,7 @@ var KeyboardRender = (function () {
     if (sig) {
       parts.push(sigGrid(state, mode));
     } else if (flash) {
-      parts.push(state.cardMode === 'chord' ? chordCard(state.card, mode, !!state.answered) : flashCard(state.card, mode, !!state.answered));
+      parts.push(state.cardMode === 'chord' ? (opened ? chordAnswer(state.card, state.quizStave, winL, winR, rootSpec, mode) : chordCard(state.card, mode, !!state.answered)) : flashCard(state.card, mode, !!state.answered));
       if (typeof state.guess === 'number' && !state.answered) parts.push(guessRow(state.guess, mode));
     } else if (state.staff && selected) {
       parts.push(bigStave(state.staff, winL, winR, rootSpec, mode));    // chords or a progression: one big stave instead of the boxes
