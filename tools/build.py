@@ -3,6 +3,8 @@
 Inlines styles.css and the scripts listed in index.html. Run from the webapp folder:
     python3 tools/build.py
 """
+import os
+import shutil
 import re
 
 with open("index.html", encoding="utf-8") as f:
@@ -28,6 +30,10 @@ html = re.sub(
 with open("dist/index.html", "w", encoding="utf-8") as f:
     f.write(html)
 print("wrote dist/index.html (%d KB)" % (len(html.encode("utf-8")) // 1024))
+
+# a local-only marker (gitignored): keep it beside dist/index.html so that copy shows the LOCAL badge too; docs/ never gets it
+if os.path.exists("local.js"):
+    shutil.copy("local.js", "dist/local.js")
 
 # --- GitHub Pages / PWA output: docs/ -------------------------------------
 import hashlib, os, shutil

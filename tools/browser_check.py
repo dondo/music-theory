@@ -1256,6 +1256,21 @@ with sync_playwright() as p:
     check("text entry: 'replace' swaps the whole progression", pn.locator(".prog-item").count() == 3)
     pn.close()
 
+    # ---- the LOCAL badge: shown only beside a local.js (which is gitignored and never published) ----
+    lb = browser.new_context(viewport={"width": 1000, "height": 700}).new_page()
+    lb.goto("file://" + page_path)
+    lb.wait_for_timeout(300)
+    here_has_local = os.path.exists(os.path.join(os.path.dirname(page_path), "local.js"))
+    check("local: the LOCAL badge and tab title show when local.js sits beside the page",
+          (lb.locator("#local-badge").is_visible() and lb.title().startswith("[LOCAL]")) == here_has_local, (here_has_local, lb.title()))
+    pub = os.path.join(os.path.dirname(os.path.dirname(page_path)), "docs", "index.html")
+    if os.path.exists(pub):
+        lb.goto("file://" + pub)
+        lb.wait_for_timeout(300)
+        check("local: the published copy (docs/) has no local.js, so no badge", lb.locator("#local-badge").is_hidden() and not lb.title().startswith("[LOCAL]"), lb.title())
+    check("local: local.js is gitignored", "local.js" in open(os.path.join(os.path.dirname(os.path.dirname(page_path)), ".gitignore")).read().split())
+    lb.close()
+
     # ---- Study: Find the chord ----
     fc_ctx = browser.new_context(viewport={"width": 1000, "height": 900}, reduced_motion="reduce")   # (a clean profile: no remembered mode or level)
     fc = fc_ctx.new_page()

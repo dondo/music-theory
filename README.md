@@ -153,3 +153,7 @@ Two difficulty dials, adjustable by hand with the − / + buttons: **Keys** (1-1
 ## Chords: Find a chord
 
 With the Chords section open, the "Find a chord" button (top right) switches the keyboard into a picker: click keys to pick notes (click a picked key again to unselect it; the keyboard does not move). As soon as the picked pitch classes are exactly the notes of a chord the selector offers in this key (any octave or inversion), that type and degree light up in the picker and the stave shows all its voicings with the one nearest your lowest note highlighted. When several chords share the same notes (C sus2 and G sus4 are both C D G) the one rooted on your lowest key wins. Choosing a chord with the chips, closing the section, or pressing the button again ends it. Change keys by switching it off first. Logic: `FindChord.identify` in `js/findchord.js`.
+
+## Telling the local copy from the published one
+
+`local.js` (gitignored, so it never reaches GitHub) marks a copy as local: when the page finds it beside `index.html`, it shows an orange **LOCAL** badge in the header, an orange bar across the top, and `[LOCAL]` in the tab title. `tools/build.py` also copies it into `dist/` (never `docs/`), so `dist/index.html` shows the badge too. Delete `local.js` to see the app the way the published copy looks.

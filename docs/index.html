@@ -560,12 +560,17 @@ button, .inv-zone, .clef-hit, .key, svg { touch-action: manipulation; }
 .find-chord-btn { position: absolute; top: 12px; right: 16px; z-index: 2; }
 .find-chord-btn[hidden] { display: none; }
 .find-chord-btn[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+/* LOCAL copy marker (shown only when local.js is present) */
+.local-badge { margin-left: 0.4rem; padding: 0.15rem 0.6rem; border-radius: 999px; background: #ea580c; color: #fff; font-size: 0.8rem; font-weight: 800; letter-spacing: 0.08em; align-self: center; }
+.local-badge[hidden] { display: none; }
+html.is-local body { border-top: 6px solid #ea580c; }
 </style>
 </head>
 <body>
   <main class="page">
     <header class="intro">
-      <h1><svg class="app-icon" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#2563eb"/><rect x="8" y="34" width="48" height="22" rx="3" fill="#fff"/><path d="M20 34v22M32 34v22M44 34v22" stroke="#94a3b8" stroke-width="1.5"/><rect x="17" y="34" width="6" height="13" rx="1" fill="#1c1c1c"/><rect x="29" y="34" width="6" height="13" rx="1" fill="#1c1c1c"/><rect x="41" y="34" width="6" height="13" rx="1" fill="#1c1c1c"/><ellipse cx="34" cy="27" rx="6.5" ry="4.5" transform="rotate(-20 34 27)" fill="#fff"/><rect x="38.6" y="8" width="2.8" height="19" fill="#fff"/><path d="M41 8C41 15 53 15 50 25C49 19 44 18 41 16Z" fill="#fff"/></svg><span>Music Theory (Piano)</span></h1>
+      <h1><svg class="app-icon" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#2563eb"/><rect x="8" y="34" width="48" height="22" rx="3" fill="#fff"/><path d="M20 34v22M32 34v22M44 34v22" stroke="#94a3b8" stroke-width="1.5"/><rect x="17" y="34" width="6" height="13" rx="1" fill="#1c1c1c"/><rect x="29" y="34" width="6" height="13" rx="1" fill="#1c1c1c"/><rect x="41" y="34" width="6" height="13" rx="1" fill="#1c1c1c"/><ellipse cx="34" cy="27" rx="6.5" ry="4.5" transform="rotate(-20 34 27)" fill="#fff"/><rect x="38.6" y="8" width="2.8" height="19" fill="#fff"/><path d="M41 8C41 15 53 15 50 25C49 19 44 18 41 16Z" fill="#fff"/></svg><span>Music Theory (Piano)</span><span class="local-badge" id="local-badge" hidden title="This is your local copy (local.js is present)">LOCAL</span></h1>
       <p class="lede">Each box shows the key signature of the key below it. Click any key, black or white, to move the keyboard to that root and light up its scale.</p>
     </header>
 
@@ -4934,6 +4939,17 @@ var KeyboardRender = (function () {
 })();
 </script>
   <script>
+    // local.js exists only on the author's machine (it is in .gitignore): if it loads, say so in the header and the tab title
+    (function () {
+      var s = document.createElement('script');
+      s.src = 'local.js';
+      s.onload = function () {
+        document.getElementById('local-badge').hidden = false;
+        document.title = '[LOCAL] ' + document.title;
+        document.documentElement.classList.add('is-local');
+      };
+      document.head.appendChild(s);
+    })();
     if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
       window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); });
     }

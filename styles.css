@@ -543,3 +543,8 @@ button, .inv-zone, .clef-hit, .key, svg { touch-action: manipulation; }
 .find-chord-btn { position: absolute; top: 12px; right: 16px; z-index: 2; }
 .find-chord-btn[hidden] { display: none; }
 .find-chord-btn[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+/* LOCAL copy marker (shown only when local.js is present) */
+.local-badge { margin-left: 0.4rem; padding: 0.15rem 0.6rem; border-radius: 999px; background: #ea580c; color: #fff; font-size: 0.8rem; font-weight: 800; letter-spacing: 0.08em; align-self: center; }
+.local-badge[hidden] { display: none; }
+html.is-local body { border-top: 6px solid #ea580c; }
