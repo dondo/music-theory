@@ -69,9 +69,40 @@
     return out;
   }
 
-  // one question: a key (pc) and a chord, never the same pair as `avoid` (when there is any choice)
+  // ---- missed chords come up more often (the same scheme as the key-signature flashcards) ----
+  // One weight per chord in a key ("major|0|4|7" = V7 in C major); 1 for a chord never missed.
+  var W_KEY = 'music-theory-ftc-weights-v1';
+  var MISS_BUMP = 2, HIT_DECAY = 1, W_MIN = 1, W_MAX = 16;
+  function weightKey(mode, q) { return mode + '|' + q.pc + '|' + q.deg + '|' + q.type; }
+  function weightOf(w, mode, q) { var x = w && w[weightKey(mode, q)]; return typeof x === 'number' && isFinite(x) ? Math.min(W_MAX, Math.max(W_MIN, x)) : W_MIN; }
+  function miss(w, mode, q) { w[weightKey(mode, q)] = Math.min(W_MAX, weightOf(w, mode, q) + MISS_BUMP); }
+  function hit(w, mode, q) {                              // answered right first time: ease off, and forget a chord back at 1
+    var k = weightKey(mode, q), v = Math.max(W_MIN, weightOf(w, mode, q) - HIT_DECAY);
+    if (v <= W_MIN) delete w[k]; else w[k] = v;
+  }
+  function storage() { try { return (typeof window !== 'undefined' && window.localStorage) || null; } catch (e) { return null; } }
+  function loadWeights(st) {
+    st = st === undefined ? storage() : st;
+    try {
+      var o = JSON.parse(st && st.getItem(W_KEY));
+      if (o && typeof o === 'object' && !Array.isArray(o)) {
+        var w = {};
+        Object.keys(o).forEach(function (k) { if (typeof o[k] === 'number' && isFinite(o[k]) && o[k] > W_MIN && o[k] <= W_MAX) w[k] = o[k]; });
+        return w;
+      }
+    } catch (e) { /* defaults */ }
+    return {};
+  }
+  function saveWeights(w, st) {
+    st = st === undefined ? storage() : st;
+    try { if (st) st.setItem(W_KEY, JSON.stringify(w)); } catch (e) { /* not persisted */ }
+  }
+  function resetWeights(w) { Object.keys(w).forEach(function (k) { delete w[k]; }); }
+
+  // one question: a key (pc) and a chord, never the same pair as `avoid` (when there is any choice);
+  // `weight(q)` (optional, >= 1) makes the chords you have missed more likely
   // `rng` returns [0, 1); `avoid` is { pc, deg, type } or null
-  function pick(mode, pop, keysLevel, chordsLevel, rng, avoid) {
+  function pick(mode, pop, keysLevel, chordsLevel, rng, avoid, weight) {
     var ks = keys(mode, keysLevel), cs = chords(mode, pop, chordsLevel);
     var all = [];
     ks.forEach(function (pc) { cs.forEach(function (ch) { all.push({ pc: pc, deg: ch.deg, type: ch.type }); }); });
@@ -79,7 +110,19 @@
       return !(avoid && q.pc === avoid.pc && q.deg === avoid.deg && q.type === avoid.type);
     });
     if (!pool.length) pool = all;
-    return pool[Math.min(pool.length - 1, Math.floor(rng() * pool.length))];
+    if (!weight) return pool[Math.min(pool.length - 1, Math.floor(rng() * pool.length))];
+    var ws = pool.map(function (q) { return Math.max(0, weight(q)); }), total = ws.reduce(function (a, b) { return a + b; }, 0);
+    var x = rng() * total;
+    for (var i = 0; i < pool.length; i++) { x -= ws[i]; if (x < 0) return pool[i]; }
+    return pool[pool.length - 1];
+  }
+
+  // Which inversion to show: always root position in Pop; in Jazz root position about 40% of the time,
+  // the rest shared out equally among the inversions (0 = root position). `notes` = notes in the chord.
+  function pickInversion(notes, jazz, rng) {
+    if (!jazz || notes < 2) return 0;
+    if (rng() < 0.4) return 0;
+    return 1 + Math.min(notes - 2, Math.floor(rng() * (notes - 1)));
   }
 
   // Levelling up by itself: after STREAK first-try answers in a row the next dial goes up one, keys and
@@ -121,5 +164,7 @@
   }
 
   return { KEY_ORDER: KEY_ORDER, STREAK: STREAK, groups: groups, maxKeys: maxKeys, maxChords: maxChords,
-           clamp: clamp, keys: keys, chords: chords, pick: pick, levelUp: levelUp, identify: identify };
+           clamp: clamp, keys: keys, chords: chords, pick: pick, levelUp: levelUp, identify: identify,
+           weightKey: weightKey, weightOf: weightOf, miss: miss, hit: hit, loadWeights: loadWeights, saveWeights: saveWeights, resetWeights: resetWeights,
+           pickInversion: pickInversion };
 });

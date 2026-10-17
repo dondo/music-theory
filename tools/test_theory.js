@@ -534,5 +534,52 @@ check('find a chord: minor keys work too (A C E is i)', function () {
   var r = FC.identify(keyCands(9, 'minor'), [57, 60, 64]); assert.ok(r.deg === 0 && r.type === 'triad');
 });
 
+// ---- Find the chord: missed chords come up more often; Jazz mixes in inversions ----
+check('find the chord weights: a fresh chord weighs 1, a miss adds 2 (max 16), a clean answer takes 1 off', function () {
+  var w = {}, q = { pc: 0, deg: 4, type: '7' };
+  assert.strictEqual(FC.weightOf(w, 'major', q), 1);
+  FC.miss(w, 'major', q); assert.strictEqual(FC.weightOf(w, 'major', q), 3);
+  FC.miss(w, 'major', q); assert.strictEqual(FC.weightOf(w, 'major', q), 5);
+  FC.hit(w, 'major', q); assert.strictEqual(FC.weightOf(w, 'major', q), 4);
+  for (var i = 0; i < 20; i++) FC.miss(w, 'major', q);
+  assert.strictEqual(FC.weightOf(w, 'major', q), 16);
+  for (i = 0; i < 20; i++) FC.hit(w, 'major', q);
+  assert.strictEqual(FC.weightOf(w, 'major', q), 1); assert.deepStrictEqual(w, {});
+  FC.miss(w, 'major', q); assert.strictEqual(FC.weightOf(w, 'minor', q), 1);            // minor is separate
+  assert.strictEqual(FC.weightOf(w, 'major', { pc: 7, deg: 4, type: '7' }), 1);           // so is every key
+});
+check('find the chord weights: a missed chord is dealt more often, and never twice running', function () {
+  var w = {}, target = { pc: 0, deg: 4, type: '7' };
+  for (var i = 0; i < 6; i++) FC.miss(w, 'major', target);                                // weight 13
+  var seq = 0, hits = 0, N = 4000;
+  function rng() { seq = (seq * 1103515245 + 12345) % 2147483648; return seq / 2147483648; }
+  for (i = 0; i < N; i++) {
+    var q = FC.pick('major', true, 1, 1, rng, null, function (x) { return FC.weightOf(w, 'major', x); });
+    if (q.pc === 0 && q.deg === 4 && q.type === '7') hits++;
+  }
+  assert.ok(hits / N > 0.5, 'G7 should dominate, got ' + hits / N);                       // 13 of (13 + 3 others)
+  assert.notDeepStrictEqual(FC.pick('major', true, 1, 1, function () { return 0.99; }, target, function () { return 1; }), target);
+  assert.ok(FC.pick('major', true, 1, 1, function () { return 0; }, null));                // the unweighted call still works
+});
+check('find the chord weights: saved, restored, cleaned of junk and reset', function () {
+  var store = {}, st = { getItem: function (k) { return store[k] || null; }, setItem: function (k, v) { store[k] = v; } };
+  var w = {}; FC.miss(w, 'major', { pc: 0, deg: 1, type: 'triad' }); FC.saveWeights(w, st);
+  assert.deepStrictEqual(FC.loadWeights(st), w);
+  store['music-theory-ftc-weights-v1'] = JSON.stringify({ a: 3, b: 'x', c: 99, d: 1 });
+  assert.deepStrictEqual(FC.loadWeights(st), { a: 3 });
+  store['music-theory-ftc-weights-v1'] = '[1,2]'; assert.deepStrictEqual(FC.loadWeights(st), {});
+  FC.resetWeights(w); assert.deepStrictEqual(w, {});
+});
+check('find the chord inversions: Pop is always root position; Jazz mixes every inversion in', function () {
+  var seq = 7; function rng() { seq = (seq * 1103515245 + 12345) % 2147483648; return seq / 2147483648; }
+  var seen = {}, i;
+  for (i = 0; i < 300; i++) assert.strictEqual(FC.pickInversion(4, false, rng), 0);
+  for (i = 0; i < 600; i++) { var v = FC.pickInversion(4, true, rng); assert.ok(v >= 0 && v <= 3); seen[v] = (seen[v] || 0) + 1; }
+  assert.ok(seen[0] > 150 && seen[0] < 330, 'root about 40%: ' + seen[0]);
+  assert.ok(seen[1] > 50 && seen[2] > 50 && seen[3] > 50, JSON.stringify(seen));
+  for (i = 0; i < 100; i++) { var t = FC.pickInversion(3, true, rng); assert.ok(t >= 0 && t <= 2); }
+  assert.strictEqual(FC.pickInversion(7, true, function () { return 0.999999; }), 6);
+});
+
 console.log(failures ? '\n' + failures + ' FAILED' : '\nall tests passed');
 process.exit(failures ? 1 : 0);

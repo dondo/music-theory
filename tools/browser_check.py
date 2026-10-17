@@ -1313,11 +1313,26 @@ with sync_playwright() as p:
     solve(wrong=True)
     check("find the chord: the second pick is a (wrong) guess and is reported", fc.locator("#n-bad").text_content() == "1"
           and "Try again" in fc.locator(".chordcard").text_content(), fc.locator(".chordcard").text_content())
+    w_raw = fc.evaluate("localStorage.getItem('music-theory-ftc-weights-v1')") or "{}"
+    check("find the chord: a missed chord is remembered (its weight goes up and is saved)", '"major|' in w_raw and ":3" in w_raw, w_raw)
     check("find the chord: a wrong guess keeps the chord names hidden", all(t.strip() == "" for t in fc.locator(".chip-deg .chip-sym").all_inner_texts()))
     fc.locator("#chord-types .chip").nth(0).click()
     check("find the chord: after a wrong guess a single click starts a new attempt", fc.locator("#n-bad").text_content() == "1"
           and fc.locator("#chord-degrees .chip[aria-pressed=true]").count() == 0)
+    def note_box(sel):
+        return fc.evaluate("(sel) => { const r = [...document.querySelectorAll(sel)].map(e => e.getBoundingClientRect());"
+                           "return r.length ? [Math.min(...r.map(x => x.left)), Math.min(...r.map(x => x.top)), Math.max(...r.map(x => x.right)), Math.max(...r.map(x => x.bottom))] : null; }", sel)
+    card_box = note_box(".chordcard ellipse")
+    card_svg = fc.evaluate("() => { const b = document.querySelector('.kb-svg').getBoundingClientRect(); return [b.left, b.top, b.width, b.height]; }")
     solve()
+    open_svg = fc.evaluate("() => { const b = document.querySelector('.kb-svg').getBoundingClientRect(); return [b.left, b.top, b.width, b.height]; }")
+    lit = fc.evaluate("() => { const r = document.querySelector('.chordcard.opened .stave rect[rx=\"8\"]').getBoundingClientRect(); return [r.left, r.right]; }")
+    lit_box = fc.evaluate("(lit) => { const r = [...document.querySelectorAll('.chordcard.opened .stave ellipse')].map(e => e.getBoundingClientRect()).filter(x => x.left >= lit[0] && x.right <= lit[1]);"
+                          "return r.length ? [Math.min(...r.map(x => x.left)), Math.min(...r.map(x => x.top)), Math.max(...r.map(x => x.right)), Math.max(...r.map(x => x.bottom))] : null; }", lit)
+    check("find the chord: opening the staff leaves the chord exactly where it was", card_box and lit_box and all(abs(a - b) < 1.0 for a, b in zip(card_box, lit_box)), (card_box, lit_box))
+    stv = fc.evaluate("() => { const b = document.querySelector('.chordcard.opened .stave').getBoundingClientRect(); return [b.left, b.right]; }")
+    check("find the chord: the staff is only as wide as its voicings need", (stv[1] - stv[0]) < 0.8 * open_svg[2], (stv, open_svg))
+    check("find the chord: and the page grows only a little to make room", open_svg[3] - card_svg[3] < 40 and abs(open_svg[1] - card_svg[1]) < 1, (card_svg, open_svg))
     check("find the chord: the right chord scores, names itself and offers Next", fc.locator("#n-ok").text_content() == "1"
           and " is " in fc.locator(".chordcard text[fill='#15803d']").text_content() and fc.locator(".next-btn").count() == 1,
           fc.locator("#n-ok").text_content())
@@ -1369,8 +1384,26 @@ with sync_playwright() as p:
     check("find the chord: minor has its own questions and levels", "minor" in fc.locator("#chords-summary").text_content()
           and fc.locator("#ftc-chords-n").text_content() == "1" and fc.locator(".chordcard").count() == 1, fc.locator("#chords-summary").text_content())
     fc.locator("label[for=mode-major]").click()
+    # Pop is root position only
+    pop_invs = set()
+    for _ in range(12):
+        pop_invs.add(fc.locator(".chordcard").get_attribute("data-qinv"))
+        fc.locator(".giveup-btn").dispatch_event("click"); fc.wait_for_timeout(60)
+        fc.locator(".next-btn").dispatch_event("click"); fc.wait_for_timeout(60)
+    check("find the chord: Pop questions are always root position", pop_invs == {"0"}, pop_invs)
     fc.locator("label[for=level-jazz]").click()
     fc.wait_for_timeout(200)
+    # Jazz mixes inversions in at every level; the answer names the inversion
+    jz = []
+    for _ in range(30):
+        jz.append(int(fc.locator(".chordcard").get_attribute("data-qinv")))
+        fc.locator(".giveup-btn").dispatch_event("click"); fc.wait_for_timeout(60)
+        inv_now = jz[-1]
+        ttl = fc.locator(".chordcard.opened text[fill='#15803d']").text_content()
+        if ("/" in ttl.split(" is ")[0]) != (inv_now > 0):
+            jz.append(-99)
+        fc.locator(".next-btn").dispatch_event("click"); fc.wait_for_timeout(60)
+    check("find the chord: Jazz mixes inversions in (and names them, e.g. G7/B)", any(v > 0 for v in jz) and any(v == 0 for v in jz) and -99 not in jz, jz)
     check("find the chord: Jazz studies chords only", fc.locator("#ftc").is_visible() and fc.locator("label[for=fm-key]").is_hidden()
           and fc.locator("label[for=fm-sig]").is_hidden() and fc.locator("#fm-chord").is_checked())
     check("find the chord: Jazz shows no mode line while guessing", fc.locator(".mode-line").count() == 0)

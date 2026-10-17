@@ -1069,14 +1069,14 @@
   }
 
   // every closed-position voicing of a chord on the stave, lowest bass first
-  function chordVoicings(cd, tonic, clefCfg) {
+  function chordVoicings(cd, tonic, clefCfg, slotsOverride) {
     var offs = cd.pcOffsets, n = offs.length;
     var pcs = offs.map(function (o) { return (tonic + o) % 12; });
     // the widest chord this level offers fixes the slot width (two octaves of voicings = 2 x notes per chord)
     var maxNotes = 3;
     if (isAlt()) Chords.ALT_TYPES.forEach(function (t) { maxNotes = Math.max(maxNotes, t.ints.length); });
     else Chords.TYPES.forEach(function (t) { if (level !== 'pop' || POP_HIDDEN_TYPES.indexOf(t.id) < 0) maxNotes = Math.max(maxNotes, t.steps.length); });
-    var slots = 2 * maxNotes;
+    var slots = slotsOverride || 2 * maxNotes;          // (Find the chord opens just this chord's own voicings: no spare room)
     var labels = slots > 10 ? ['Root', '1st inv.', '2nd inv.', '3rd inv.', '4th inv.', '5th inv.', '6th inv.']
                             : ['Root position', '1st inversion', '2nd inversion', '3rd inversion', '4th inversion'];
     var chords = [];
@@ -1096,23 +1096,24 @@
       }
     }
     chords.sort(function (x, y) { return x.bass - y.bass; });
-    return { chords: chords, slots: slots };
+    return { chords: chords, slots: slots, labels: labels };
   }
 
   // Find the chord, once answered: all the voicings, the card's own one highlighted
   function buildQuizStave() {
     var cd = ftcChord(), tonic = ChordAudio.tonicMidi(ftcQ.pc);
     var clefCfg = KeyboardRender.CLEFS.filter(function (c) { return c.id === 'treble'; })[0] || KeyboardRender.CLEFS[0];
-    var vo = chordVoicings(cd, tonic, clefCfg), shown = state.card.chord.notes;
+    var vo = chordVoicings(cd, tonic, clefCfg, 2 * cd.notes.length), shown = state.card.chord.notes;
     var hit = -1;
     vo.chords.forEach(function (c, i) {
       if (c.notes.length === shown.length && c.notes.every(function (nt, j) { return nt.midi === shown[j].midi; })) hit = i;
     });
     if (hit < 0) {                                        // (a wide chord whose card voicing starts below the clef's range)
-      vo.chords.push({ bass: shown[0].midi, notes: shown, top: 'Root position', sub: cd.symbol, lit: true });
+      var iv = (state.card.inv || 0) % cd.notes.length;
+      vo.chords.push({ bass: shown[0].midi, notes: shown, top: vo.labels[iv], sub: iv === 0 ? cd.symbol : cd.symbol + '/' + cd.notes[iv], lit: true });
       vo.chords.sort(function (x, y) { return x.bass - y.bass; });
     } else vo.chords[hit].lit = true;
-    return { kind: 'chord', clef: 'treble', chords: vo.chords, slots: vo.slots, fixedClef: true };
+    return { kind: 'chord', clef: 'treble', chords: vo.chords, slots: vo.slots, fixedClef: true, compact: vo.slots > 10 };
   }
 
   // fade used when nothing is "clicked" (reset)
@@ -1194,7 +1195,8 @@
   var FM_IDS = { key: 'fm-key', sig: 'fm-sig', chord: 'fm-chord' };
   var ftcLv = { major: { keys: 1, chords: 1 }, minor: { keys: 1, chords: 1 } };
   var ftcAuto = true, ftcNext = 'keys', ftcStreak = 0;
-  var ftcQ = null;                                    // { pc, spell, deg, type }
+  var ftcQ = null;                                    // { pc, spell, deg, type, inv }  (inv: the inversion shown, 0 = root position)
+  var ftcW = FindChord.loadWeights();                 // chords you have missed turn up more often (persisted)
   var ftcMissed = false;                              // a wrong Check on this question: no streak credit
   var ftcPrevChordsOpen = null;                       // the chord selector's state before the quiz opened it
   var ftcSection = document.getElementById('ftc');
@@ -1248,12 +1250,20 @@
   }
 
   // closed-position voicing of the question's chord, centred on the treble staff
+  function ftcNoteMiss() {                              // this chord (in this key) will turn up more often
+    FindChord.miss(ftcW, state.mode, ftcQ);
+    FindChord.saveWeights(ftcW);
+  }
+  function ftcName(ch) {                                // the chord as shown: G7, or G7/B for an inversion
+    return ftcQ.inv ? ch.symbol + '/' + ch.notes[ftcQ.inv % ch.notes.length] : ch.symbol;
+  }
   function ftcNotes() {
     var ch = ftcChord(), tonic = ChordAudio.tonicMidi(ftcQ.pc), items = [], prev = null, i;
-    for (i = 0; i < ch.pcOffsets.length; i++) {
-      var pc = (tonic + ch.pcOffsets[i]) % 12, m = prev === null ? 48 : prev + 1;
+    var n = ch.pcOffsets.length, k = (ftcQ.inv || 0) % n;                      // the chord tone k sits lowest
+    for (i = 0; i < n; i++) {
+      var j = (k + i) % n, pc = (tonic + ch.pcOffsets[j]) % 12, m = prev === null ? 48 : prev + 1;
       while (m % 12 !== pc) m++;
-      items.push({ midi: m, name: ch.notes[i] });
+      items.push({ midi: m, name: ch.notes[j] });
       prev = m;
     }
     var avg = items.reduce(function (a, n) { return a + n.midi; }, 0) / items.length;
@@ -1263,8 +1273,11 @@
 
   function ftcNewQuestion(animate) {
     var l = ftcLevels();
-    var q = FindChord.pick(state.mode, ftcPop(), l.keys, l.chords, Math.random, ftcQ);
+    var q = FindChord.pick(state.mode, ftcPop(), l.keys, l.chords, Math.random, ftcQ, function (c) { return FindChord.weightOf(ftcW, state.mode, c); });
+    q = { pc: q.pc, deg: q.deg, type: q.type };
     q.spell = Math.floor(Math.random() * Theory.specsFor(state.mode, q.pc).length);
+    var nNotes = Chords.chordInKey(Theory.specsFor(state.mode, q.pc)[q.spell].name, state.mode, q.deg, q.type).pcOffsets.length;
+    q.inv = FindChord.pickInversion(nNotes, !ftcPop(), Math.random);              // Jazz: inversions mixed in at every level
     var oldSvg = stage.firstElementChild;
     var oldKey = animate && oldSvg ? oldSvg.querySelector('.key[data-pc="' + q.pc + '"]') : null;
     ftcQ = q;
@@ -1275,7 +1288,7 @@
     chordCleared = false;
     ftcClearPicks();
     ftcMissed = false;
-    state.card = { pc: q.pc, spell: q.spell, chord: { notes: ftcNotes() }, symbol: ftcChord().symbol, deg: q.deg, type: q.type, title: '', status: '' };   // (symbol: for the tests and screen readers' sake, not drawn)
+    state.card = { pc: q.pc, spell: q.spell, chord: { notes: ftcNotes() }, symbol: ftcChord().symbol, deg: q.deg, type: q.type, inv: q.inv, title: '', status: '' };   // (symbol: for the tests and screen readers' sake, not drawn)
     ftcSay('', '');
     return oldKey ? { oldKeyS: parseInt(oldKey.getAttribute('data-s'), 10) } : (animate ? 'fade' : false);
   }
@@ -1317,7 +1330,7 @@
   function ftcGiveUp(viaKeyboard) {
     if (!quizOn() || state.answered || !ftcQ) return;
     var want = ftcChord();
-    if (!ftcMissed) score.bad++;
+    if (!ftcMissed) { score.bad++; ftcNoteMiss(); }
     ftcMissed = true;
     ftcStreak = 0;
     ftcWrong = false;
@@ -1327,7 +1340,7 @@
     state.chord = { deg: ftcQ.deg, type: ftcQ.type };
     state.answered = true;
     state.card.status = '';
-    state.card.title = want.symbol + ' is ' + want.roman + ' in ' + Theory.keyTitle(ftcSpec(), state.mode);
+    state.card.title = ftcName(want) + ' is ' + want.roman + ' in ' + Theory.keyTitle(ftcSpec(), state.mode);
     state.card.modeLine = ftcPop() ? '' : 'Mode: ' + want.mode;
     ftcSay('The answer: ' + state.card.title + '.');
     updateScore();
@@ -1348,8 +1361,9 @@
     var want = ftcChord(), where = Theory.keyTitle(ftcSpec(), state.mode);
     if (got.deg === ftcQ.deg && got.type === ftcQ.type) {
       score.ok++;
+      if (!ftcMissed) { FindChord.hit(ftcW, state.mode, ftcQ); FindChord.saveWeights(ftcW); }   // known: ease off
       state.answered = true;
-      state.card.title = want.symbol + ' is ' + want.roman + ' in ' + where;
+      state.card.title = ftcName(want) + ' is ' + want.roman + ' in ' + where;
       state.card.modeLine = ftcPop() ? '' : 'Mode: ' + want.mode;
       state.card.status = '';
       var text = 'Correct: ' + state.card.title + '.';
@@ -1375,6 +1389,7 @@
       return;
     }
     score.bad++;
+    if (!ftcMissed) ftcNoteMiss();
     ftcMissed = true;
     ftcStreak = 0;
     ftcWrong = true;                                  // (the chips keep showing the wrong chord until the next click)
@@ -2076,6 +2091,8 @@
     if (state.flash) setView(false);
     Weights.reset(weights);
     Weights.save(weights);
+    FindChord.resetWeights(ftcW);
+    FindChord.saveWeights(ftcW);
     prog = [];
     progIndex = -1;
     progRevealed = false;
