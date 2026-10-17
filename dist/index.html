@@ -3090,7 +3090,7 @@ var KeyboardRender = (function () {
         else b.setAttribute('aria-label', ac.symbol);
       } else {
         var c = Chords.chordInKey(rootName, state.mode, d, type);
-        var hideSym = quizOn() && !state.chord;                      // Find the chord: the names would give the answer away until a guess is made
+        var hideSym = quizOn() && !state.answered;                  // Find the chord: the names would give the answer away until the guess is right (or given up)
         b.setAttribute('aria-label', c.roman + (hideSym ? '' : ', ' + c.symbol) + (pop ? '' : ', ' + c.mode));
         if (!pop) b.setAttribute('data-dark', c.darkness);           // gentle shading: brightest mode to darkest
         b.appendChild(el('span', 'chip-num', c.roman));

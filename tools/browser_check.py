@@ -1298,7 +1298,7 @@ with sync_playwright() as p:
     solve(wrong=True)
     check("find the chord: the second pick is a (wrong) guess and is reported", fc.locator("#n-bad").text_content() == "1"
           and "Try again" in fc.locator(".chordcard").text_content(), fc.locator(".chordcard").text_content())
-    check("find the chord: the second pick reveals the chord names", any(t.strip() for t in fc.locator(".chip-deg .chip-sym").all_inner_texts()))
+    check("find the chord: a wrong guess keeps the chord names hidden", all(t.strip() == "" for t in fc.locator(".chip-deg .chip-sym").all_inner_texts()))
     fc.locator("#chord-types .chip").nth(0).click()
     check("find the chord: after a wrong guess a single click starts a new attempt", fc.locator("#n-bad").text_content() == "1"
           and fc.locator("#chord-degrees .chip[aria-pressed=true]").count() == 0)
@@ -1306,6 +1306,7 @@ with sync_playwright() as p:
     check("find the chord: the right chord scores, names itself and offers Next", fc.locator("#n-ok").text_content() == "1"
           and " is " in fc.locator(".chordcard text[fill='#15803d']").text_content() and fc.locator(".next-btn").count() == 1,
           fc.locator("#n-ok").text_content())
+    check("find the chord: a correct guess reveals the chord names", any(t.strip() for t in fc.locator(".chip-deg .chip-sym").all_inner_texts()))
     fc.locator(".next-btn").dispatch_event("click")
     fc.wait_for_timeout(200)
     check("find the chord: Next deals a fresh question with nothing selected", fc.locator(".next-btn").count() == 0
