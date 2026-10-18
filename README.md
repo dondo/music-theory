@@ -164,6 +164,8 @@ With the Chords section open, the "Find a chord" button (top right) switches the
 - Jazz mixes inversions into every level (root position about 40% of the time, the rest shared among the inversions); the answer names it, e.g. "G7/B is V7 in C major". Pop stays in root position.
 - After the answer the card opens into every voicing of the chord. The staff is only as wide as those voicings need, and the chord that was on the card stays exactly where it was (it only slides sideways if the voicings would run off the edge).
 
-### Explore: the signature boxes use the whole keyboard
+### Explore: a sharp octave and a flat octave
 
-Keys with flats (and C major / A minor, which have none) have their boxes over the left octave; keys with sharps over the right octave. F♯ and G♭ (D♯ and E♭ in minor) are no longer stacked in one box: each sits on its own side.
+The signature boxes use the whole keyboard, one octave for the sharp keys and one for the flat keys. In major the sharp octave is C D E F♯ G A B (C has no accidentals, so it joins the sharps; likewise A minor) and the flat octave is F G♭ A♭ B♭ D♭ E♭. F♯ and G♭ (D♯ and E♭ in minor) are no longer stacked in one box: each sits in its own octave.
+
+The octave of the selected key's kind is the left one: the window starts on C (sharp octave on the left) at first and for any sharp key, and on F (flat octave on the left) when a flat key or signature is selected, sliding across when you switch. The root key is always in the left octave, so D♭ and E♭ (and C, D, E♭ minor) are keys 13 and 15 under an F window, and only the keys above the root are lit.

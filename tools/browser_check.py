@@ -70,7 +70,8 @@ with sync_playwright() as p:
     def box_sides():
         return page.evaluate("""() => {
           const out = {left: [], right: []};
-          const mid = document.querySelector('.key[data-s="12"]').getBoundingClientRect().left;       // the second octave starts at its C
+          const s0 = Math.min(...[...document.querySelectorAll('.key-white')].map(k => parseInt(k.dataset.s)));
+          const mid = document.querySelector('.key[data-s="' + (s0 + 12) + '"]').getBoundingClientRect().left;     // the second octave starts there
           for (const b of document.querySelectorAll('.box')) {
             const r = b.getBoundingClientRect(), cx = (r.left + r.right) / 2;
             const sp = b.getAttribute('aria-label').replace('Root the keyboard on ', '');
@@ -78,8 +79,8 @@ with sync_playwright() as p:
           }
           return out; }""")
     sd = box_sides()
-    check("boxes: major keys with flats (and C) sit over the left octave", sorted(sd["left"]) == sorted(["C", "D\u266d", "E\u266d", "F", "G\u266d", "A\u266d", "B\u266d"]), sd)
-    check("boxes: major keys with sharps sit over the right octave", sorted(sd["right"]) == sorted(["D", "E", "F\u266f", "G", "A", "B"]), sd)
+    check("boxes: at first the sharp octave (C D E F\u266f G A B) is on the left", sorted(sd["left"]) == sorted(["C", "D", "E", "F\u266f", "G", "A", "B"]), sd)
+    check("boxes: and the flat octave (F G\u266d A\u266d B\u266d D\u266d E\u266d) on the right", sorted(sd["right"]) == sorted(["F", "G\u266d", "A\u266d", "B\u266d", "D\u266d", "E\u266d"]), sd)
     check("boxes: each key's box sits over its own piano key",
           page.evaluate("""() => [...document.querySelectorAll('.box')].every(b => {
             const pc = b.getAttribute('data-pc'), r = b.getBoundingClientRect(), cx = (r.left + r.right) / 2;
@@ -125,17 +126,23 @@ with sync_playwright() as p:
       const all = [...document.querySelectorAll('.key')].filter(k => k.classList.contains('hl'));
       all.sort((a, b) => a.querySelector('.body').getBoundingClientRect().left - b.querySelector('.body').getBoundingClientRect().left);
       return [all[0].dataset.s, all[0].classList.contains('key-black')]; }""")
-    check("black root (D♭): view starts on C", page.locator(".key-white").first.get_attribute("data-s") == "0")
+    check("black root (D♭): a flat key slides the flat octave to the left, so the view starts on F", page.locator(".key-white").first.get_attribute("data-s") == "5")
+    check("black root (D♭): the root key is D♭ in the left octave (key 13), and nothing is lit below it",
+          page.locator('.key[data-s="13"]').get_attribute("class").find("hl") >= 0 and page.locator('.key[data-s="1"]').count() == 0
+          and page.locator('.key[data-s="12"]').get_attribute("class").find("hl") < 0, page.locator('.key[data-s="13"]').get_attribute("class"))
+    sd2 = box_sides()
+    check("boxes: with D♭ selected the flat octave is on the left and the sharp octave on the right",
+          sorted(sd2["left"]) == sorted(["F", "G\u266d", "A\u266d", "B\u266d", "D\u266d", "E\u266d"]) and sorted(sd2["right"]) == sorted(["C", "D", "E", "F\u266f", "G", "A", "B"]), sd2)
 
 
-    # --- the view always starts on C or F, so no group of black keys is split ---
-    for pc, start in ((0, "0"), (2, "0"), (4, "0"), (5, "5"), (7, "5"), (9, "5"), (11, "5")):
+    # --- the view starts on C for the sharp keys (the sharp octave leads) and on F for the flat keys, so no group of black keys is split ---
+    for pc, start in ((0, "0"), (2, "0"), (4, "0"), (5, "5"), (7, "0"), (9, "0"), (11, "0")):
         page.locator(f'.key-white[data-pc="{pc}"]').first.click()
         first = page.evaluate("""() => { const w = [...document.querySelectorAll('.key-white')]
             .map(k => [parseInt(k.dataset.s), k.querySelector('.body').getBoundingClientRect().left]);
             w.sort((a, b) => a[1] - b[1]); return w[0][0]; }""")
         check(f"view for pc {pc} starts on {'C' if start == '0' else 'F'}", str(first) == start, first)
-    for pc, start in ((1, "0"), (3, "0"), (6, "5"), (8, "5"), (10, "5")):
+    for pc, start in ((1, "5"), (3, "5"), (6, "0"), (8, "5"), (10, "5")):
         page.locator(f'.key-black[data-pc="{pc}"]').first.click()
         first = page.locator(".key-white").first.get_attribute("data-s")
         check(f"view for black pc {pc} starts on {'C' if start == '0' else 'F'}", first == start, first)
@@ -586,14 +593,14 @@ with sync_playwright() as p:
     pg2.on("pageerror", lambda e: errors.append(str(e)))
     pg2.goto("file://" + page_path)
     pg2.wait_for_selector(".kb-svg")
-    x_before = pg2.evaluate("document.querySelector('.key-white[data-pc=\"7\"]').getBoundingClientRect().left")
-    pg2.locator('.key-white[data-pc="7"]').first.click()   # G
+    x_before = pg2.evaluate("document.querySelector('.key-black[data-pc=\"10\"]').getBoundingClientRect().left")
+    pg2.locator('.key-black[data-pc="10"]').first.click()   # B♭: a flat key, so the flat octave slides to the left
     pg2.wait_for_timeout(120)
     check("slide: two drawings while moving", pg2.locator(".kb-svg").count() == 2 and pg2.locator(".stage.sliding").count() == 1,
           pg2.locator(".kb-svg").count())
-    x_mid = pg2.evaluate("document.querySelector('.kb-svg:last-of-type .key[data-s=\"7\"]').getBoundingClientRect().left")
+    x_mid = pg2.evaluate("document.querySelector('.kb-svg:last-of-type .key[data-s=\"10\"]').getBoundingClientRect().left")
     pg2.wait_for_timeout(900)
-    x_end = pg2.evaluate("document.querySelector('.key[data-s=\"7\"]').getBoundingClientRect().left")
+    x_end = pg2.evaluate("document.querySelector('.key[data-s=\"10\"]').getBoundingClientRect().left")
     check("slide: finished with one drawing, no clip", pg2.locator(".kb-svg").count() == 1 and
           pg2.evaluate("document.getElementById('stage').style.clipPath") == "")
     check("slide: clicked key moved left (start > mid > end)", x_before > x_mid > x_end, (x_before, x_mid, x_end))

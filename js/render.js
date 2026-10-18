@@ -104,19 +104,31 @@ var KeyboardRender = (function () {
     return T.isBlack(pc) ? o + BLACK_BELOW[pc] + 1 : o + WHITE_INDEX[pc];
   }
 
-  function windowGeom(r, octaves) {
-    var startPc = T.mod12(r) <= 4 ? 0 : 5;                    // C or F
-    var left = whiteIndex(r - T.mod12(r) + startPc) * W;
-    var wi = whiteIndex(r + 12 * (octaves || 1));             // the key `octaves` octaves up (or the white key above it)
+  // The window starts on C (a black-key pair) or F (a triple). `flatFirst`: true = F, so the octave of the flat keys
+  // (F G♭ A♭ B♭ D♭ E♭) is the left one; false = C, so the octave of the sharp keys (C D E F♯ G A B) is the left one;
+  // undefined = the older rule (the root's own octave: C for roots up to E, F above), which the flashcards still use.
+  function startPcFor(r, flatFirst) {
+    return flatFirst === undefined ? (T.mod12(r) <= 4 ? 0 : 5) : (flatFirst ? 5 : 0);
+  }
+  function windowGeom(r, octaves, flatFirst) {
+    var startPc = startPcFor(r, flatFirst);
+    var start = r - T.mod12(r) + startPc;
+    var left = whiteIndex(start) * W;
+    var wi = whiteIndex(start + 12 * (octaves || 1));          // `octaves` octaves above the start (or the white key above it)
     while ((wi % 7) !== 2 && (wi % 7) !== 6) wi++;               // E or B ends a group
     var right = (wi + 1) * W;
-    return { left: left, right: right, width: right - left, startSemitone: r - T.mod12(r) + startPc };
+    return { left: left, right: right, width: right - left, startSemitone: start };
+  }
+  // the key number of the root key itself: the one in the left octave of the window (D♭ is 13 when the window starts on F)
+  function rootKeyS(r, flatFirst) {
+    r = T.mod12(r);
+    return r >= startPcFor(r, flatFirst) ? r : r + 12;
   }
 
   // lowest and highest semitone (absolute) of the keys fully on screen for root r; the keys that
   // belong to the visible window, whichever way the chord is voiced
-  function windowRange(r, octaves) {
-    var geo = windowGeom(r, octaves);
+  function windowRange(r, octaves, flatFirst) {
+    var geo = windowGeom(r, octaves, flatFirst);
     var shift = (WIDTH - geo.width) / 2 - geo.left;
     var winL = geo.left + shift, winR = geo.right + shift;
     var lo = null, hi = null;
@@ -132,7 +144,8 @@ var KeyboardRender = (function () {
       }
       if (ok) { if (lo === null) lo = s; hi = s; }
     }
-    return { lo: lo - r, hi: hi - r };          // relative to the tonic
+    var rs = rootKeyS(r, flatFirst);
+    return { lo: lo - rs, hi: Math.max(hi - rs, 12) };          // relative to the tonic; always holds the octave above it (the 2-octave window shows it)
   }
 
   // ---- small helpers --------------------------------------------------------
@@ -228,32 +241,31 @@ var KeyboardRender = (function () {
       staff(cx, top, sp, label, false, 13.5) + '</g>';
   }
 
-  // The boxes are spread over the whole window: keys with flats over the left octave (C major / A minor, with
-  // none, join them), keys with sharps over the right octave. A box over the right octave reports the key's
-  // left-octave number in data-s, so clicking it moves the keyboard the same way as clicking its twin on the left.
-  function boxOnLeft(sp) { return sp.kind === 'flat' || sp.n === 0; }
+  // The boxes are spread over the whole window, in two octaves: the sharp keys' (C, with no accidentals, is one of
+  // them) and the flat keys'. The octave of the selected key's kind is the left one.
+  function boxIsFlat(sp) { return sp.kind === 'flat'; }
 
-  function whiteBox(k, mode, isSelected, dataS) {
+  function whiteBox(k, mode, isSelected) {
     var sp = T.specsFor(mode, k.pc)[0];
     var pal = PAL[sp.kind];
     var x = k.cx - BOXW_E / 2;
     return '<line x1="' + f(k.cx) + '" y1="' + (Y_WT + H_E) + '" x2="' + f(k.cx) + '" y2="' +
         KEY_TOP + '" stroke="' + pal[2] + '" stroke-width="1.5"/>' +
-      '<g class="box" data-pc="' + k.pc + '" data-s="' + dataS + '" data-spell="0" role="button" tabindex="-1" aria-label="' +
+      '<g class="box" data-pc="' + k.pc + '" data-s="' + k.s + '" data-spell="0" role="button" tabindex="-1" aria-label="' +
         esc('Root the keyboard on ' + T.keyTitle(sp, mode)) + '">' +
       '<rect x="' + f(x) + '" y="' + f(Y_WT) + '" width="' + f(BOXW_E) + '" height="' + f(H_E) + '" rx="6" fill="' +
         pal[0] + '" stroke="' + (isSelected ? SELECT : pal[1]) + '" stroke-width="' + (isSelected ? 3 : 1.5) + '"/>' +
       smallStaff(k.cx, Y_WT, sp, boxLabel(sp, mode)) + '</g>';
   }
 
-  function blackBox(k, mode, spellIdx, isSelected, dataS) {   // one box: the spelling `spellIdx` of this black key
+  function blackBox(k, mode, spellIdx, isSelected) {   // one box: the spelling `spellIdx` of this black key
     var sp = T.specsFor(mode, k.pc)[spellIdx];
     var pal = PAL[sp.kind];
     var top = Y_BB - H_E;
     var x = k.cx - BOXW_E / 2;
     return '<line x1="' + f(k.cx) + '" y1="' + f(Y_BB) + '" x2="' + f(k.cx) + '" y2="' + KEY_TOP +
       '" stroke="' + pal[2] + '" stroke-width="1.5" stroke-dasharray="4 3"/>' +
-      '<g class="box" data-pc="' + k.pc + '" data-s="' + dataS + '" data-spell="' + spellIdx + '" role="button" tabindex="-1" aria-label="' +
+      '<g class="box" data-pc="' + k.pc + '" data-s="' + k.s + '" data-spell="' + spellIdx + '" role="button" tabindex="-1" aria-label="' +
         esc('Root the keyboard on ' + T.keyTitle(sp, mode)) + '">' +
       '<rect x="' + f(x) + '" y="' + f(top) + '" width="' + f(BOXW_E) + '" height="' + f(H_E) + '" rx="6" fill="' + pal[0] +
         '" stroke="' + (isSelected ? SELECT : pal[1]) + '" stroke-width="' + (isSelected ? 3 : 1.5) + '"/>' +
@@ -825,11 +837,13 @@ var KeyboardRender = (function () {
     var altKind = (!state.flash && (state.scaleKind === 'pentatonic' || state.scaleKind === 'wholetone')) ? state.scaleKind : null;
     var scale = selected ? (altKind ? T.spellAlt(rootSpec.name, mode, altKind) : T.spellScale(rootSpec.name, mode)) : null;
 
-    var geo = windowGeom(r, 2);                                 // two full octaves
+    var flash = !!state.flash;
+    var flatFirst = flash ? undefined : !!(selected && rootSpec.kind === 'flat');      // Explore: a flat key puts the flat octave on the left
+    var geo = windowGeom(r, 2, flatFirst);                      // two full octaves
+    var rootS = rootKeyS(r, flatFirst);
     var shift = (WIDTH - geo.width) / 2 - geo.left;
     var winL = geo.left + shift;
     var winR = geo.right + shift;
-    var flash = !!state.flash;
     var sig = flash && state.cardMode === 'sig' && !!state.card;       // flashcards, "find the signature" direction
     var ctx = { mode: mode, scale: scale, flash: flash, sig: sig, flashRoot: (sig && !state.answered) ? r : null,
                 flashName: sig ? (T.specsFor(mode, state.card.pc)[state.card.spell] || rootSpec).name : '' };
@@ -854,7 +868,7 @@ var KeyboardRender = (function () {
     var blacks = [];
     for (var s = geo.startSemitone - 1; s <= geo.startSemitone + 38; s++) {
       var pc = T.mod12(s);
-      var off = s - r;
+      var off = s - rootS;
       if (!T.isBlack(pc)) {
         var x = whiteX(s) + shift;
         if (x + W > winL + 0.01 && x < winR - 0.01) {
@@ -910,15 +924,15 @@ var KeyboardRender = (function () {
         var rel = k.s - geo.startSemitone;
         if (!k.inside || rel < 0 || rel > 23) return;
         var left = rel <= 11;
-        if (boxOnLeft(T.specsFor(mode, k.pc)[0]) !== left) return;
-        parts.push(whiteBox(k, mode, selected && k.pc === r && spellIdx === 0, left ? k.s : k.s - 12));
+        if ((boxIsFlat(T.specsFor(mode, k.pc)[0]) === flatFirst) !== left) return;
+        parts.push(whiteBox(k, mode, selected && k.pc === r && spellIdx === 0));
       });
       blacks.forEach(function (k) {
         var rel = k.s - geo.startSemitone;
         if (rel < 0 || rel > 23) return;
         var left = rel <= 11;
         T.specsFor(mode, k.pc).forEach(function (sp, j) {
-          if (boxOnLeft(sp) === left) parts.push(blackBox(k, mode, j, selected && k.pc === r && spellIdx === j, left ? k.s : k.s - 12));
+          if ((boxIsFlat(sp) === flatFirst) === left) parts.push(blackBox(k, mode, j, selected && k.pc === r && spellIdx === j));
         });
       });
       parts.push('</g>');
@@ -931,7 +945,7 @@ var KeyboardRender = (function () {
       parts.push('<text x="' + f(winL - 8) + '" y="' + (fy + 5) + '" text-anchor="end" font-size="13" font-weight="bold" fill="#9a3412" pointer-events="none">LH</text>');
       state.fingering.forEach(function (nt) {
         var key = null;
-        allKeys.forEach(function (k) { if (k.s === r + nt.o) key = k; });
+        allKeys.forEach(function (k) { if (k.s === rootS + nt.o) key = k; });
         if (!key) return;
         parts.push('<g class="finger" data-finger="' + nt.finger + '" data-s="' + key.s + '">' +
           '<circle cx="' + f(key.cx) + '" cy="' + fy + '" r="13" fill="#fff7ed" stroke="#c2410c" stroke-width="2"/>' +
@@ -956,6 +970,7 @@ var KeyboardRender = (function () {
     notePosition: notePosition,
     clefIcon: clefIcon,
     windowGeom: windowGeom,
+    rootKeyS: rootKeyS,
     windowRange: windowRange,
     WIDTH: WIDTH,
     HEIGHT: HEIGHT - TOP_CUT,

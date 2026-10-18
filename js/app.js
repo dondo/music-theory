@@ -505,12 +505,17 @@
         state.chord.type !== prog[progIndex].type)) progIndex = -1;
   }
 
+  // Explore: a flat key puts the flat octave on the left of the keyboard (window starting on F), anything else the
+  // sharp octave (window starting on C). The flashcards keep the older window rule (undefined).
+  function flatFirst() { return state.flash ? undefined : !!(state.selected && currentSpec().kind === 'flat'); }
+  function rootKeyS() { return KeyboardRender.rootKeyS(state.root, flatFirst()); }   // the key number of the root key on screen
+
   // suggested left-hand voicings for the whole progression in the current key and keyboard window
   var planCache = { key: '', plan: [] };
   function getPlan() {
-    var key = state.root + '|' + state.mode + '|' + JSON.stringify(prog);
+    var key = state.root + '|' + state.mode + '|' + flatFirst() + '|' + JSON.stringify(prog);
     if (planCache.key !== key) {
-      var range = KeyboardRender.windowRange(state.root);
+      var range = KeyboardRender.windowRange(state.root, undefined, flatFirst());
       var chords = prog.map(function (c) { return Chords.chordInKey('C', state.mode, c.deg, c.type).pcOffsets; });
       planCache = { key: key, plan: Fingering.plan(chords, range.lo, range.hi) };
     }
@@ -537,7 +542,7 @@
     return KeyboardRender.notePosition(tonic + top.o + shiftOct, ch.notes[top.idx], clef) >= -1;
   }
   function tryVoicing(i, k) {
-    var win = KeyboardRender.windowRange(state.root, 2);
+    var win = KeyboardRender.windowRange(state.root, 2, flatFirst());
     var v = Fingering.shift(getPlan()[i].notes, k, -99, 99);
     return v && voicingFits(i, v, win) ? v : null;
   }
@@ -784,7 +789,7 @@
     var ch = isAlt() ? Chords.chordInScale(altScale(), state.chord.deg, state.chord.type)
                      : Chords.chordInKey(currentSpec().name, state.mode, state.chord.deg, state.chord.type);
     if (!ch) return [];
-    var r = KeyboardRender.windowRange(state.root);
+    var r = KeyboardRender.windowRange(state.root, undefined, flatFirst());
     var v = Fingering.plan([ch.pcOffsets], r.lo, r.hi)[0];
     return v ? v.notes.map(function (n) { return midiBase() + n.o; }) : [];
   }
@@ -994,7 +999,7 @@
   // clicked key (`oldKey`) glides to the left edge. Both drawings are aligned on the key
   // and move together; the old one slides out on the left, the new one slides in.
   function slide(oldSvg, oldKeyLeft, newSvg) {
-    var newRoot = newSvg.querySelector('.key[data-s="' + state.root + '"]');
+    var newRoot = newSvg.querySelector('.key[data-s="' + rootKeyS() + '"]');
     if (oldKeyLeft == null || !newRoot || !oldSvg.animate) return;
     var dx = oldKeyLeft - newRoot.getBoundingClientRect().left;
     if (Math.abs(dx) < 1) return;
@@ -1058,7 +1063,7 @@
     if (!cd) return { kind: 'empty', clef: clefId, hint: 'Select a chord to see it here', chords: [] };
     var vo = chordVoicings(cd, tonic, clefCfg), chords = vo.chords, slots = vo.slots;
     if (findOn && picks.length) {                         // Find a chord: highlight the voicing nearest the notes picked (same lowest note)
-      var lm = tonic + (Math.min.apply(null, picks) - state.root), bi = -1, bd = 1e9;
+      var lm = tonic + (Math.min.apply(null, picks) - rootKeyS()), bi = -1, bd = 1e9;
       chords.forEach(function (c, i) {
         var dist = Math.abs(c.bass - lm);
         if (c.bass % 12 === ((lm % 12) + 12) % 12 && dist < bd) { bd = dist; bi = i; }
@@ -1158,7 +1163,7 @@
       else if (oldKeyLeft != null) slide(oldSvg, oldKeyLeft, svg);   // old drawing is re-attached for the slide
     }
     if (focusRoot) {
-      var k = stage.querySelector('.key[data-s="' + state.root + '"]');
+      var k = stage.querySelector('.key[data-s="' + rootKeyS() + '"]');
       if (k) k.focus({ preventScroll: true });
     }
     saveState();
@@ -1173,7 +1178,8 @@
     var sameKey = state.selected && pc === state.root;
     if (spell == null) spell = sameKey ? state.spell : 0;
     if (spell < 0 || spell >= specs.length) spell = 0;
-    var rotated = !(state.selected && fromS === state.root) && (pc !== state.root || fromS !== state.root);
+    var curS = rootKeyS();
+    var rotated = !(state.selected && fromS === curS) && (pc !== state.root || fromS !== curS);
     state.root = pc;
     state.spell = spell;
     state.selected = true;
