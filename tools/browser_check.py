@@ -47,11 +47,8 @@ with sync_playwright() as p:
         return page.locator(f'.key[data-s="{s}"]').first
 
     def click_box_half(pc, half):
-        """Click the middle of one staff in a (possibly two-staff) label box.
-        Both halves of a double box share one bounding box, so aim by position."""
-        bb = page.locator(f'.box[data-pc="{pc}"][data-spell="{half}"]').first.bounding_box()
-        halves = page.locator(f'.box[data-pc="{pc}"]').count()
-        page.mouse.click(bb["x"] + bb["width"] / 2, bb["y"] + bb["height"] * (half + 0.5) / halves)
+        """Click the box for one spelling of a key (F#/Gb now have a box each: flats left, sharps right)."""
+        page.locator(f'.box[data-pc="{pc}"][data-spell="{half}"]').first.click()
 
     def root_key_is_leftmost(s):
         """the key with data-s == s must be the left-most key in the window."""
@@ -68,6 +65,25 @@ with sync_playwright() as p:
     check("landing: reset hidden", not page.locator("#reset").is_visible())
     check("landing: two full octaves (17 white keys from C) + 12 black", page.locator(".key-white").count() == 17 and page.locator(".key-black").count() == 12,
           (page.locator(".key-white").count(), page.locator(".key-black").count()))
+
+    # --- the signature boxes use the whole keyboard: flats over the left octave, sharps over the right ---
+    def box_sides():
+        return page.evaluate("""() => {
+          const out = {left: [], right: []};
+          const mid = document.querySelector('.key[data-s="12"]').getBoundingClientRect().left;       // the second octave starts at its C
+          for (const b of document.querySelectorAll('.box')) {
+            const r = b.getBoundingClientRect(), cx = (r.left + r.right) / 2;
+            const sp = b.getAttribute('aria-label').replace('Root the keyboard on ', '');
+            (cx < mid ? out.left : out.right).push(sp.split(' ')[0]);
+          }
+          return out; }""")
+    sd = box_sides()
+    check("boxes: major keys with flats (and C) sit over the left octave", sorted(sd["left"]) == sorted(["C", "D\u266d", "E\u266d", "F", "G\u266d", "A\u266d", "B\u266d"]), sd)
+    check("boxes: major keys with sharps sit over the right octave", sorted(sd["right"]) == sorted(["D", "E", "F\u266f", "G", "A", "B"]), sd)
+    check("boxes: each key's box sits over its own piano key",
+          page.evaluate("""() => [...document.querySelectorAll('.box')].every(b => {
+            const pc = b.getAttribute('data-pc'), r = b.getBoundingClientRect(), cx = (r.left + r.right) / 2;
+            return [...document.querySelectorAll('.key[data-pc="' + pc + '"]')].some(k => { const q = k.getBoundingClientRect(); return cx > q.left && cx < q.right; }); })"""))
 
     # --- hover indicator on the key under the pointer --------------------------
     def body_stroke(sel):

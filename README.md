@@ -163,3 +163,7 @@ With the Chords section open, the "Find a chord" button (top right) switches the
 - A chord you miss (a wrong guess, or "I give up") is remembered per key and chord and dealt more often, the same scheme as the key-signature cards (+2 per miss, -1 per clean answer, capped at 16). It is saved in the browser (`music-theory-ftc-weights-v1`) and cleared by "Reset app settings".
 - Jazz mixes inversions into every level (root position about 40% of the time, the rest shared among the inversions); the answer names it, e.g. "G7/B is V7 in C major". Pop stays in root position.
 - After the answer the card opens into every voicing of the chord. The staff is only as wide as those voicings need, and the chord that was on the card stays exactly where it was (it only slides sideways if the voicings would run off the edge).
+
+### Explore: the signature boxes use the whole keyboard
+
+Keys with flats (and C major / A minor, which have none) have their boxes over the left octave; keys with sharps over the right octave. F♯ and G♭ (D♯ and E♭ in minor) are no longer stacked in one box: each sits on its own side.

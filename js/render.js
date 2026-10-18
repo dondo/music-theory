@@ -228,53 +228,36 @@ var KeyboardRender = (function () {
       staff(cx, top, sp, label, false, 13.5) + '</g>';
   }
 
-  function whiteBox(k, mode, isSelected) {
+  // The boxes are spread over the whole window: keys with flats over the left octave (C major / A minor, with
+  // none, join them), keys with sharps over the right octave. A box over the right octave reports the key's
+  // left-octave number in data-s, so clicking it moves the keyboard the same way as clicking its twin on the left.
+  function boxOnLeft(sp) { return sp.kind === 'flat' || sp.n === 0; }
+
+  function whiteBox(k, mode, isSelected, dataS) {
     var sp = T.specsFor(mode, k.pc)[0];
     var pal = PAL[sp.kind];
     var x = k.cx - BOXW_E / 2;
     return '<line x1="' + f(k.cx) + '" y1="' + (Y_WT + H_E) + '" x2="' + f(k.cx) + '" y2="' +
         KEY_TOP + '" stroke="' + pal[2] + '" stroke-width="1.5"/>' +
-      '<g class="box" data-pc="' + k.pc + '" data-s="' + k.s + '" data-spell="0" role="button" tabindex="-1" aria-label="' +
+      '<g class="box" data-pc="' + k.pc + '" data-s="' + dataS + '" data-spell="0" role="button" tabindex="-1" aria-label="' +
         esc('Root the keyboard on ' + T.keyTitle(sp, mode)) + '">' +
       '<rect x="' + f(x) + '" y="' + f(Y_WT) + '" width="' + f(BOXW_E) + '" height="' + f(H_E) + '" rx="6" fill="' +
         pal[0] + '" stroke="' + (isSelected ? SELECT : pal[1]) + '" stroke-width="' + (isSelected ? 3 : 1.5) + '"/>' +
       smallStaff(k.cx, Y_WT, sp, boxLabel(sp, mode)) + '</g>';
   }
 
-  function blackBox(k, mode, selectedSpell) {   // selectedSpell: index or -1
-    var specs = T.specsFor(mode, k.pc);
-    var h = H_E * specs.length;
-    var top = Y_BB - h;
+  function blackBox(k, mode, spellIdx, isSelected, dataS) {   // one box: the spelling `spellIdx` of this black key
+    var sp = T.specsFor(mode, k.pc)[spellIdx];
+    var pal = PAL[sp.kind];
+    var top = Y_BB - H_E;
     var x = k.cx - BOXW_E / 2;
-    var single = specs.length === 1;
-    var connector = single ? PAL[specs[0].kind][2] : '#8a8fc9';
-    var out = ['<line x1="' + f(k.cx) + '" y1="' + f(Y_BB) + '" x2="' + f(k.cx) + '" y2="' + KEY_TOP +
-      '" stroke="' + connector + '" stroke-width="1.5" stroke-dasharray="4 3"/>'];
-    specs.forEach(function (sp, j) {
-      var pal = PAL[sp.kind];
-      var y0 = top + j * H_E;
-      var sel = selectedSpell === j;
-      var rect = '<rect x="' + f(x) + '" y="' + f(top) + '" width="' + f(BOXW_E) + '" height="' + f(h) +
-        '" rx="6" fill="' + pal[0] + '" stroke="' + (sel ? SELECT : pal[1]) + '" stroke-width="' +
-        (sel ? 3 : 1.5) + '"';
-      if (!single) {
-        // each half is the same rounded box clipped to its own half
-        var id = 'bx' + k.off + '_' + j;
-        out.push('<clipPath id="' + id + '"><rect x="' + f(x - 3) + '" y="' + f(y0 - (j === 0 ? 3 : 0)) +
-          '" width="' + f(BOXW_E + 6) + '" height="' + f(H_E + (j === 0 ? 3 : 0) + (j === specs.length - 1 ? 3 : 0)) +
-          '"/></clipPath>');
-        rect += ' clip-path="url(#' + id + ')"';
-      }
-      rect += '/>';
-      out.push('<g class="box" data-pc="' + k.pc + '" data-s="' + k.s + '" data-spell="' + j + '" role="button" tabindex="-1" aria-label="' +
-        esc('Root the keyboard on ' + T.keyTitle(sp, mode)) + '">' + rect +
-        smallStaff(k.cx, y0, sp, boxLabel(sp, mode)) + '</g>');
-    });
-    if (!single) {
-      out.push('<line x1="' + f(x + 6) + '" y1="' + f(top + H_E) + '" x2="' + f(x + BOXW_E - 6) + '" y2="' +
-        f(top + H_E) + '" stroke="#cbbfe3" stroke-width="1" pointer-events="none"/>');
-    }
-    return out.join('');
+    return '<line x1="' + f(k.cx) + '" y1="' + f(Y_BB) + '" x2="' + f(k.cx) + '" y2="' + KEY_TOP +
+      '" stroke="' + pal[2] + '" stroke-width="1.5" stroke-dasharray="4 3"/>' +
+      '<g class="box" data-pc="' + k.pc + '" data-s="' + dataS + '" data-spell="' + spellIdx + '" role="button" tabindex="-1" aria-label="' +
+        esc('Root the keyboard on ' + T.keyTitle(sp, mode)) + '">' +
+      '<rect x="' + f(x) + '" y="' + f(top) + '" width="' + f(BOXW_E) + '" height="' + f(H_E) + '" rx="6" fill="' + pal[0] +
+        '" stroke="' + (isSelected ? SELECT : pal[1]) + '" stroke-width="' + (isSelected ? 3 : 1.5) + '"/>' +
+      smallStaff(k.cx, top, sp, boxLabel(sp, mode)) + '</g>';
   }
 
   // ---- keys ------------------------------------------------------------------
@@ -924,12 +907,19 @@ var KeyboardRender = (function () {
       // label boxes above the keys
       parts.push('<g class="boxes">');
       whites.forEach(function (k) {
-        if (!k.inside || k.s - geo.startSemitone > 11) return;   // each signature once: only above the leftmost octave
-        parts.push(whiteBox(k, mode, selected && k.pc === r && spellIdx === 0));
+        var rel = k.s - geo.startSemitone;
+        if (!k.inside || rel < 0 || rel > 23) return;
+        var left = rel <= 11;
+        if (boxOnLeft(T.specsFor(mode, k.pc)[0]) !== left) return;
+        parts.push(whiteBox(k, mode, selected && k.pc === r && spellIdx === 0, left ? k.s : k.s - 12));
       });
       blacks.forEach(function (k) {
-        if (k.s - geo.startSemitone > 11) return;
-        parts.push(blackBox(k, mode, selected && k.pc === r ? spellIdx : -1));
+        var rel = k.s - geo.startSemitone;
+        if (rel < 0 || rel > 23) return;
+        var left = rel <= 11;
+        T.specsFor(mode, k.pc).forEach(function (sp, j) {
+          if (boxOnLeft(sp) === left) parts.push(blackBox(k, mode, j, selected && k.pc === r && spellIdx === j, left ? k.s : k.s - 12));
+        });
       });
       parts.push('</g>');
     }
