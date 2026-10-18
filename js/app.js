@@ -2121,7 +2121,7 @@
     g.setAttribute('pointer-events', 'none');
     g.innerHTML = html;
     svg.appendChild(g);
-    g.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 3000, easing: 'ease-out', fill: 'forwards' }).onfinish = function () { g.remove(); };
+    g.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 1500, easing: 'ease-out', fill: 'forwards' }).onfinish = function () { g.remove(); };
   }
 
   Array.prototype.forEach.call(viewInputs, function (input) {
