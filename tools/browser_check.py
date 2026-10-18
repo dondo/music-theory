@@ -81,6 +81,17 @@ with sync_playwright() as p:
     sd = box_sides()
     check("boxes: at first the sharp octave (C D E F\u266f G A B) is on the left", sorted(sd["left"]) == sorted(["C", "D", "E", "F\u266f", "G", "A", "B"]), sd)
     check("boxes: and the flat octave (F G\u266d A\u266d B\u266d D\u266d E\u266d) on the right", sorted(sd["right"]) == sorted(["F", "G\u266d", "A\u266d", "B\u266d", "D\u266d", "E\u266d"]), sd)
+    def rows_ok():
+        return page.evaluate("""() => {
+          const bs = [...document.querySelectorAll('.box')].map(b => {
+            const n = [...b.querySelectorAll('text')].map(t => t.textContent).find(t => /^[0-9]+$/.test(t));
+            return [n === undefined ? 0 : parseInt(n), parseFloat(b.querySelector('rect').getAttribute('y'))]; });
+          const lower = Math.max(...bs.map(x => x[1])), upper = Math.min(...bs.map(x => x[1]));
+          return lower > upper && bs.every(([n, y]) => y === (n % 2 === 1 ? lower : upper)); }""")
+    check("boxes: odd numbers of accidentals sit on the lower row, even numbers (and none) on the upper, in major", rows_ok())
+    page.locator("label[for=mode-minor]").click(); page.wait_for_timeout(200)
+    check("boxes: and the same in minor", rows_ok())
+    page.locator("label[for=mode-major]").click(); page.wait_for_timeout(200)
     check("boxes: each key's box sits over its own piano key",
           page.evaluate("""() => [...document.querySelectorAll('.box')].every(b => {
             const pc = b.getAttribute('data-pc'), r = b.getBoundingClientRect(), cx = (r.left + r.right) / 2;

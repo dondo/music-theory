@@ -171,3 +171,7 @@ The signature boxes use the whole keyboard, one octave for the sharp keys and on
 ### The keyboard always starts on C or F
 
 The leftmost key is C for the keys of C, D♭, D, E♭ and E, and F for F, F♯/G♭, G, A♭, A, B♭ and B, so no group of black keys is split and the root key is always in the left octave. With Find a chord switched on the keyboard does not move; keys below the root simply stay dark, so the root is the leftmost lit key.
+
+### Explore: the box rows follow the accidentals
+
+A signature with an odd number of accidentals sits on the lower row of boxes, an even number (including none: C major, A minor) on the upper row, whichever key it is over; a dashed line joins a box to a black key.

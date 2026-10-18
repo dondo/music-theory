@@ -235,26 +235,15 @@ var KeyboardRender = (function () {
   // them) and the flat keys'. The octave of the selected key's kind is the left one.
   function boxIsFlat(sp) { return sp.kind === 'flat'; }
 
-  function whiteBox(k, mode, isSelected) {
-    var sp = T.specsFor(mode, k.pc)[0];
-    var pal = PAL[sp.kind];
-    var x = k.cx - BOXW_E / 2;
-    return '<line x1="' + f(k.cx) + '" y1="' + (Y_WT + H_E) + '" x2="' + f(k.cx) + '" y2="' +
-        KEY_TOP + '" stroke="' + pal[2] + '" stroke-width="1.5"/>' +
-      '<g class="box" data-pc="' + k.pc + '" data-s="' + k.s + '" data-spell="0" role="button" tabindex="-1" aria-label="' +
-        esc('Root the keyboard on ' + T.keyTitle(sp, mode)) + '">' +
-      '<rect x="' + f(x) + '" y="' + f(Y_WT) + '" width="' + f(BOXW_E) + '" height="' + f(H_E) + '" rx="6" fill="' +
-        pal[0] + '" stroke="' + (isSelected ? SELECT : pal[1]) + '" stroke-width="' + (isSelected ? 3 : 1.5) + '"/>' +
-      smallStaff(k.cx, Y_WT, sp, boxLabel(sp, mode)) + '</g>';
-  }
-
-  function blackBox(k, mode, spellIdx, isSelected) {   // one box: the spelling `spellIdx` of this black key
+  // One box over a key. The row says how many accidentals the signature has: an odd number sits on the lower row, an even
+  // number (C major and A minor have none) on the upper row. A line joins the box to its key (dashed for a black key).
+  function keyBox(k, mode, spellIdx, isSelected) {
     var sp = T.specsFor(mode, k.pc)[spellIdx];
     var pal = PAL[sp.kind];
-    var top = Y_BB - H_E;
+    var top = sp.n % 2 === 1 ? Y_WT : Y_BB - H_E;
     var x = k.cx - BOXW_E / 2;
-    return '<line x1="' + f(k.cx) + '" y1="' + f(Y_BB) + '" x2="' + f(k.cx) + '" y2="' + KEY_TOP +
-      '" stroke="' + pal[2] + '" stroke-width="1.5" stroke-dasharray="4 3"/>' +
+    return '<line x1="' + f(k.cx) + '" y1="' + f(top + H_E) + '" x2="' + f(k.cx) + '" y2="' + KEY_TOP + '" stroke="' + pal[2] +
+        '" stroke-width="1.5"' + (T.isBlack(k.pc) ? ' stroke-dasharray="4 3"' : '') + '/>' +
       '<g class="box" data-pc="' + k.pc + '" data-s="' + k.s + '" data-spell="' + spellIdx + '" role="button" tabindex="-1" aria-label="' +
         esc('Root the keyboard on ' + T.keyTitle(sp, mode)) + '">' +
       '<rect x="' + f(x) + '" y="' + f(top) + '" width="' + f(BOXW_E) + '" height="' + f(H_E) + '" rx="6" fill="' + pal[0] +
@@ -915,14 +904,14 @@ var KeyboardRender = (function () {
         if (!k.inside || rel < 0 || rel > 23) return;
         var left = rel <= 11;
         if ((boxIsFlat(T.specsFor(mode, k.pc)[0]) === flatLeft) !== left) return;
-        parts.push(whiteBox(k, mode, selected && k.pc === r && spellIdx === 0));
+        parts.push(keyBox(k, mode, 0, selected && k.pc === r && spellIdx === 0));
       });
       blacks.forEach(function (k) {
         var rel = k.s - geo.startSemitone;
         if (rel < 0 || rel > 23) return;
         var left = rel <= 11;
         T.specsFor(mode, k.pc).forEach(function (sp, j) {
-          if ((boxIsFlat(sp) === flatLeft) === left) parts.push(blackBox(k, mode, j, selected && k.pc === r && spellIdx === j));
+          if ((boxIsFlat(sp) === flatLeft) === left) parts.push(keyBox(k, mode, j, selected && k.pc === r && spellIdx === j));
         });
       });
       parts.push('</g>');
