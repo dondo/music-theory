@@ -340,49 +340,6 @@ check('tension ranks follow chord quality', function () {
 });
 
 
-// ---- Explore: the sharp octave starts the window on C, the flat octave on F ----------------
-check('window: flatFirst true starts on F, false on C, and both fit two octaves', function () {
-  for (var r = 0; r < 12; r++) {
-    var gf = R.windowGeom(r, 2, true), gs = R.windowGeom(r, 2, false);
-    assert.strictEqual(gf.startSemitone, 5, 'flat ' + r); assert.strictEqual(gs.startSemitone, 0, 'sharp ' + r);
-    assert.ok(gf.width / R.W === 18 && gs.width / R.W === 17, r + ': ' + gf.width / R.W + ' / ' + gs.width / R.W);
-    assert.ok(gf.width <= R.WIDTH - 2 * R.PAD + 0.001 && gs.width <= R.WIDTH - 2 * R.PAD + 0.001);
-  }
-});
-check('window: undefined keeps the older rule (the root\'s own octave)', function () {
-  for (var r = 0; r < 12; r++) assert.strictEqual(R.windowGeom(r, 2).startSemitone, r <= 4 ? 0 : 5);
-});
-check('window: the root key is always in the left octave (D\u266d is key 13 under an F window)', function () {
-  for (var r = 0; r < 12; r++) {
-    [true, false].forEach(function (ff) {
-      var g = R.windowGeom(r, 2, ff), rs = R.rootKeyS(r, ff);
-      assert.ok(rs >= g.startSemitone && rs <= g.startSemitone + 11 && ((rs % 12) + 12) % 12 === r, r + ' ' + ff + ' -> ' + rs);
-    });
-  }
-  assert.strictEqual(R.rootKeyS(1, true), 13); assert.strictEqual(R.rootKeyS(3, true), 15); assert.strictEqual(R.rootKeyS(10, true), 10);
-  assert.strictEqual(R.rootKeyS(7, false), 7); assert.strictEqual(R.rootKeyS(1), 1);
-});
-check('window range: holds the root and the octave above it, in either window', function () {
-  for (var r = 0; r < 12; r++) [true, false, undefined].forEach(function (ff) {
-    var g = R.windowRange(r, undefined, ff), g2 = R.windowRange(r, 2, ff);
-    assert.ok(g.lo <= 0 && g.hi >= 12, r + ' ' + ff + ': ' + JSON.stringify(g));
-    assert.ok(g2.lo <= 0 && g2.hi >= 12 && g2.hi >= g.hi, r + ' ' + ff + ': ' + JSON.stringify(g2));
-  });
-});
-
-check('window: "root" starts on the root key (the white key below a black root) and still fits two octaves', function () {
-  var WHITE = [0, 2, 4, 5, 7, 9, 11];
-  for (var r = 0; r < 12; r++) {
-    var g = R.windowGeom(r, 2, 'root'), rs = R.rootKeyS(r, 'root');
-    var below = WHITE.indexOf(r) >= 0 ? r : r - 1;
-    assert.strictEqual(g.startSemitone, below, 'root ' + r);
-    assert.strictEqual(rs, r);
-    assert.ok(g.width / R.W <= 18 && g.width <= R.WIDTH - 2 * R.PAD + 0.001, r + ': ' + g.width / R.W);
-    var rg = R.windowRange(r, 2, 'root');
-    assert.ok(rg.lo <= 0 && rg.hi >= 24, r + ': ' + JSON.stringify(rg));            // the root and two octaves above it
-  }
-});
-
 // ---- left-hand fingering --------------------------------------------------------
 var F = require('../js/fingering.js');
 var CH = require('../js/chords.js');

@@ -104,16 +104,10 @@ var KeyboardRender = (function () {
     return T.isBlack(pc) ? o + BLACK_BELOW[pc] + 1 : o + WHITE_INDEX[pc];
   }
 
-  // The window starts on C (a black-key pair) or F (a triple). `flatFirst`: true = F, so the octave of the flat keys
-  // (F G♭ A♭ B♭ D♭ E♭) is the left one; false = C, so the octave of the sharp keys (C D E F♯ G A B) is the left one;
-  // undefined = the older rule (the root's own octave: C for roots up to E, F above), which the flashcards still use;
-  // 'root' = start on the root key itself (on the white key just below it when the root is a black key).
-  function startPcFor(r, flatFirst) {
-    if (flatFirst === 'root') { var rp = T.mod12(r); return T.isBlack(rp) ? rp - 1 : rp; }   // Find a chord: the root key starts the keyboard
-    return flatFirst === undefined ? (T.mod12(r) <= 4 ? 0 : 5) : (flatFirst ? 5 : 0);
-  }
-  function windowGeom(r, octaves, flatFirst) {
-    var startPc = startPcFor(r, flatFirst);
+  // The window always starts on C (a black-key pair) or F (a triple), so no group of black keys is split:
+  // C for the keys of C, D♭, D, E♭ and E, F for F, F♯/G♭, G, A♭, A, B♭ and B. The root key is in its left octave.
+  function windowGeom(r, octaves) {
+    var startPc = T.mod12(r) <= 4 ? 0 : 5;                    // C or F
     var start = r - T.mod12(r) + startPc;
     var left = whiteIndex(start) * W;
     var wi = whiteIndex(start + 12 * (octaves || 1));          // `octaves` octaves above the start (or the white key above it)
@@ -121,16 +115,11 @@ var KeyboardRender = (function () {
     var right = (wi + 1) * W;
     return { left: left, right: right, width: right - left, startSemitone: start };
   }
-  // the key number of the root key itself: the one in the left octave of the window (D♭ is 13 when the window starts on F)
-  function rootKeyS(r, flatFirst) {
-    r = T.mod12(r);
-    return r >= startPcFor(r, flatFirst) ? r : r + 12;
-  }
 
   // lowest and highest semitone (absolute) of the keys fully on screen for root r; the keys that
   // belong to the visible window, whichever way the chord is voiced
-  function windowRange(r, octaves, flatFirst) {
-    var geo = windowGeom(r, octaves, flatFirst);
+  function windowRange(r, octaves) {
+    var geo = windowGeom(r, octaves);
     var shift = (WIDTH - geo.width) / 2 - geo.left;
     var winL = geo.left + shift, winR = geo.right + shift;
     var lo = null, hi = null;
@@ -146,8 +135,7 @@ var KeyboardRender = (function () {
       }
       if (ok) { if (lo === null) lo = s; hi = s; }
     }
-    var rs = rootKeyS(r, flatFirst);
-    return { lo: lo - rs, hi: Math.max(hi - rs, 12) };          // relative to the tonic; always holds the octave above it (the 2-octave window shows it)
+    return { lo: lo - r, hi: hi - r };          // relative to the tonic
   }
 
   // ---- small helpers --------------------------------------------------------
@@ -840,16 +828,15 @@ var KeyboardRender = (function () {
     var scale = selected ? (altKind ? T.spellAlt(rootSpec.name, mode, altKind) : T.spellScale(rootSpec.name, mode)) : null;
 
     var flash = !!state.flash;
-    var flatFirst = flash ? undefined : (state.rootFirst && selected ? 'root' : !!(selected && rootSpec.kind === 'flat'));      // Explore: a flat key puts the flat octave on the left
-    var geo = windowGeom(r, 2, flatFirst);                      // two full octaves
-    var rootS = rootKeyS(r, flatFirst);
+    var flatLeft = !!(selected && rootSpec.kind === 'flat');    // Explore boxes: a flat key puts the flat octave on the left, otherwise the sharp octave leads
+    var geo = windowGeom(r, 2);                                 // two full octaves
     var shift = (WIDTH - geo.width) / 2 - geo.left;
     var winL = geo.left + shift;
     var winR = geo.right + shift;
     var sig = flash && state.cardMode === 'sig' && !!state.card;       // flashcards, "find the signature" direction
     var ctx = { mode: mode, scale: scale, flash: flash, sig: sig, flashRoot: (sig && !state.answered) ? r : null,
                 flashName: sig ? (T.specsFor(mode, state.card.pc)[state.card.spell] || rootSpec).name : '' };
-    ctx.rootFirst = flatFirst === 'root';                       // keys below the root stay dark
+    ctx.rootFirst = !!state.rootFirst;                          // Find a chord: keys below the root stay dark, so the root is the leftmost lit key
     if (scale && !flash && state.chord) {                       // Explore: a chord on a degree of the scale
       var pcOffs = null;
       if (altKind) {
@@ -871,7 +858,7 @@ var KeyboardRender = (function () {
     var blacks = [];
     for (var s = geo.startSemitone - 1; s <= geo.startSemitone + 38; s++) {
       var pc = T.mod12(s);
-      var off = s - rootS;
+      var off = s - r;
       if (!T.isBlack(pc)) {
         var x = whiteX(s) + shift;
         if (x + W > winL + 0.01 && x < winR - 0.01) {
@@ -927,7 +914,7 @@ var KeyboardRender = (function () {
         var rel = k.s - geo.startSemitone;
         if (!k.inside || rel < 0 || rel > 23) return;
         var left = rel <= 11;
-        if ((boxIsFlat(T.specsFor(mode, k.pc)[0]) === flatFirst) !== left) return;
+        if ((boxIsFlat(T.specsFor(mode, k.pc)[0]) === flatLeft) !== left) return;
         parts.push(whiteBox(k, mode, selected && k.pc === r && spellIdx === 0));
       });
       blacks.forEach(function (k) {
@@ -935,7 +922,7 @@ var KeyboardRender = (function () {
         if (rel < 0 || rel > 23) return;
         var left = rel <= 11;
         T.specsFor(mode, k.pc).forEach(function (sp, j) {
-          if ((boxIsFlat(sp) === flatFirst) === left) parts.push(blackBox(k, mode, j, selected && k.pc === r && spellIdx === j));
+          if ((boxIsFlat(sp) === flatLeft) === left) parts.push(blackBox(k, mode, j, selected && k.pc === r && spellIdx === j));
         });
       });
       parts.push('</g>');
@@ -948,7 +935,7 @@ var KeyboardRender = (function () {
       parts.push('<text x="' + f(winL - 8) + '" y="' + (fy + 5) + '" text-anchor="end" font-size="13" font-weight="bold" fill="#9a3412" pointer-events="none">LH</text>');
       state.fingering.forEach(function (nt) {
         var key = null;
-        allKeys.forEach(function (k) { if (k.s === rootS + nt.o) key = k; });
+        allKeys.forEach(function (k) { if (k.s === r + nt.o) key = k; });
         if (!key) return;
         parts.push('<g class="finger" data-finger="' + nt.finger + '" data-s="' + key.s + '">' +
           '<circle cx="' + f(key.cx) + '" cy="' + fy + '" r="13" fill="#fff7ed" stroke="#c2410c" stroke-width="2"/>' +
@@ -973,7 +960,6 @@ var KeyboardRender = (function () {
     notePosition: notePosition,
     clefIcon: clefIcon,
     windowGeom: windowGeom,
-    rootKeyS: rootKeyS,
     windowRange: windowRange,
     WIDTH: WIDTH,
     HEIGHT: HEIGHT - TOP_CUT,

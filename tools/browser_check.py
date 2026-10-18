@@ -126,23 +126,23 @@ with sync_playwright() as p:
       const all = [...document.querySelectorAll('.key')].filter(k => k.classList.contains('hl'));
       all.sort((a, b) => a.querySelector('.body').getBoundingClientRect().left - b.querySelector('.body').getBoundingClientRect().left);
       return [all[0].dataset.s, all[0].classList.contains('key-black')]; }""")
-    check("black root (D♭): a flat key slides the flat octave to the left, so the view starts on F", page.locator(".key-white").first.get_attribute("data-s") == "5")
-    check("black root (D♭): the root key is D♭ in the left octave (key 13), and nothing is lit below it",
-          page.locator('.key[data-s="13"]').get_attribute("class").find("hl") >= 0 and page.locator('.key[data-s="1"]').count() == 0
-          and page.locator('.key[data-s="12"]').get_attribute("class").find("hl") < 0, page.locator('.key[data-s="13"]').get_attribute("class"))
+    check("black root (D♭): the view starts on C (D♭ is one of C, D♭, D, E♭, E)", page.locator(".key-white").first.get_attribute("data-s") == "0")
+    check("black root (D♭): the root key is lit and nothing below it is",
+          page.locator('.key[data-s="1"]').get_attribute("class").find("hl") >= 0 and page.locator('.key[data-s="0"]').get_attribute("class").find("hl") < 0,
+          page.locator('.key[data-s="1"]').get_attribute("class"))
     sd2 = box_sides()
     check("boxes: with D♭ selected the flat octave is on the left and the sharp octave on the right",
           sorted(sd2["left"]) == sorted(["F", "G\u266d", "A\u266d", "B\u266d", "D\u266d", "E\u266d"]) and sorted(sd2["right"]) == sorted(["C", "D", "E", "F\u266f", "G", "A", "B"]), sd2)
 
 
-    # --- the view starts on C for the sharp keys (the sharp octave leads) and on F for the flat keys, so no group of black keys is split ---
-    for pc, start in ((0, "0"), (2, "0"), (4, "0"), (5, "5"), (7, "0"), (9, "0"), (11, "0")):
+    # --- the view always starts on C (keys C D♭ D E♭ E) or F (F F♯/G♭ G A♭ A B♭ B), so no group of black keys is split ---
+    for pc, start in ((0, "0"), (2, "0"), (4, "0"), (5, "5"), (7, "5"), (9, "5"), (11, "5")):
         page.locator(f'.key-white[data-pc="{pc}"]').first.click()
         first = page.evaluate("""() => { const w = [...document.querySelectorAll('.key-white')]
             .map(k => [parseInt(k.dataset.s), k.querySelector('.body').getBoundingClientRect().left]);
             w.sort((a, b) => a[1] - b[1]); return w[0][0]; }""")
         check(f"view for pc {pc} starts on {'C' if start == '0' else 'F'}", str(first) == start, first)
-    for pc, start in ((1, "5"), (3, "5"), (6, "0"), (8, "5"), (10, "5")):
+    for pc, start in ((1, "0"), (3, "0"), (6, "5"), (8, "5"), (10, "5")):
         page.locator(f'.key-black[data-pc="{pc}"]').first.click()
         first = page.locator(".key-white").first.get_attribute("data-s")
         check(f"view for black pc {pc} starts on {'C' if start == '0' else 'F'}", first == start, first)
@@ -593,14 +593,14 @@ with sync_playwright() as p:
     pg2.on("pageerror", lambda e: errors.append(str(e)))
     pg2.goto("file://" + page_path)
     pg2.wait_for_selector(".kb-svg")
-    x_before = pg2.evaluate("document.querySelector('.key-black[data-pc=\"10\"]').getBoundingClientRect().left")
-    pg2.locator('.key-black[data-pc="10"]').first.click()   # B♭: a flat key, so the flat octave slides to the left
+    x_before = pg2.evaluate("document.querySelector('.key-white[data-pc=\"7\"]').getBoundingClientRect().left")
+    pg2.locator('.key-white[data-pc="7"]').first.click()   # G
     pg2.wait_for_timeout(120)
     check("slide: two drawings while moving", pg2.locator(".kb-svg").count() == 2 and pg2.locator(".stage.sliding").count() == 1,
           pg2.locator(".kb-svg").count())
-    x_mid = pg2.evaluate("document.querySelector('.kb-svg:last-of-type .key[data-s=\"10\"]').getBoundingClientRect().left")
+    x_mid = pg2.evaluate("document.querySelector('.kb-svg:last-of-type .key[data-s=\"7\"]').getBoundingClientRect().left")
     pg2.wait_for_timeout(900)
-    x_end = pg2.evaluate("document.querySelector('.key[data-s=\"10\"]').getBoundingClientRect().left")
+    x_end = pg2.evaluate("document.querySelector('.key[data-s=\"7\"]').getBoundingClientRect().left")
     check("slide: finished with one drawing, no clip", pg2.locator(".kb-svg").count() == 1 and
           pg2.evaluate("document.getElementById('stage').style.clipPath") == "")
     check("slide: clicked key moved left (start > mid > end)", x_before > x_mid > x_end, (x_before, x_mid, x_end))
@@ -1521,19 +1521,19 @@ with sync_playwright() as p:
     fd.wait_for_timeout(300)
     if fd.locator("#find-chord-btn").is_hidden():
         fd.locator("#chords-summary").click(); fd.wait_for_timeout(200)
-    check("find a chord: before it is on, G major's keyboard starts on C and G is not leftmost", first_white() == 0, first_white())
+    check("find a chord: G major's keyboard starts on F (the keys F to B start there)", first_white() == 5, first_white())
     fd.locator("#find-chord-btn").click(); fd.wait_for_timeout(300)
-    check("find a chord: switched on, the keyboard starts on the root (G) and G is the leftmost lit key", first_white() == 7 and leftmost_lit() == 7, (first_white(), leftmost_lit()))
-    check("find a chord: that window still shows two octaves above the root", fd.locator('.key[data-s="31"]').count() == 1, fd.locator('.key[data-s="31"]').count())
+    check("find a chord: switched on, the keyboard still starts on F and G (the root) is the leftmost lit key", first_white() == 5 and leftmost_lit() == 7, (first_white(), leftmost_lit()))
     fd.locator("#find-chord-btn").click(); fd.wait_for_timeout(300)
-    check("find a chord: switched off, the keyboard goes back", first_white() == 0, first_white())
-    fd.locator('.key-black[data-pc="1"]').first.dispatch_event("click")      # D♭ major, a black root
+    check("find a chord: switching it off does not move the keyboard", first_white() == 5, first_white())
+    fd.locator('.key-black[data-pc="1"]').first.dispatch_event("click")      # D♭ major, a black root: the keyboard starts on C
     fd.wait_for_timeout(300)
     fd.locator('#chord-degrees .chip[data-deg="0"]').click()
     fd.locator('#chord-types .chip[data-type="7"]').click()
     fd.wait_for_timeout(200)
+    check("find a chord: D♭ major's keyboard starts on C", first_white() == 0, first_white())
     fd.locator("#find-chord-btn").click(); fd.wait_for_timeout(300)
-    check("find a chord: a black root starts the keyboard on the white key just below it", first_white() == 0, first_white())
+    check("find a chord: with it on, the keyboard still starts on C", first_white() == 0, first_white())
     check("find a chord: and nothing below the root is lit (D♭maj7's C stays dark there), so D♭ is the leftmost lit key", leftmost_lit() == 1
           and "hl" not in (fd.locator('.key[data-s="0"]').get_attribute("class") or "").replace("hover", ""), (leftmost_lit(), fd.locator('.key[data-s="0"]').get_attribute("class")))
     check("find a chord: no script errors", not fd_errors, fd_errors)
