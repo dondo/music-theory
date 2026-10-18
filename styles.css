@@ -559,3 +559,6 @@ html.is-local body { border-top: 6px solid #ea580c; }
 .dial-knob { fill: currentColor; transform-origin: 16px 16px; transition: transform 0.45s cubic-bezier(.5,0,.2,1); }
 .dial[aria-pressed="true"] .dial-knob { transform: rotate(90deg); }
 @media (prefers-reduced-motion: reduce) { .dial-knob { transition: none; } }
+
+/* the vertical layout's duplicate staves sit slightly dimmer than the originals */
+.xbox { opacity: 0.6; }
