@@ -2115,7 +2115,7 @@
       x.animate([{ transform: 'translate(' + dx + 'px,' + dy + 'px)', opacity: 1 }, { transform: 'translate(0,0)', opacity: 1 }],
         { duration: DUR, delay: d0, easing: 'ease-in-out', fill: 'backwards' });
       x.animate([0, -4, 4, -4, 4, -2, 2, 0].map(function (t) { return { transform: 'translate(' + t + 'px,0)', opacity: 1 }; }),
-        { duration: SHAKE, delay: d0 + DUR, fill: 'backwards' });
+        { duration: SHAKE, delay: d0 + DUR });      // no backwards fill: it would pin the transform and hide the slide
       x.animate([{ opacity: 1 }, { opacity: 0.6 }], { duration: DIM, delay: d0 + DUR + SHAKE, easing: 'ease-out', fill: 'backwards' });
     });
   }
