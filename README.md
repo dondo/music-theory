@@ -175,3 +175,6 @@ The leftmost key is C for the keys of C, D♭, D, E♭ and E, and F for F, F♯/
 ### Explore: the box rows follow the accidentals
 
 A signature with an odd number of accidentals sits on the lower row of boxes, an even number (including none: C major, A minor) on the upper row, whichever key it is over; a dashed line joins a box to a black key.
+
+## Explore: horizontal / vertical signatures
+A selector at the top right of the Explore keyboard switches the signature layout (remembered). **Horizontal** (default) is the original view: each key has one box, sharp keys in one octave and flat keys in the other. **Vertical** keeps every horizontal box where it is and fills all the open spaces in both octaves, so every key has a signature in each octave; odd accidental counts stay on the lower row, even on the upper, and the alternate spelling of F♯/G♭ (D♯/E♭ in minor) stacks above the visible one.

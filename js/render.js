@@ -237,13 +237,14 @@ var KeyboardRender = (function () {
 
   // One box over a key. The row says how many accidentals the signature has: an odd number sits on the lower row, an even
   // number (C major and A minor have none) on the upper row. A line joins the box to its key (dashed for a black key).
-  function keyBox(k, mode, spellIdx, isSelected) {
+  function keyBox(k, mode, spellIdx, isSelected, stacked) {
     var sp = T.specsFor(mode, k.pc)[spellIdx];
     var pal = PAL[sp.kind];
     var top = sp.n % 2 === 1 ? Y_WT : Y_BB - H_E;
+    if (stacked) top -= H_E + 4;                              // the other spelling of F♯/G♭, stacked above the one in the row
     var x = k.cx - BOXW_E / 2;
-    return '<line x1="' + f(k.cx) + '" y1="' + f(top + H_E) + '" x2="' + f(k.cx) + '" y2="' + KEY_TOP + '" stroke="' + pal[2] +
-        '" stroke-width="1.5"' + (T.isBlack(k.pc) ? ' stroke-dasharray="4 3"' : '') + '/>' +
+    return (stacked ? '' : '<line x1="' + f(k.cx) + '" y1="' + f(top + H_E) + '" x2="' + f(k.cx) + '" y2="' + KEY_TOP + '" stroke="' + pal[2] +
+        '" stroke-width="1.5"' + (T.isBlack(k.pc) ? ' stroke-dasharray="4 3"' : '') + '/>') +
       '<g class="box" data-pc="' + k.pc + '" data-s="' + k.s + '" data-spell="' + spellIdx + '" role="button" tabindex="-1" aria-label="' +
         esc('Root the keyboard on ' + T.keyTitle(sp, mode)) + '">' +
       '<rect x="' + f(x) + '" y="' + f(top) + '" width="' + f(BOXW_E) + '" height="' + f(H_E) + '" rx="6" fill="' + pal[0] +
@@ -817,6 +818,7 @@ var KeyboardRender = (function () {
     var scale = selected ? (altKind ? T.spellAlt(rootSpec.name, mode, altKind) : T.spellScale(rootSpec.name, mode)) : null;
 
     var flash = !!state.flash;
+    var vertical = state.layout === 'vertical';                 // Explore boxes: every key of both octaves has its signature
     var flatLeft = !!(selected && rootSpec.kind === 'flat');    // Explore boxes: a flat key puts the flat octave on the left, otherwise the sharp octave leads
     var geo = windowGeom(r, 2);                                 // two full octaves
     var shift = (WIDTH - geo.width) / 2 - geo.left;
@@ -903,15 +905,18 @@ var KeyboardRender = (function () {
         var rel = k.s - geo.startSemitone;
         if (!k.inside || rel < 0 || rel > 23) return;
         var left = rel <= 11;
-        if ((boxIsFlat(T.specsFor(mode, k.pc)[0]) === flatLeft) !== left) return;
+        if (!vertical && (boxIsFlat(T.specsFor(mode, k.pc)[0]) === flatLeft) !== left) return;      // (vertical: every key has its box)
         parts.push(keyBox(k, mode, 0, selected && k.pc === r && spellIdx === 0));
       });
       blacks.forEach(function (k) {
         var rel = k.s - geo.startSemitone;
         if (rel < 0 || rel > 23) return;
         var left = rel <= 11;
-        T.specsFor(mode, k.pc).forEach(function (sp, j) {
-          if ((boxIsFlat(sp) === flatLeft) === left) parts.push(keyBox(k, mode, j, selected && k.pc === r && spellIdx === j));
+        var specs = T.specsFor(mode, k.pc);
+        specs.forEach(function (sp, j) {
+          var native = (boxIsFlat(sp) === flatLeft) === left;                // the spelling that belongs in this octave
+          if (native || (vertical && specs.length === 1)) parts.push(keyBox(k, mode, j, selected && k.pc === r && spellIdx === j));
+          else if (vertical) parts.push(keyBox(k, mode, j, selected && k.pc === r && spellIdx === j, true));    // F♯/G♭: the alternate goes above
         });
       });
       parts.push('</g>');

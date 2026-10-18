@@ -5,7 +5,7 @@
   var state = { root: 0, mode: 'major', spell: 0, selected: false,
                 flash: false, cardMode: 'key', card: null, answered: false, guess: null,
                 chord: null,
-                scaleKind: 'full', clef: 'treble' };                      // Explore: { deg: 0..6, type } = a chord on a degree of the key
+                scaleKind: 'full', clef: 'treble', layout: 'horizontal' };                      // Explore: { deg: 0..6, type } = a chord on a degree of the key
   var modeSort = document.getElementById('mode-sort');
   var typeSort = document.getElementById('type-sort');
   var modeSortSel = document.getElementById('mode-sort-select');
@@ -150,6 +150,8 @@
   var viewInputs = document.querySelectorAll('input[name="view"]');
   var kindInputs = document.querySelectorAll('input[name="scalekind"]');
   var kindGroup = document.getElementById('scalekind-group');
+  var layoutBar = document.getElementById('layout-bar');
+  var layoutInputs = document.querySelectorAll('input[name="layout"]');
   var scoreBox = document.getElementById('score');
   var okEl = document.getElementById('n-ok');
   var badEl = document.getElementById('n-bad');
@@ -456,7 +458,8 @@
       window.localStorage.setItem(STATE_KEY, JSON.stringify({
         root: state.root, spell: state.spell, selected: state.selected, mode: state.mode, level: level,
         scaleKind: state.scaleKind, chord: state.chord, chordTypes: chordTypes_, typePicked: typePicked,
-        chordsOpen: chordsDetails.open, progOpen: progDetails.open, progIndex: progIndex, progRevealed: progRevealed, clef: state.clef
+        chordsOpen: chordsDetails.open, progOpen: progDetails.open, progIndex: progIndex, progRevealed: progRevealed, clef: state.clef,
+        layout: state.layout
       }));
     } catch (e) { /* storage unavailable */ }
   }
@@ -472,6 +475,7 @@
     restoring = true;
     setTimeout(function () { restoring = false; }, 200);
     if (typeof s.clef === 'string' && KeyboardRender.CLEFS.some(function (c) { return c.id === s.clef; })) state.clef = s.clef;
+    if (s.layout === 'vertical') { state.layout = 'vertical'; document.getElementById('layout-v').checked = true; }
     if (s.mode === 'minor') { state.mode = 'minor'; document.getElementById('mode-minor').checked = true; }
     if (s.level === 'jazz') { level = 'jazz'; document.getElementById('level-jazz').checked = true; }
     var kinds = { full: 'sk-full', pentatonic: 'sk-pent', wholetone: 'sk-whole' };
@@ -1148,6 +1152,7 @@
     state.picked = findOn ? picks : null;
     state.rootFirst = findActive();
     state.staff = buildStaff();
+    layoutBar.hidden = !!state.flash || !!(state.staff && state.selected);       // the signature boxes only show when no stave replaces them
     state.quizStave = quizOn() && state.answered && state.card && state.card.chord ? buildQuizStave() : null;
     stage.innerHTML = KeyboardRender.render(quizOn() ? Object.assign({}, state, { selected: false }) : state);
     resetBtn.hidden = !state.selected || (state.flash && state.cardMode === 'sig') || quizOn();
@@ -2080,6 +2085,12 @@
     });
   });
 
+  Array.prototype.forEach.call(layoutInputs, function (input) {
+    input.addEventListener('change', function () {
+      if (input.checked) { state.layout = input.value; saveState(); draw(); }
+    });
+  });
+
   Array.prototype.forEach.call(viewInputs, function (input) {
     input.addEventListener('change', function () {
       if (input.checked) setView(input.value === 'flash');
@@ -2111,6 +2122,7 @@
     state.clef = 'treble';
     level = 'pop';
     document.getElementById('level-pop').checked = true;
+    state.layout = 'horizontal'; document.getElementById('layout-h').checked = true;
     syncStudyOptions();
     resetFtc();
     state.mode = 'major';

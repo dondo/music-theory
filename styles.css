@@ -548,3 +548,8 @@ button, .inv-zone, .clef-hit, .key, svg { touch-action: manipulation; }
 .local-badge { margin-left: 0.4rem; padding: 0.15rem 0.6rem; border-radius: 999px; background: #ea580c; color: #fff; font-size: 0.8rem; font-weight: 800; letter-spacing: 0.08em; align-self: center; }
 .local-badge[hidden] { display: none; }
 html.is-local body { border-top: 6px solid #ea580c; }
+
+/* Explore: horizontal / vertical signature layout, top right above the keyboard */
+.stage-tools { display: flex; justify-content: flex-end; padding: 0 8px 6px; }
+.stage-tools[hidden] { display: none; }
+.segmented-small label { padding: 4px 14px; font-size: 0.85rem; }
