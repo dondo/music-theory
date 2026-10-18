@@ -555,10 +555,15 @@ html.is-local body { border-top: 6px solid #ea580c; }
 .dial { width: 34px; height: 34px; padding: 2px; border: 0; border-radius: 50%; background: transparent; color: #64748b; cursor: pointer; }
 .dial:hover { color: #1d4ed8; }
 .dial:focus-visible { outline: 2px solid #1d4ed8; outline-offset: 1px; }
-.dial-ring { fill: #f1f5f9; stroke: currentColor; stroke-width: 2; }
+.dial-face { fill: #f1f5f9; }
+.dial-ring { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+/* the arrow notched into the ring shows which way the next turn goes; it flips once the turn has finished */
+.dial-arrow { fill: currentColor; transition: opacity 0.2s 0.45s; }
+.dial-ccw, .dial[aria-pressed="true"] .dial-cw { opacity: 0; }
+.dial[aria-pressed="true"] .dial-ccw { opacity: 1; }
 .dial-knob { fill: currentColor; transform-origin: 16px 16px; transition: transform 0.45s cubic-bezier(.5,0,.2,1); }
 .dial[aria-pressed="true"] .dial-knob { transform: rotate(90deg); }
-@media (prefers-reduced-motion: reduce) { .dial-knob { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .dial-knob, .dial-arrow { transition: none; } }
 
 /* the vertical layout's duplicate staves sit slightly dimmer than the originals */
 .xbox { opacity: 0.6; }

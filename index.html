@@ -75,8 +75,11 @@
       <div class="stage-tools" id="layout-bar">
         <button type="button" class="dial" id="layout-dial" aria-pressed="false" aria-label="Signature layout: horizontal (switch to vertical)" title="Horizontal / vertical signatures">
           <svg viewBox="0 0 32 32" width="30" height="30" aria-hidden="true">
-            <circle cx="16" cy="16" r="13" class="dial-ring"/>
-            <g class="dial-knob"><rect x="8" y="10.2" width="16" height="3.4" rx="1.7"/><rect x="8" y="18.4" width="16" height="3.4" rx="1.7"/></g>
+            <circle cx="16" cy="16" r="13" class="dial-face"/>
+            <path class="dial-ring" d="M22.50 4.74 A13 13 0 1 1 9.50 4.74"/>
+            <polygon class="dial-arrow dial-cw" points="12.44,3.04 10.13,7.84 7.13,2.64"/>
+            <polygon class="dial-arrow dial-ccw" points="19.56,3.04 24.87,2.64 21.87,7.84"/>
+            <g class="dial-knob"><rect x="7" y="14.3" width="18" height="3.4" rx="1.7"/></g>
           </svg>
         </button>
       </div>
