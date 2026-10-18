@@ -566,4 +566,4 @@ html.is-local body { border-top: 6px solid #ea580c; }
 @media (prefers-reduced-motion: reduce) { .dial-knob, .dial-arrow { transition: none; } }
 
 /* the vertical layout's duplicate staves sit slightly dimmer than the originals */
-.xbox { opacity: 0.6; }
+.xveil { fill: var(--card); opacity: 0.4; pointer-events: none; }     /* a veil, not transparency: the boxes stay opaque while the keyboard slides over the old drawing */

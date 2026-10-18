@@ -583,7 +583,7 @@ html.is-local body { border-top: 6px solid #ea580c; }
 @media (prefers-reduced-motion: reduce) { .dial-knob, .dial-arrow { transition: none; } }
 
 /* the vertical layout's duplicate staves sit slightly dimmer than the originals */
-.xbox { opacity: 0.6; }
+.xveil { fill: var(--card); opacity: 0.4; pointer-events: none; }     /* a veil, not transparency: the boxes stay opaque while the keyboard slides over the old drawing */
 </style>
 </head>
 <body>
@@ -2160,7 +2160,8 @@ var KeyboardRender = (function () {
         esc('Root the keyboard on ' + T.keyTitle(sp, mode)) + '">' +
       '<rect x="' + f(x) + '" y="' + f(top) + '" width="' + f(BOXW_E) + '" height="' + f(H_E) + '" rx="6" fill="' + pal[0] +
         '" stroke="' + (isSelected ? SELECT : pal[1]) + '" stroke-width="' + (isSelected ? 3 : 1.5) + '"/>' +
-      smallStaff(k.cx, top, sp, boxLabel(sp, mode)) + '</g>' + (extra ? '</g>' : '');       // extra = only in the vertical layout
+      smallStaff(k.cx, top, sp, boxLabel(sp, mode)) +
+      (extra ? '<rect class="xveil" x="' + f(x) + '" y="' + f(top) + '" width="' + f(BOXW_E) + '" height="' + f(H_E) + '" rx="6"/>' : '') + '</g>' + (extra ? '</g>' : '');       // extra = only in the vertical layout
   }
 
   // ---- keys ------------------------------------------------------------------
@@ -4985,7 +4986,7 @@ var KeyboardRender = (function () {
   // horizontal -> vertical: clones of the existing staves slide to the open spaces (sharps first, then flats)
   function layoutIn(svg) {
     var natives = Array.prototype.filter.call(svg.querySelectorAll('.box'), function (b) { return !b.closest('.xbox'); });
-    var DUR = 700, SHAKE = 500, DIM = 400, GAP = 1000, SEQ = DUR + SHAKE + DIM;     // per group: slide, shake in place, dim
+    var DUR = 700, SHAKE = 500, DIM = 400, GAP = 700, SEQ = DUR + SHAKE + DIM;     // per group: slide, shake in place, dim
     Array.prototype.forEach.call(svg.querySelectorAll('.xbox'), function (x) {
       var eb = x.querySelector('.box');
       var nb = natives.filter(function (b) { return b.dataset.pc === eb.dataset.pc && b.dataset.spell === eb.dataset.spell; })[0];
@@ -4993,11 +4994,11 @@ var KeyboardRender = (function () {
       var nr = nb.querySelector('rect'), er = eb.querySelector('rect');
       var dx = nr.getAttribute('x') - er.getAttribute('x'), dy = nr.getAttribute('y') - er.getAttribute('y');
       var d0 = x.dataset.kind === 'flat' ? SEQ + GAP : 0;                  // flats start once the sharps have settled
-      x.animate([{ transform: 'translate(' + dx + 'px,' + dy + 'px)', opacity: 1 }, { transform: 'translate(0,0)', opacity: 1 }],
+      x.animate([{ transform: 'translate(' + dx + 'px,' + dy + 'px)' }, { transform: 'translate(0,0)' }],
         { duration: DUR, delay: d0, easing: 'ease-in-out', fill: 'backwards' });
-      x.animate([0, -4, 4, -4, 4, -2, 2, 0].map(function (t) { return { transform: 'translate(' + t + 'px,0)', opacity: 1 }; }),
+      x.animate([0, -4, 4, -4, 4, -2, 2, 0].map(function (t) { return { transform: 'translate(' + t + 'px,0)' }; }),
         { duration: SHAKE, delay: d0 + DUR });      // no backwards fill: it would pin the transform and hide the slide
-      x.animate([{ opacity: 1 }, { opacity: 0.6 }], { duration: DIM, delay: d0 + DUR + SHAKE, easing: 'ease-out', fill: 'backwards' });
+      x.querySelector('.xveil').animate([{ opacity: 0 }, { opacity: 0.4 }], { duration: DIM, delay: d0 + DUR + SHAKE, easing: 'ease-out', fill: 'backwards' });
     });
   }
   // vertical -> horizontal: the duplicates stay behind and fade out over a few seconds

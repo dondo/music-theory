@@ -2104,7 +2104,7 @@
   // horizontal -> vertical: clones of the existing staves slide to the open spaces (sharps first, then flats)
   function layoutIn(svg) {
     var natives = Array.prototype.filter.call(svg.querySelectorAll('.box'), function (b) { return !b.closest('.xbox'); });
-    var DUR = 700, SHAKE = 500, DIM = 400, GAP = 1000, SEQ = DUR + SHAKE + DIM;     // per group: slide, shake in place, dim
+    var DUR = 700, SHAKE = 500, DIM = 400, GAP = 700, SEQ = DUR + SHAKE + DIM;     // per group: slide, shake in place, dim
     Array.prototype.forEach.call(svg.querySelectorAll('.xbox'), function (x) {
       var eb = x.querySelector('.box');
       var nb = natives.filter(function (b) { return b.dataset.pc === eb.dataset.pc && b.dataset.spell === eb.dataset.spell; })[0];
@@ -2112,11 +2112,11 @@
       var nr = nb.querySelector('rect'), er = eb.querySelector('rect');
       var dx = nr.getAttribute('x') - er.getAttribute('x'), dy = nr.getAttribute('y') - er.getAttribute('y');
       var d0 = x.dataset.kind === 'flat' ? SEQ + GAP : 0;                  // flats start once the sharps have settled
-      x.animate([{ transform: 'translate(' + dx + 'px,' + dy + 'px)', opacity: 1 }, { transform: 'translate(0,0)', opacity: 1 }],
+      x.animate([{ transform: 'translate(' + dx + 'px,' + dy + 'px)' }, { transform: 'translate(0,0)' }],
         { duration: DUR, delay: d0, easing: 'ease-in-out', fill: 'backwards' });
-      x.animate([0, -4, 4, -4, 4, -2, 2, 0].map(function (t) { return { transform: 'translate(' + t + 'px,0)', opacity: 1 }; }),
+      x.animate([0, -4, 4, -4, 4, -2, 2, 0].map(function (t) { return { transform: 'translate(' + t + 'px,0)' }; }),
         { duration: SHAKE, delay: d0 + DUR });      // no backwards fill: it would pin the transform and hide the slide
-      x.animate([{ opacity: 1 }, { opacity: 0.6 }], { duration: DIM, delay: d0 + DUR + SHAKE, easing: 'ease-out', fill: 'backwards' });
+      x.querySelector('.xveil').animate([{ opacity: 0 }, { opacity: 0.4 }], { duration: DIM, delay: d0 + DUR + SHAKE, easing: 'ease-out', fill: 'backwards' });
     });
   }
   // vertical -> horizontal: the duplicates stay behind and fade out over a few seconds

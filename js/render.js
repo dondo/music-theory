@@ -249,7 +249,8 @@ var KeyboardRender = (function () {
         esc('Root the keyboard on ' + T.keyTitle(sp, mode)) + '">' +
       '<rect x="' + f(x) + '" y="' + f(top) + '" width="' + f(BOXW_E) + '" height="' + f(H_E) + '" rx="6" fill="' + pal[0] +
         '" stroke="' + (isSelected ? SELECT : pal[1]) + '" stroke-width="' + (isSelected ? 3 : 1.5) + '"/>' +
-      smallStaff(k.cx, top, sp, boxLabel(sp, mode)) + '</g>' + (extra ? '</g>' : '');       // extra = only in the vertical layout
+      smallStaff(k.cx, top, sp, boxLabel(sp, mode)) +
+      (extra ? '<rect class="xveil" x="' + f(x) + '" y="' + f(top) + '" width="' + f(BOXW_E) + '" height="' + f(H_E) + '" rx="6"/>' : '') + '</g>' + (extra ? '</g>' : '');       // extra = only in the vertical layout
   }
 
   // ---- keys ------------------------------------------------------------------
