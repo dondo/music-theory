@@ -507,7 +507,9 @@
 
   // Explore: a flat key puts the flat octave on the left of the keyboard (window starting on F), anything else the
   // sharp octave (window starting on C). The flashcards keep the older window rule (undefined).
-  function flatFirst() { return state.flash ? undefined : !!(state.selected && currentSpec().kind === 'flat'); }
+  // Find a chord (switched on, selector open): the keyboard starts on the root key, so it is the leftmost lit key.
+  function findActive() { return !!(findOn && state.selected && !state.flash && chordsDetails.open); }
+  function flatFirst() { return state.flash ? undefined : findActive() ? 'root' : !!(state.selected && currentSpec().kind === 'flat'); }
   function rootKeyS() { return KeyboardRender.rootKeyS(state.root, flatFirst()); }   // the key number of the root key on screen
 
   // suggested left-hand voicings for the whole progression in the current key and keyboard window
@@ -1148,6 +1150,7 @@
     if (textPop && (!progDetails.open || !state.selected || state.flash)) closeTextPop(false);
     if (findOn && picks.length) syncPicks();
     state.picked = findOn ? picks : null;
+    state.rootFirst = findActive();
     state.staff = buildStaff();
     state.quizStave = quizOn() && state.answered && state.card && state.card.chord ? buildQuizStave() : null;
     stage.innerHTML = KeyboardRender.render(quizOn() ? Object.assign({}, state, { selected: false }) : state);
@@ -1520,9 +1523,10 @@
       (picks.length ? ' Picked so far: ' + picks.length + ' key' + (picks.length === 1 ? '' : 's') + '.' : '');
   }
   findBtn.addEventListener('click', function () {
+    var fromS = rootKeyS();                                   // the keyboard rotates: slide the root key to its new place
     findOn = !findOn;
     picks = [];
-    draw(false, false);
+    draw(state.selected ? { oldKeyS: fromS } : false, false);
   });
 
   // ---- flashcards -------------------------------------------------------------

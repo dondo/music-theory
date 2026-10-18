@@ -169,3 +169,5 @@ With the Chords section open, the "Find a chord" button (top right) switches the
 The signature boxes use the whole keyboard, one octave for the sharp keys and one for the flat keys. In major the sharp octave is C D E F♯ G A B (C has no accidentals, so it joins the sharps; likewise A minor) and the flat octave is F G♭ A♭ B♭ D♭ E♭. F♯ and G♭ (D♯ and E♭ in minor) are no longer stacked in one box: each sits in its own octave.
 
 The octave of the selected key's kind is the left one: the window starts on C (sharp octave on the left) at first and for any sharp key, and on F (flat octave on the left) when a flat key or signature is selected, sliding across when you switch. The root key is always in the left octave, so D♭ and E♭ (and C, D, E♭ minor) are keys 13 and 15 under an F window, and only the keys above the root are lit.
+
+With Find a chord switched on, the keyboard rotates to start on the root key, so the root is the leftmost lit key (a black root starts on the white key just below it, which stays dark). It rotates back when Find a chord is switched off.

@@ -370,6 +370,19 @@ check('window range: holds the root and the octave above it, in either window', 
   });
 });
 
+check('window: "root" starts on the root key (the white key below a black root) and still fits two octaves', function () {
+  var WHITE = [0, 2, 4, 5, 7, 9, 11];
+  for (var r = 0; r < 12; r++) {
+    var g = R.windowGeom(r, 2, 'root'), rs = R.rootKeyS(r, 'root');
+    var below = WHITE.indexOf(r) >= 0 ? r : r - 1;
+    assert.strictEqual(g.startSemitone, below, 'root ' + r);
+    assert.strictEqual(rs, r);
+    assert.ok(g.width / R.W <= 18 && g.width <= R.WIDTH - 2 * R.PAD + 0.001, r + ': ' + g.width / R.W);
+    var rg = R.windowRange(r, 2, 'root');
+    assert.ok(rg.lo <= 0 && rg.hi >= 24, r + ': ' + JSON.stringify(rg));            // the root and two octaves above it
+  }
+});
+
 // ---- left-hand fingering --------------------------------------------------------
 var F = require('../js/fingering.js');
 var CH = require('../js/chords.js');

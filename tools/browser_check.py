@@ -1511,6 +1511,31 @@ with sync_playwright() as p:
     fd.locator("#chords-summary").click()
     fd.wait_for_timeout(200)
     check("find a chord: closing the selector turns it off", fd.locator("#find-chord-btn").is_hidden())
+    # the keyboard rotates so the root key is the leftmost lit key
+    def leftmost_lit():
+        return fd.evaluate("""() => { const lit = [...document.querySelectorAll('.key')].filter(k => /\\bhl/.test(k.getAttribute('class')));
+          lit.sort((a, b) => a.getBoundingClientRect().left - b.getBoundingClientRect().left); return lit.length ? parseInt(lit[0].dataset.s) : null; }""")
+    def first_white():
+        return fd.evaluate("""() => Math.min(...[...document.querySelectorAll('.key-white')].map(k => parseInt(k.dataset.s)))""")
+    fd.locator('.key-white[data-pc="7"]').first.dispatch_event("click")       # G major
+    fd.wait_for_timeout(300)
+    if fd.locator("#find-chord-btn").is_hidden():
+        fd.locator("#chords-summary").click(); fd.wait_for_timeout(200)
+    check("find a chord: before it is on, G major's keyboard starts on C and G is not leftmost", first_white() == 0, first_white())
+    fd.locator("#find-chord-btn").click(); fd.wait_for_timeout(300)
+    check("find a chord: switched on, the keyboard starts on the root (G) and G is the leftmost lit key", first_white() == 7 and leftmost_lit() == 7, (first_white(), leftmost_lit()))
+    check("find a chord: that window still shows two octaves above the root", fd.locator('.key[data-s="31"]').count() == 1, fd.locator('.key[data-s="31"]').count())
+    fd.locator("#find-chord-btn").click(); fd.wait_for_timeout(300)
+    check("find a chord: switched off, the keyboard goes back", first_white() == 0, first_white())
+    fd.locator('.key-black[data-pc="1"]').first.dispatch_event("click")      # D♭ major, a black root
+    fd.wait_for_timeout(300)
+    fd.locator('#chord-degrees .chip[data-deg="0"]').click()
+    fd.locator('#chord-types .chip[data-type="7"]').click()
+    fd.wait_for_timeout(200)
+    fd.locator("#find-chord-btn").click(); fd.wait_for_timeout(300)
+    check("find a chord: a black root starts the keyboard on the white key just below it", first_white() == 0, first_white())
+    check("find a chord: and nothing below the root is lit (D♭maj7's C stays dark there), so D♭ is the leftmost lit key", leftmost_lit() == 1
+          and "hl" not in (fd.locator('.key[data-s="0"]').get_attribute("class") or "").replace("hover", ""), (leftmost_lit(), fd.locator('.key[data-s="0"]').get_attribute("class")))
     check("find a chord: no script errors", not fd_errors, fd_errors)
     fd.close()
 

@@ -106,8 +106,10 @@ var KeyboardRender = (function () {
 
   // The window starts on C (a black-key pair) or F (a triple). `flatFirst`: true = F, so the octave of the flat keys
   // (F G♭ A♭ B♭ D♭ E♭) is the left one; false = C, so the octave of the sharp keys (C D E F♯ G A B) is the left one;
-  // undefined = the older rule (the root's own octave: C for roots up to E, F above), which the flashcards still use.
+  // undefined = the older rule (the root's own octave: C for roots up to E, F above), which the flashcards still use;
+  // 'root' = start on the root key itself (on the white key just below it when the root is a black key).
   function startPcFor(r, flatFirst) {
+    if (flatFirst === 'root') { var rp = T.mod12(r); return T.isBlack(rp) ? rp - 1 : rp; }   // Find a chord: the root key starts the keyboard
     return flatFirst === undefined ? (T.mod12(r) <= 4 ? 0 : 5) : (flatFirst ? 5 : 0);
   }
   function windowGeom(r, octaves, flatFirst) {
@@ -276,7 +278,7 @@ var KeyboardRender = (function () {
   function whiteKey(k, ctx) {
     var sp = T.specsFor(ctx.mode, k.pc)[0];
     var d = degreeOf(k.off, ctx.scale);
-    var type = keyType(d, ctx, k.pc);
+    var type = (ctx.rootFirst && k.off < 0) ? null : keyType(d, ctx, k.pc);
     var fill = type ? HL.white[type] : '#ffffff';
     var stroke = '#333';
     var sw = 1.5;
@@ -310,7 +312,7 @@ var KeyboardRender = (function () {
     var specs = T.specsFor(ctx.mode, k.pc);
     var single = specs.length === 1;
     var d = degreeOf(k.off, ctx.scale);
-    var type = keyType(d, ctx, k.pc);
+    var type = (ctx.rootFirst && k.off < 0) ? null : keyType(d, ctx, k.pc);
     var x = k.cx - BW / 2;
     var fill = type ? HL.black[type] : '#222';
     var stroke = '#111';
@@ -838,7 +840,7 @@ var KeyboardRender = (function () {
     var scale = selected ? (altKind ? T.spellAlt(rootSpec.name, mode, altKind) : T.spellScale(rootSpec.name, mode)) : null;
 
     var flash = !!state.flash;
-    var flatFirst = flash ? undefined : !!(selected && rootSpec.kind === 'flat');      // Explore: a flat key puts the flat octave on the left
+    var flatFirst = flash ? undefined : (state.rootFirst && selected ? 'root' : !!(selected && rootSpec.kind === 'flat'));      // Explore: a flat key puts the flat octave on the left
     var geo = windowGeom(r, 2, flatFirst);                      // two full octaves
     var rootS = rootKeyS(r, flatFirst);
     var shift = (WIDTH - geo.width) / 2 - geo.left;
@@ -847,6 +849,7 @@ var KeyboardRender = (function () {
     var sig = flash && state.cardMode === 'sig' && !!state.card;       // flashcards, "find the signature" direction
     var ctx = { mode: mode, scale: scale, flash: flash, sig: sig, flashRoot: (sig && !state.answered) ? r : null,
                 flashName: sig ? (T.specsFor(mode, state.card.pc)[state.card.spell] || rootSpec).name : '' };
+    ctx.rootFirst = flatFirst === 'root';                       // keys below the root stay dark
     if (scale && !flash && state.chord) {                       // Explore: a chord on a degree of the scale
       var pcOffs = null;
       if (altKind) {
