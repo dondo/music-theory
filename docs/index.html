@@ -3921,6 +3921,25 @@ var KeyboardRender = (function () {
     }
     slideDone = done;
     a2.onfinish = function () { done(); if (slideDone === done) slideDone = null; };
+    return true;
+  }
+
+  // The keyboard did not move (e.g. F -> G: both start on F) but the signature boxes change octaves
+  // (flat keys on the left -> sharp keys on the left): glide each box from where its key's box was.
+  function boxSwap(oldSvg, newSvg) {
+    var oldBoxes = Array.prototype.filter.call(oldSvg.querySelectorAll('.box'), function (b) { return !b.closest('.xbox'); });
+    Array.prototype.forEach.call(newSvg.querySelectorAll('.box'), function (nb) {
+      if (nb.closest('.xbox')) return;
+      var ob = oldBoxes.filter(function (b) { return b.dataset.pc === nb.dataset.pc && b.dataset.spell === nb.dataset.spell; })[0];
+      if (!ob) return;
+      var dx = ob.querySelector('rect').getAttribute('x') - nb.querySelector('rect').getAttribute('x');
+      if (Math.abs(dx) < 1) return;
+      var kf = [{ transform: 'translateX(' + dx + 'px)' }, { transform: 'translateX(0)' }];
+      var opts = { duration: SLIDE_MS, easing: EASE };
+      nb.animate(kf, opts);
+      var line = nb.previousElementSibling;
+      if (line && line.tagName.toLowerCase() === 'line') line.animate(kf, opts);
+    });
   }
 
   // what the big stave shows: the progression (Progressions open), else the selected chord and its inversions (Chords open)
@@ -4050,7 +4069,7 @@ var KeyboardRender = (function () {
     else if (svg && ghosts) layoutOut(svg, ghosts);
     if (anim && svg && !reduceMotion) {
       if (anim === 'fade') fade(svg);
-      else if (oldKeyLeft != null) slide(oldSvg, oldKeyLeft, svg);   // old drawing is re-attached for the slide
+      else if (oldKeyLeft != null && !slide(oldSvg, oldKeyLeft, svg)) boxSwap(oldSvg, svg);   // old drawing is re-attached for the slide
     }
     if (focusRoot) {
       var k = stage.querySelector('.key[data-s="' + state.root + '"]');
@@ -4066,7 +4085,13 @@ var KeyboardRender = (function () {
   function selectRoot(pc, spell, viaKeyboard, fromS) {
     var specs = Theory.specsFor(state.mode, pc);
     var sameKey = state.selected && pc === state.root;
-    if (spell == null) spell = sameKey ? state.spell : 0;
+    if (spell == null) {
+      spell = sameKey ? state.spell : 0;
+      if (!sameKey && state.selected && specs.length > 1) {         // F♯/G♭ key pressed: keep the kind (sharps/flats) of the key being left
+        var cur = currentSpec().kind;
+        for (var i = 0; i < specs.length; i++) if (specs[i].kind === cur) { spell = i; break; }
+      }
+    }
     if (spell < 0 || spell >= specs.length) spell = 0;
     var rotated = !(state.selected && fromS === state.root) && (pc !== state.root || fromS !== state.root);
     state.root = pc;
