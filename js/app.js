@@ -151,7 +151,8 @@
   var kindInputs = document.querySelectorAll('input[name="scalekind"]');
   var kindGroup = document.getElementById('scalekind-group');
   var layoutBar = document.getElementById('layout-bar');
-  var layoutInputs = document.querySelectorAll('input[name="layout"]');
+  var layoutDial = document.getElementById('layout-dial');
+  var pendingLayout = null;                 // 'in' | 'out': the layout animation the next draw() runs
   var scoreBox = document.getElementById('score');
   var okEl = document.getElementById('n-ok');
   var badEl = document.getElementById('n-bad');
@@ -475,7 +476,7 @@
     restoring = true;
     setTimeout(function () { restoring = false; }, 200);
     if (typeof s.clef === 'string' && KeyboardRender.CLEFS.some(function (c) { return c.id === s.clef; })) state.clef = s.clef;
-    if (s.layout === 'vertical') { state.layout = 'vertical'; document.getElementById('layout-v').checked = true; }
+    if (s.layout === 'vertical') { state.layout = 'vertical'; syncDial(); }
     if (s.mode === 'minor') { state.mode = 'minor'; document.getElementById('mode-minor').checked = true; }
     if (s.level === 'jazz') { level = 'jazz'; document.getElementById('level-jazz').checked = true; }
     var kinds = { full: 'sk-full', pentatonic: 'sk-pent', wholetone: 'sk-whole' };
@@ -1154,6 +1155,7 @@
     state.staff = buildStaff();
     layoutBar.hidden = !!state.flash || !!(state.staff && state.selected);       // the signature boxes only show when no stave replaces them
     state.quizStave = quizOn() && state.answered && state.card && state.card.chord ? buildQuizStave() : null;
+    var ghosts = pendingLayout === 'out' && oldSvg ? Array.prototype.map.call(oldSvg.querySelectorAll('.xbox'), function (g) { return g.outerHTML; }).join('') : '';
     stage.innerHTML = KeyboardRender.render(quizOn() ? Object.assign({}, state, { selected: false }) : state);
     resetBtn.hidden = !state.selected || (state.flash && state.cardMode === 'sig') || quizOn();
     updateCaption();
@@ -1162,6 +1164,8 @@
     updateProgPanel();
     syncSound();
     var svg = stage.firstElementChild;
+    if (svg && pendingLayout === 'in') layoutIn(svg);
+    else if (svg && ghosts) layoutOut(svg, ghosts);
     if (anim && svg && !reduceMotion) {
       if (anim === 'fade') fade(svg);
       else if (oldKeyLeft != null) slide(oldSvg, oldKeyLeft, svg);   // old drawing is re-attached for the slide
@@ -2085,11 +2089,40 @@
     });
   });
 
-  Array.prototype.forEach.call(layoutInputs, function (input) {
-    input.addEventListener('change', function () {
-      if (input.checked) { state.layout = input.value; saveState(); draw(); }
-    });
+  function syncDial() {
+    var v = state.layout === 'vertical';
+    layoutDial.setAttribute('aria-pressed', v ? 'true' : 'false');
+    layoutDial.setAttribute('aria-label', 'Signature layout: ' + (v ? 'vertical (switch to horizontal)' : 'horizontal (switch to vertical)'));
+  }
+  layoutDial.addEventListener('click', function () {
+    state.layout = state.layout === 'vertical' ? 'horizontal' : 'vertical';
+    syncDial();
+    pendingLayout = reduceMotion ? null : state.layout === 'vertical' ? 'in' : 'out';
+    draw();
+    pendingLayout = null;
   });
+  // horizontal -> vertical: clones of the existing staves slide to the open spaces (sharps first, then flats)
+  function layoutIn(svg) {
+    var natives = Array.prototype.filter.call(svg.querySelectorAll('.box'), function (b) { return !b.closest('.xbox'); });
+    var DUR = 700, GAP = 150;
+    Array.prototype.forEach.call(svg.querySelectorAll('.xbox'), function (x) {
+      var eb = x.querySelector('.box');
+      var nb = natives.filter(function (b) { return b.dataset.pc === eb.dataset.pc && b.dataset.spell === eb.dataset.spell; })[0];
+      if (!nb) return;
+      var nr = nb.querySelector('rect'), er = eb.querySelector('rect');
+      var dx = nr.getAttribute('x') - er.getAttribute('x'), dy = nr.getAttribute('y') - er.getAttribute('y');
+      x.animate([{ transform: 'translate(' + dx + 'px,' + dy + 'px)' }, { transform: 'translate(0,0)' }],
+        { duration: DUR, delay: x.dataset.kind === 'flat' ? DUR + GAP : 0, easing: 'ease-in-out', fill: 'backwards' });
+    });
+  }
+  // vertical -> horizontal: the duplicates stay behind and fade out over a few seconds
+  function layoutOut(svg, html) {
+    var g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    g.setAttribute('pointer-events', 'none');
+    g.innerHTML = html;
+    svg.appendChild(g);
+    g.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 3000, easing: 'ease-out', fill: 'forwards' }).onfinish = function () { g.remove(); };
+  }
 
   Array.prototype.forEach.call(viewInputs, function (input) {
     input.addEventListener('change', function () {
@@ -2122,7 +2155,7 @@
     state.clef = 'treble';
     level = 'pop';
     document.getElementById('level-pop').checked = true;
-    state.layout = 'horizontal'; document.getElementById('layout-h').checked = true;
+    state.layout = 'horizontal'; syncDial();
     syncStudyOptions();
     resetFtc();
     state.mode = 'major';

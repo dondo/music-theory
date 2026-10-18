@@ -73,13 +73,12 @@
 
     <section class="stage-card" aria-label="Keyboard">
       <div class="stage-tools" id="layout-bar">
-        <fieldset class="segmented segmented-small" id="layout-group">
-          <legend class="sr-only">Signature layout</legend>
-          <input type="radio" name="layout" id="layout-h" value="horizontal" checked>
-          <label for="layout-h">Horizontal</label>
-          <input type="radio" name="layout" id="layout-v" value="vertical">
-          <label for="layout-v">Vertical</label>
-        </fieldset>
+        <button type="button" class="dial" id="layout-dial" aria-pressed="false" aria-label="Signature layout: horizontal (switch to vertical)" title="Horizontal / vertical signatures">
+          <svg viewBox="0 0 32 32" width="30" height="30" aria-hidden="true">
+            <circle cx="16" cy="16" r="13" class="dial-ring"/>
+            <g class="dial-knob"><rect x="8" y="10.2" width="16" height="3.4" rx="1.7"/><rect x="8" y="18.4" width="16" height="3.4" rx="1.7"/></g>
+          </svg>
+        </button>
       </div>
       <div id="stage" class="stage"></div>
     </section>

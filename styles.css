@@ -549,7 +549,13 @@ button, .inv-zone, .clef-hit, .key, svg { touch-action: manipulation; }
 .local-badge[hidden] { display: none; }
 html.is-local body { border-top: 6px solid #ea580c; }
 
-/* Explore: horizontal / vertical signature layout, top right above the keyboard */
-.stage-tools { display: flex; justify-content: flex-end; padding: 0 8px 6px; }
+/* Explore: horizontal / vertical signature dial, top right above the keyboard */
+.stage-tools { display: flex; justify-content: flex-end; padding: 0 8px; }
 .stage-tools[hidden] { display: none; }
-.segmented-small label { padding: 4px 14px; font-size: 0.85rem; }
+.dial { width: 34px; height: 34px; padding: 2px; border: 0; border-radius: 50%; background: transparent; color: #64748b; cursor: pointer; }
+.dial:hover { color: #1d4ed8; }
+.dial:focus-visible { outline: 2px solid #1d4ed8; outline-offset: 1px; }
+.dial-ring { fill: #f1f5f9; stroke: currentColor; stroke-width: 2; }
+.dial-knob { fill: currentColor; transform-origin: 16px 16px; transition: transform 0.45s cubic-bezier(.5,0,.2,1); }
+.dial[aria-pressed="true"] .dial-knob { transform: rotate(90deg); }
+@media (prefers-reduced-motion: reduce) { .dial-knob { transition: none; } }

@@ -566,10 +566,16 @@ button, .inv-zone, .clef-hit, .key, svg { touch-action: manipulation; }
 .local-badge[hidden] { display: none; }
 html.is-local body { border-top: 6px solid #ea580c; }
 
-/* Explore: horizontal / vertical signature layout, top right above the keyboard */
-.stage-tools { display: flex; justify-content: flex-end; padding: 0 8px 6px; }
+/* Explore: horizontal / vertical signature dial, top right above the keyboard */
+.stage-tools { display: flex; justify-content: flex-end; padding: 0 8px; }
 .stage-tools[hidden] { display: none; }
-.segmented-small label { padding: 4px 14px; font-size: 0.85rem; }
+.dial { width: 34px; height: 34px; padding: 2px; border: 0; border-radius: 50%; background: transparent; color: #64748b; cursor: pointer; }
+.dial:hover { color: #1d4ed8; }
+.dial:focus-visible { outline: 2px solid #1d4ed8; outline-offset: 1px; }
+.dial-ring { fill: #f1f5f9; stroke: currentColor; stroke-width: 2; }
+.dial-knob { fill: currentColor; transform-origin: 16px 16px; transition: transform 0.45s cubic-bezier(.5,0,.2,1); }
+.dial[aria-pressed="true"] .dial-knob { transform: rotate(90deg); }
+@media (prefers-reduced-motion: reduce) { .dial-knob { transition: none; } }
 </style>
 </head>
 <body>
@@ -629,13 +635,12 @@ html.is-local body { border-top: 6px solid #ea580c; }
 
     <section class="stage-card" aria-label="Keyboard">
       <div class="stage-tools" id="layout-bar">
-        <fieldset class="segmented segmented-small" id="layout-group">
-          <legend class="sr-only">Signature layout</legend>
-          <input type="radio" name="layout" id="layout-h" value="horizontal" checked>
-          <label for="layout-h">Horizontal</label>
-          <input type="radio" name="layout" id="layout-v" value="vertical">
-          <label for="layout-v">Vertical</label>
-        </fieldset>
+        <button type="button" class="dial" id="layout-dial" aria-pressed="false" aria-label="Signature layout: horizontal (switch to vertical)" title="Horizontal / vertical signatures">
+          <svg viewBox="0 0 32 32" width="30" height="30" aria-hidden="true">
+            <circle cx="16" cy="16" r="13" class="dial-ring"/>
+            <g class="dial-knob"><rect x="8" y="10.2" width="16" height="3.4" rx="1.7"/><rect x="8" y="18.4" width="16" height="3.4" rx="1.7"/></g>
+          </svg>
+        </button>
       </div>
       <div id="stage" class="stage"></div>
     </section>
@@ -2132,19 +2137,19 @@ var KeyboardRender = (function () {
 
   // One box over a key. The row says how many accidentals the signature has: an odd number sits on the lower row, an even
   // number (C major and A minor have none) on the upper row. A line joins the box to its key (dashed for a black key).
-  function keyBox(k, mode, spellIdx, isSelected, stacked) {
+  function keyBox(k, mode, spellIdx, isSelected, stacked, extra) {
     var sp = T.specsFor(mode, k.pc)[spellIdx];
     var pal = PAL[sp.kind];
     var top = sp.n % 2 === 1 ? Y_WT : Y_BB - H_E;
     if (stacked) top -= H_E + 4;                              // the other spelling of F♯/G♭, stacked above the one in the row
     var x = k.cx - BOXW_E / 2;
-    return (stacked ? '' : '<line x1="' + f(k.cx) + '" y1="' + f(top + H_E) + '" x2="' + f(k.cx) + '" y2="' + KEY_TOP + '" stroke="' + pal[2] +
+    return (extra ? '<g class="xbox" data-kind="' + sp.kind + '">' : '') + (stacked ? '' : '<line x1="' + f(k.cx) + '" y1="' + f(top + H_E) + '" x2="' + f(k.cx) + '" y2="' + KEY_TOP + '" stroke="' + pal[2] +
         '" stroke-width="1.5"' + (T.isBlack(k.pc) ? ' stroke-dasharray="4 3"' : '') + '/>') +
       '<g class="box" data-pc="' + k.pc + '" data-s="' + k.s + '" data-spell="' + spellIdx + '" role="button" tabindex="-1" aria-label="' +
         esc('Root the keyboard on ' + T.keyTitle(sp, mode)) + '">' +
       '<rect x="' + f(x) + '" y="' + f(top) + '" width="' + f(BOXW_E) + '" height="' + f(H_E) + '" rx="6" fill="' + pal[0] +
         '" stroke="' + (isSelected ? SELECT : pal[1]) + '" stroke-width="' + (isSelected ? 3 : 1.5) + '"/>' +
-      smallStaff(k.cx, top, sp, boxLabel(sp, mode)) + '</g>';
+      smallStaff(k.cx, top, sp, boxLabel(sp, mode)) + '</g>' + (extra ? '</g>' : '');       // extra = only in the vertical layout
   }
 
   // ---- keys ------------------------------------------------------------------
@@ -2800,8 +2805,9 @@ var KeyboardRender = (function () {
         var rel = k.s - geo.startSemitone;
         if (!k.inside || rel < 0 || rel > 23) return;
         var left = rel <= 11;
-        if (!vertical && (boxIsFlat(T.specsFor(mode, k.pc)[0]) === flatLeft) !== left) return;      // (vertical: every key has its box)
-        parts.push(keyBox(k, mode, 0, selected && k.pc === r && spellIdx === 0));
+        var wnative = (boxIsFlat(T.specsFor(mode, k.pc)[0]) === flatLeft) === left;
+        if (!vertical && !wnative) return;                                   // (vertical: every key has its box)
+        parts.push(keyBox(k, mode, 0, selected && k.pc === r && spellIdx === 0, false, !wnative));
       });
       blacks.forEach(function (k) {
         var rel = k.s - geo.startSemitone;
@@ -2810,8 +2816,8 @@ var KeyboardRender = (function () {
         var specs = T.specsFor(mode, k.pc);
         specs.forEach(function (sp, j) {
           var native = (boxIsFlat(sp) === flatLeft) === left;                // the spelling that belongs in this octave
-          if (native || (vertical && specs.length === 1)) parts.push(keyBox(k, mode, j, selected && k.pc === r && spellIdx === j));
-          else if (vertical) parts.push(keyBox(k, mode, j, selected && k.pc === r && spellIdx === j, true));    // F♯/G♭: the alternate goes above
+          if (native || (vertical && specs.length === 1)) parts.push(keyBox(k, mode, j, selected && k.pc === r && spellIdx === j, false, !native));
+          else if (vertical) parts.push(keyBox(k, mode, j, selected && k.pc === r && spellIdx === j, true, true));    // F♯/G♭: the alternate goes above
         });
       });
       parts.push('</g>');
@@ -3015,7 +3021,8 @@ var KeyboardRender = (function () {
   var kindInputs = document.querySelectorAll('input[name="scalekind"]');
   var kindGroup = document.getElementById('scalekind-group');
   var layoutBar = document.getElementById('layout-bar');
-  var layoutInputs = document.querySelectorAll('input[name="layout"]');
+  var layoutDial = document.getElementById('layout-dial');
+  var pendingLayout = null;                 // 'in' | 'out': the layout animation the next draw() runs
   var scoreBox = document.getElementById('score');
   var okEl = document.getElementById('n-ok');
   var badEl = document.getElementById('n-bad');
@@ -3339,7 +3346,7 @@ var KeyboardRender = (function () {
     restoring = true;
     setTimeout(function () { restoring = false; }, 200);
     if (typeof s.clef === 'string' && KeyboardRender.CLEFS.some(function (c) { return c.id === s.clef; })) state.clef = s.clef;
-    if (s.layout === 'vertical') { state.layout = 'vertical'; document.getElementById('layout-v').checked = true; }
+    if (s.layout === 'vertical') { state.layout = 'vertical'; syncDial(); }
     if (s.mode === 'minor') { state.mode = 'minor'; document.getElementById('mode-minor').checked = true; }
     if (s.level === 'jazz') { level = 'jazz'; document.getElementById('level-jazz').checked = true; }
     var kinds = { full: 'sk-full', pentatonic: 'sk-pent', wholetone: 'sk-whole' };
@@ -4018,6 +4025,7 @@ var KeyboardRender = (function () {
     state.staff = buildStaff();
     layoutBar.hidden = !!state.flash || !!(state.staff && state.selected);       // the signature boxes only show when no stave replaces them
     state.quizStave = quizOn() && state.answered && state.card && state.card.chord ? buildQuizStave() : null;
+    var ghosts = pendingLayout === 'out' && oldSvg ? Array.prototype.map.call(oldSvg.querySelectorAll('.xbox'), function (g) { return g.outerHTML; }).join('') : '';
     stage.innerHTML = KeyboardRender.render(quizOn() ? Object.assign({}, state, { selected: false }) : state);
     resetBtn.hidden = !state.selected || (state.flash && state.cardMode === 'sig') || quizOn();
     updateCaption();
@@ -4026,6 +4034,8 @@ var KeyboardRender = (function () {
     updateProgPanel();
     syncSound();
     var svg = stage.firstElementChild;
+    if (svg && pendingLayout === 'in') layoutIn(svg);
+    else if (svg && ghosts) layoutOut(svg, ghosts);
     if (anim && svg && !reduceMotion) {
       if (anim === 'fade') fade(svg);
       else if (oldKeyLeft != null) slide(oldSvg, oldKeyLeft, svg);   // old drawing is re-attached for the slide
@@ -4949,11 +4959,40 @@ var KeyboardRender = (function () {
     });
   });
 
-  Array.prototype.forEach.call(layoutInputs, function (input) {
-    input.addEventListener('change', function () {
-      if (input.checked) { state.layout = input.value; saveState(); draw(); }
-    });
+  function syncDial() {
+    var v = state.layout === 'vertical';
+    layoutDial.setAttribute('aria-pressed', v ? 'true' : 'false');
+    layoutDial.setAttribute('aria-label', 'Signature layout: ' + (v ? 'vertical (switch to horizontal)' : 'horizontal (switch to vertical)'));
+  }
+  layoutDial.addEventListener('click', function () {
+    state.layout = state.layout === 'vertical' ? 'horizontal' : 'vertical';
+    syncDial();
+    pendingLayout = reduceMotion ? null : state.layout === 'vertical' ? 'in' : 'out';
+    draw();
+    pendingLayout = null;
   });
+  // horizontal -> vertical: clones of the existing staves slide to the open spaces (sharps first, then flats)
+  function layoutIn(svg) {
+    var natives = Array.prototype.filter.call(svg.querySelectorAll('.box'), function (b) { return !b.closest('.xbox'); });
+    var DUR = 700, GAP = 150;
+    Array.prototype.forEach.call(svg.querySelectorAll('.xbox'), function (x) {
+      var eb = x.querySelector('.box');
+      var nb = natives.filter(function (b) { return b.dataset.pc === eb.dataset.pc && b.dataset.spell === eb.dataset.spell; })[0];
+      if (!nb) return;
+      var nr = nb.querySelector('rect'), er = eb.querySelector('rect');
+      var dx = nr.getAttribute('x') - er.getAttribute('x'), dy = nr.getAttribute('y') - er.getAttribute('y');
+      x.animate([{ transform: 'translate(' + dx + 'px,' + dy + 'px)' }, { transform: 'translate(0,0)' }],
+        { duration: DUR, delay: x.dataset.kind === 'flat' ? DUR + GAP : 0, easing: 'ease-in-out', fill: 'backwards' });
+    });
+  }
+  // vertical -> horizontal: the duplicates stay behind and fade out over a few seconds
+  function layoutOut(svg, html) {
+    var g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    g.setAttribute('pointer-events', 'none');
+    g.innerHTML = html;
+    svg.appendChild(g);
+    g.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 3000, easing: 'ease-out', fill: 'forwards' }).onfinish = function () { g.remove(); };
+  }
 
   Array.prototype.forEach.call(viewInputs, function (input) {
     input.addEventListener('change', function () {
@@ -4986,7 +5025,7 @@ var KeyboardRender = (function () {
     state.clef = 'treble';
     level = 'pop';
     document.getElementById('level-pop').checked = true;
-    state.layout = 'horizontal'; document.getElementById('layout-h').checked = true;
+    state.layout = 'horizontal'; syncDial();
     syncStudyOptions();
     resetFtc();
     state.mode = 'major';

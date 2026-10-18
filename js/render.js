@@ -237,19 +237,19 @@ var KeyboardRender = (function () {
 
   // One box over a key. The row says how many accidentals the signature has: an odd number sits on the lower row, an even
   // number (C major and A minor have none) on the upper row. A line joins the box to its key (dashed for a black key).
-  function keyBox(k, mode, spellIdx, isSelected, stacked) {
+  function keyBox(k, mode, spellIdx, isSelected, stacked, extra) {
     var sp = T.specsFor(mode, k.pc)[spellIdx];
     var pal = PAL[sp.kind];
     var top = sp.n % 2 === 1 ? Y_WT : Y_BB - H_E;
     if (stacked) top -= H_E + 4;                              // the other spelling of F♯/G♭, stacked above the one in the row
     var x = k.cx - BOXW_E / 2;
-    return (stacked ? '' : '<line x1="' + f(k.cx) + '" y1="' + f(top + H_E) + '" x2="' + f(k.cx) + '" y2="' + KEY_TOP + '" stroke="' + pal[2] +
+    return (extra ? '<g class="xbox" data-kind="' + sp.kind + '">' : '') + (stacked ? '' : '<line x1="' + f(k.cx) + '" y1="' + f(top + H_E) + '" x2="' + f(k.cx) + '" y2="' + KEY_TOP + '" stroke="' + pal[2] +
         '" stroke-width="1.5"' + (T.isBlack(k.pc) ? ' stroke-dasharray="4 3"' : '') + '/>') +
       '<g class="box" data-pc="' + k.pc + '" data-s="' + k.s + '" data-spell="' + spellIdx + '" role="button" tabindex="-1" aria-label="' +
         esc('Root the keyboard on ' + T.keyTitle(sp, mode)) + '">' +
       '<rect x="' + f(x) + '" y="' + f(top) + '" width="' + f(BOXW_E) + '" height="' + f(H_E) + '" rx="6" fill="' + pal[0] +
         '" stroke="' + (isSelected ? SELECT : pal[1]) + '" stroke-width="' + (isSelected ? 3 : 1.5) + '"/>' +
-      smallStaff(k.cx, top, sp, boxLabel(sp, mode)) + '</g>';
+      smallStaff(k.cx, top, sp, boxLabel(sp, mode)) + '</g>' + (extra ? '</g>' : '');       // extra = only in the vertical layout
   }
 
   // ---- keys ------------------------------------------------------------------
@@ -905,8 +905,9 @@ var KeyboardRender = (function () {
         var rel = k.s - geo.startSemitone;
         if (!k.inside || rel < 0 || rel > 23) return;
         var left = rel <= 11;
-        if (!vertical && (boxIsFlat(T.specsFor(mode, k.pc)[0]) === flatLeft) !== left) return;      // (vertical: every key has its box)
-        parts.push(keyBox(k, mode, 0, selected && k.pc === r && spellIdx === 0));
+        var wnative = (boxIsFlat(T.specsFor(mode, k.pc)[0]) === flatLeft) === left;
+        if (!vertical && !wnative) return;                                   // (vertical: every key has its box)
+        parts.push(keyBox(k, mode, 0, selected && k.pc === r && spellIdx === 0, false, !wnative));
       });
       blacks.forEach(function (k) {
         var rel = k.s - geo.startSemitone;
@@ -915,8 +916,8 @@ var KeyboardRender = (function () {
         var specs = T.specsFor(mode, k.pc);
         specs.forEach(function (sp, j) {
           var native = (boxIsFlat(sp) === flatLeft) === left;                // the spelling that belongs in this octave
-          if (native || (vertical && specs.length === 1)) parts.push(keyBox(k, mode, j, selected && k.pc === r && spellIdx === j));
-          else if (vertical) parts.push(keyBox(k, mode, j, selected && k.pc === r && spellIdx === j, true));    // F♯/G♭: the alternate goes above
+          if (native || (vertical && specs.length === 1)) parts.push(keyBox(k, mode, j, selected && k.pc === r && spellIdx === j, false, !native));
+          else if (vertical) parts.push(keyBox(k, mode, j, selected && k.pc === r && spellIdx === j, true, true));    // F♯/G♭: the alternate goes above
         });
       });
       parts.push('</g>');
