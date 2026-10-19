@@ -1191,6 +1191,7 @@
     state.quizStave = quizOn() && state.answered && state.card && state.card.chord ? buildQuizStave() : null;
     var ghosts = pendingLayout === 'out' && oldSvg ? Array.prototype.map.call(oldSvg.querySelectorAll('.xbox'), function (g) { return g.outerHTML; }).join('') : '';
     stage.innerHTML = KeyboardRender.render(quizOn() ? Object.assign({}, state, { selected: false }) : state);
+    if (!(quizOn() && state.answered)) levelBanner.hidden = true;        // the level-up note stays until the next question
     resetBtn.hidden = !state.selected || (state.flash && state.cardMode === 'sig') || quizOn();
     updateCaption();
     updateChordPanel();
@@ -1289,6 +1290,56 @@
   }
   function ftcSpec() { return Theory.specsFor(state.mode, ftcQ.pc)[ftcQ.spell]; }
   function ftcChord() { return Chords.chordInKey(ftcSpec().name, state.mode, ftcQ.deg, ftcQ.type); }
+  // ---- level-up: what was added, and a confetti burst ----
+  var levelBanner = document.getElementById('ftc-levelup');
+  var levelText = document.getElementById('ftc-levelup-text');
+  function levelUpText(was, up) {
+    var mode = state.mode, pop = ftcPop();
+    if (up.keys > was.keys) {
+      var pc = FindChord.keys(mode, up.keys).slice(-1)[0];
+      return 'A new key joins the questions: ' + Theory.keyTitle(Theory.specsFor(mode, pc)[0], mode) + '.';
+    }
+    var had = FindChord.chords(mode, pop, was.chords).map(function (c) { return c.deg + '|' + c.type; });
+    var fresh = FindChord.chords(mode, pop, up.chords).filter(function (c) { return had.indexOf(c.deg + '|' + c.type) < 0; });
+    var ref = Theory.specsFor(mode, mode === 'minor' ? 9 : 0)[0].name;
+    var romans = fresh.map(function (c) { var cd = Chords.chordInKey(ref, mode, c.deg, c.type); return cd ? cd.roman : ''; }).filter(Boolean);
+    var types = fresh.map(function (c) { return c.type; }).filter(function (t, i, a) { return a.indexOf(t) === i; });
+    var names = types.map(function (t) { var d = Chords.TYPES.filter(function (x) { return x.id === t; })[0]; return d ? d.label : t; });
+    return 'New chords to find: ' + names.join(' and ') + ' chords on ' + romans.join(', ') + '.';
+  }
+  function celebrate(note) {
+    levelText.textContent = note;
+    levelBanner.hidden = false;
+    levelBanner.style.animation = 'none'; void levelBanner.offsetWidth; levelBanner.style.animation = '';
+    if (reduceMotion) return;
+    var r = levelBanner.getBoundingClientRect();
+    confetti(r.left + r.width / 2, Math.max(60, r.top + r.height / 2));
+  }
+  function confetti(ox, oy) {
+    var cv = document.createElement('canvas');
+    cv.className = 'confetti';
+    cv.width = window.innerWidth; cv.height = window.innerHeight;
+    document.body.appendChild(cv);
+    var g = cv.getContext('2d'), colors = ['#f43f5e', '#f59e0b', '#22c55e', '#3b82f6', '#a855f7', '#eab308', '#14b8a6'];
+    var bits = [];
+    for (var i = 0; i < 160; i++) {
+      var a = Math.random() * Math.PI * 2, sp = 4 + Math.random() * 11;
+      bits.push({ x: ox, y: oy, vx: Math.cos(a) * sp * 1.2, vy: Math.sin(a) * sp - 6, w: 6 + Math.random() * 6, h: 4 + Math.random() * 5,
+                  rot: Math.random() * 6.28, vr: (Math.random() - 0.5) * 0.4, c: colors[i % colors.length] });
+    }
+    var t0 = performance.now(), TOTAL = 3200;
+    (function frame(now) {
+      var t = now - t0;
+      g.clearRect(0, 0, cv.width, cv.height);
+      bits.forEach(function (b) {
+        b.vy += 0.28; b.vx *= 0.992; b.x += b.vx; b.y += b.vy; b.rot += b.vr;
+        g.save(); g.globalAlpha = Math.max(0, Math.min(1, (TOTAL - t) / 900));
+        g.translate(b.x, b.y); g.rotate(b.rot); g.fillStyle = b.c; g.fillRect(-b.w / 2, -b.h / 2, b.w, b.h); g.restore();
+      });
+      if (t < TOTAL) requestAnimationFrame(frame); else cv.remove();
+    })(t0);
+  }
+
   function ftcSay(text) { ftcMsg.textContent = text; }                // (a screen-reader message; the card shows it too)
 
   var ftcSel = { deg: null, type: null };            // this attempt's picks; the second one makes the guess
@@ -1419,7 +1470,7 @@
       state.card.title = ftcName(want) + ' is ' + want.roman + ' in ' + where;
       state.card.modeLine = ftcPop() ? '' : 'Mode: ' + want.mode;
       state.card.status = '';
-      var text = 'Correct: ' + state.card.title + '.';
+      var text = 'Correct: ' + state.card.title + '.', levelUpNote = '';
       if (ftcMissed) ftcStreak = 0;
       else {
         ftcStreak++;
@@ -1429,7 +1480,8 @@
           if (up) {
             ftcLv[state.mode] = { keys: up.keys, chords: up.chords };
             ftcNext = up.next;
-            text += up.keys > l.keys ? ' Level up: one more key.' : ' Level up: more chords.';
+            levelUpNote = levelUpText(l, up);
+            text += ' Level up! ' + levelUpNote;
           }
           ftcStreak = 0;
         }
@@ -1439,6 +1491,7 @@
       updateScore();
       draw(false, false);
       feedback('yes');
+      if (levelUpNote) celebrate(levelUpNote);
       return;
     }
     score.bad++;

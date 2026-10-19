@@ -655,12 +655,21 @@ var KeyboardRender = (function () {
     var cardX = (WIDTH / 2 - 130) + 14 + 8 + clef.w * KB + 8 + sigW + 36;                  // where chordCard puts the chord
     var chords = stave.chords, n = chords.length, lit = 0;
     chords.forEach(function (c, i) { if (c.lit) lit = i; });
-    var slot = Math.min(stave.compact ? 54 : 64, (WIDTH - 16 - header - 18) / n);
-    var need = header + n * slot + 18;
-    var winL = Math.max(8, Math.min(cardX - header - (lit * slot + slot / 2), WIDTH - 8 - need)), winR = winL + need;
+    var avail = WIDTH - 16 - header - 18;
+    var slot = Math.min(stave.compact ? 54 : 64, avail / n);
+    // room either side of the highlighted chord, so its box does not touch its neighbours' labels (only if the width allows)
+    var fsT = n > 10 ? 11 : n > 6 ? 13 : 14, fsS = n > 10 ? 12 : 13, hw = 0;
+    [lit - 1, lit + 1].forEach(function (j) {
+      if (j < 0 || j >= n) return;
+      var c = chords[j];
+      hw = Math.max(hw, Math.max(String(c.top).length * fsT * 0.54, String(c.sub || '').length * fsS * 0.5) / 2);
+    });
+    var gap = Math.max(0, Math.min(hw - slot / 2 + 10, (avail - n * slot) / 2));
+    var need = header + n * slot + 2 * gap + 18;
+    var winL = Math.max(8, Math.min(cardX - header - (lit * slot + gap + slot / 2), WIDTH - 8 - need)), winR = winL + need;
     var cx = WIDTH / 2, ty = 262;
     var out = ['<g class="flashcard chordcard opened" data-answer-pc="' + card.pc + '" data-chord="' + esc(card.symbol || '') + '" data-qdeg="' + card.deg + '" data-qtype="' + esc(card.type || '') + '" data-qinv="' + (card.inv || 0) + '">',
-      '<g transform="translate(0,' + f(dy) + ')">', bigStave(Object.assign({}, stave, { slot: slot }), winL, winR, rootSpec, mode), '</g>'];
+      '<g transform="translate(0,' + f(dy) + ')">', bigStave(Object.assign({}, stave, { slot: slot, litGap: gap }), winL, winR, rootSpec, mode), '</g>'];
     out.push('<text x="' + cx + '" y="' + ty + '" text-anchor="middle" font-size="16" font-weight="bold" fill="#15803d" pointer-events="none">' + esc(card.title || '') + '</text>');
     if (card.modeLine) out.push('<text class="mode-line" x="' + cx + '" y="' + (ty + 24) + '" text-anchor="middle" font-size="15" fill="#5d6475" pointer-events="none">' + esc(card.modeLine) + '</text>');
     out.push(nextButton(cx + 150, ty + 12));
@@ -769,8 +778,11 @@ var KeyboardRender = (function () {
         return Math.max(String(c.top).length * fsTop * 0.54, String(c.sub || "").length * fsSub * 0.5);
       });
       var stagger = widths.some(function (w, j) { return j < widths.length - 1 && (w + widths[j + 1]) / 2 + 4 > slot; });
+      var litIdx = -1;
+      chords.forEach(function (c, i) { if (c.lit) litIdx = i; });
+      var lg = data.litGap && litIdx >= 0 ? data.litGap : 0;          // extra room either side of the lit chord
       chords.forEach(function (c, j) {
-        var left = startX + j * slot;
+        var left = startX + j * slot + (j < litIdx || lg === 0 ? 0 : j === litIdx ? lg : 2 * lg);
         var cx = left + slot / 2;
         var ink = INK;
         if (c.lit) {                              // drawn beneath the staff lines, in the key's own tint
