@@ -1045,7 +1045,7 @@
   // The keyboard did not move (e.g. F -> G: both start on F) but the signature boxes change octaves
   // (flat keys on the left <-> sharp keys on the left): cross-fade them in place.
   function boxSwap(oldSvg, newSvg) {
-    var opts = { duration: 450, easing: 'ease-in-out' };
+    var opts = { duration: 675, easing: 'ease-in-out' };
     function list(svg) {
       return Array.prototype.map.call(svg.querySelectorAll('.box'), function (b) {
         return { el: b, key: b.dataset.pc + '/' + b.dataset.spell, x: +b.querySelector('rect').getAttribute('x'), extra: !!b.closest('.xbox') };
@@ -1068,7 +1068,7 @@
       if (same(news, o)) return;
       var gl = lineOf(o.el), gg = document.createElementNS('http://www.w3.org/2000/svg', 'g');
       gg.innerHTML = (gl ? gl.outerHTML : '') + o.el.outerHTML;
-      gg.animate([{ opacity: 1 }, { opacity: 0 }], opts);
+      gg.animate([{ opacity: 1 }, { opacity: 0 }], { duration: opts.duration, easing: opts.easing, fill: 'forwards' });
       ghost.appendChild(gg);
     });
     newSvg.appendChild(ghost);
@@ -1971,10 +1971,10 @@
       var sc = null;
       if (/^[1-7]$/.test(e.key)) {
         var dchip = chordDegrees.querySelector('[data-deg="' + (parseInt(e.key, 10) - 1) + '"]');
-        if (dchip && !dchip.disabled) sc = dchip.getAttribute('aria-pressed') === 'true' ? 'same' : dchip;     // never toggles a degree off
+        if (dchip && !dchip.disabled) sc = dchip.getAttribute('aria-pressed') === 'true' && !(quizOn() && ftcWrong) ? 'same' : dchip;     // never toggles a degree off (a wrong guess's chips are re-pickable: that starts a new attempt)
       } else if (e.key.length === 1 && TYPE_KEYS.indexOf(e.key.toLowerCase()) >= 0) {
         var tchip = chordTypes.children[TYPE_KEYS.indexOf(e.key.toLowerCase())];
-        if (tchip) sc = tchip.getAttribute('aria-pressed') === 'true' ? 'same' : tchip;
+        if (tchip) sc = tchip.getAttribute('aria-pressed') === 'true' && !(quizOn() && ftcWrong) ? 'same' : tchip;
       }
       if (sc) {
         e.preventDefault();
