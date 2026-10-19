@@ -544,12 +544,13 @@ button, .inv-zone, .clef-hit, .key, svg { touch-action: manipulation; }
 .ftc-msg.ok { color: #15803d; font-weight: 600; }
 .ftc-msg.bad { color: #b91c1c; }
 .ftc-levels { display: flex; flex-wrap: wrap; gap: 8px 24px; align-items: center; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); font-size: 0.9rem; }
-.ftc-step { display: inline-flex; align-items: center; gap: 8px; }
+.ftc-step { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; max-width: 28rem; }
+.ftc-step-row { display: inline-flex; align-items: center; gap: 8px; }
 .ftc-step-name { font-weight: 600; min-width: 3.6em; }
 .ftc-step b { min-width: 1.6em; text-align: center; font-variant-numeric: tabular-nums; }
 .ftc-btn { width: 32px; height: 32px; padding: 0; font-size: 1.1rem; line-height: 1; }
 .ftc-btn:disabled { opacity: 0.35; cursor: default; }
-.ftc-list { color: var(--muted); max-width: 22ch; }
+.ftc-list { color: var(--muted); line-height: 1.5; }
 .ftc-auto { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); cursor: pointer; }
 .ftc-auto small { color: var(--muted); font-variant-numeric: tabular-nums; }
 #chords.quizzing summary { pointer-events: none; }
@@ -682,17 +683,21 @@ html.is-local .ftc-local { display: inline-flex; }
       </div>
       <div class="ftc-levels" role="group" aria-label="Difficulty">
         <div class="ftc-step">
+          <div class="ftc-step-row">
           <span class="ftc-step-name">Keys</span>
           <button type="button" id="ftc-keys-dn" class="btn-reset ftc-btn" aria-label="Fewer keys">&minus;</button>
           <b id="ftc-keys-n" aria-live="polite">1</b>
           <button type="button" id="ftc-keys-up" class="btn-reset ftc-btn" aria-label="More keys">+</button>
+          </div>
           <small id="ftc-keys-list" class="ftc-list"></small>
         </div>
         <div class="ftc-step">
+          <div class="ftc-step-row">
           <span class="ftc-step-name">Chords</span>
           <button type="button" id="ftc-chords-dn" class="btn-reset ftc-btn" aria-label="Fewer chords">&minus;</button>
           <b id="ftc-chords-n" aria-live="polite">1</b>
           <button type="button" id="ftc-chords-up" class="btn-reset ftc-btn" aria-label="More chords">+</button>
+          </div>
           <small id="ftc-chords-list" class="ftc-list"></small>
         </div>
         <div class="ftc-side">
@@ -4511,6 +4516,17 @@ var KeyboardRender = (function () {
   function ftcKeyName(pc) {
     return Theory.specsFor(state.mode, pc).map(function (sp) { return sp.name + (state.mode === 'minor' ? 'm' : ''); }).join('/');
   }
+  // after the levels were changed by hand: a question that is no longer in play is replaced
+  function ftcRevalidate() {
+    if (!quizOn() || !ftcQ || state.answered) return;
+    var l = ftcLevels();
+    var okKey = FindChord.keys(state.mode, l.keys).indexOf(ftcQ.pc) >= 0;
+    var okChord = FindChord.chords(state.mode, ftcPop(), l.chords).some(function (c) { return c.deg === ftcQ.deg && c.type === ftcQ.type; });
+    if (okKey && okChord) return;
+    var anim = ftcNewQuestion(true);
+    updateScore();
+    draw(anim, false);
+  }
   function ftcStep(dial, delta) {
     var l = ftcLevels();
     var max = dial === 'keys' ? FindChord.maxKeys() : FindChord.maxChords(state.mode, ftcPop());
@@ -4522,6 +4538,7 @@ var KeyboardRender = (function () {
     saveFtc();
     updateFtc();
     if (dial === 'chords') updateChordPanel();         // the chips offered follow the chords level
+    ftcRevalidate();
   }
 
   function updateFtc() {
@@ -4537,13 +4554,11 @@ var KeyboardRender = (function () {
     document.getElementById('ftc-keys-up').disabled = l.keys >= FindChord.maxKeys();
     document.getElementById('ftc-chords-dn').disabled = l.chords <= 1;
     document.getElementById('ftc-chords-up').disabled = l.chords >= maxC;
-    var newestKey = FindChord.keys(state.mode, l.keys).slice(-1)[0];
-    document.getElementById('ftc-keys-list').textContent = l.keys === 1 ? ftcKeyName(newestKey) + ' only' : '+ ' + ftcKeyName(newestKey);
+    document.getElementById('ftc-keys-list').textContent = FindChord.keys(state.mode, l.keys).map(ftcKeyName).join('  ');     // every key in play
     var home = state.mode === 'minor' ? 'A' : 'C';
-    var group = FindChord.groups(state.mode, ftcPop())[l.chords - 1].map(function (ch) {
+    document.getElementById('ftc-chords-list').textContent = FindChord.chords(state.mode, ftcPop(), l.chords).map(function (ch) {
       return Chords.chordInKey(home, state.mode, ch.deg, ch.type).roman;
-    }).join(' ');
-    document.getElementById('ftc-chords-list').textContent = (l.chords === 1 ? '' : '+ ') + group;
+    }).join('  ');                                                                                                      // every chord in play
     document.getElementById('ftc-streak').textContent = ftcAuto ? '(' + ftcStreak + ' of ' + FindChord.STREAK + ' right in a row)' : '';
   }
 
@@ -4572,6 +4587,7 @@ var KeyboardRender = (function () {
     }
     ftcStreak = 0;
     saveFtc(); updateFtc(); updateChordPanel();
+    ftcRevalidate();
   }
   document.getElementById('ftc-harder').addEventListener('click', function () { ftcDifficulty(1); });
   document.getElementById('ftc-easier').addEventListener('click', function () { ftcDifficulty(-1); });

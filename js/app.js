@@ -1551,6 +1551,17 @@
   function ftcKeyName(pc) {
     return Theory.specsFor(state.mode, pc).map(function (sp) { return sp.name + (state.mode === 'minor' ? 'm' : ''); }).join('/');
   }
+  // after the levels were changed by hand: a question that is no longer in play is replaced
+  function ftcRevalidate() {
+    if (!quizOn() || !ftcQ || state.answered) return;
+    var l = ftcLevels();
+    var okKey = FindChord.keys(state.mode, l.keys).indexOf(ftcQ.pc) >= 0;
+    var okChord = FindChord.chords(state.mode, ftcPop(), l.chords).some(function (c) { return c.deg === ftcQ.deg && c.type === ftcQ.type; });
+    if (okKey && okChord) return;
+    var anim = ftcNewQuestion(true);
+    updateScore();
+    draw(anim, false);
+  }
   function ftcStep(dial, delta) {
     var l = ftcLevels();
     var max = dial === 'keys' ? FindChord.maxKeys() : FindChord.maxChords(state.mode, ftcPop());
@@ -1562,6 +1573,7 @@
     saveFtc();
     updateFtc();
     if (dial === 'chords') updateChordPanel();         // the chips offered follow the chords level
+    ftcRevalidate();
   }
 
   function updateFtc() {
@@ -1577,13 +1589,11 @@
     document.getElementById('ftc-keys-up').disabled = l.keys >= FindChord.maxKeys();
     document.getElementById('ftc-chords-dn').disabled = l.chords <= 1;
     document.getElementById('ftc-chords-up').disabled = l.chords >= maxC;
-    var newestKey = FindChord.keys(state.mode, l.keys).slice(-1)[0];
-    document.getElementById('ftc-keys-list').textContent = l.keys === 1 ? ftcKeyName(newestKey) + ' only' : '+ ' + ftcKeyName(newestKey);
+    document.getElementById('ftc-keys-list').textContent = FindChord.keys(state.mode, l.keys).map(ftcKeyName).join('  ');     // every key in play
     var home = state.mode === 'minor' ? 'A' : 'C';
-    var group = FindChord.groups(state.mode, ftcPop())[l.chords - 1].map(function (ch) {
+    document.getElementById('ftc-chords-list').textContent = FindChord.chords(state.mode, ftcPop(), l.chords).map(function (ch) {
       return Chords.chordInKey(home, state.mode, ch.deg, ch.type).roman;
-    }).join(' ');
-    document.getElementById('ftc-chords-list').textContent = (l.chords === 1 ? '' : '+ ') + group;
+    }).join('  ');                                                                                                      // every chord in play
     document.getElementById('ftc-streak').textContent = ftcAuto ? '(' + ftcStreak + ' of ' + FindChord.STREAK + ' right in a row)' : '';
   }
 
@@ -1612,6 +1622,7 @@
     }
     ftcStreak = 0;
     saveFtc(); updateFtc(); updateChordPanel();
+    ftcRevalidate();
   }
   document.getElementById('ftc-harder').addEventListener('click', function () { ftcDifficulty(1); });
   document.getElementById('ftc-easier').addEventListener('click', function () { ftcDifficulty(-1); });

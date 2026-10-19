@@ -527,12 +527,13 @@ button, .inv-zone, .clef-hit, .key, svg { touch-action: manipulation; }
 .ftc-msg.ok { color: #15803d; font-weight: 600; }
 .ftc-msg.bad { color: #b91c1c; }
 .ftc-levels { display: flex; flex-wrap: wrap; gap: 8px 24px; align-items: center; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); font-size: 0.9rem; }
-.ftc-step { display: inline-flex; align-items: center; gap: 8px; }
+.ftc-step { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; max-width: 28rem; }
+.ftc-step-row { display: inline-flex; align-items: center; gap: 8px; }
 .ftc-step-name { font-weight: 600; min-width: 3.6em; }
 .ftc-step b { min-width: 1.6em; text-align: center; font-variant-numeric: tabular-nums; }
 .ftc-btn { width: 32px; height: 32px; padding: 0; font-size: 1.1rem; line-height: 1; }
 .ftc-btn:disabled { opacity: 0.35; cursor: default; }
-.ftc-list { color: var(--muted); max-width: 22ch; }
+.ftc-list { color: var(--muted); line-height: 1.5; }
 .ftc-auto { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); cursor: pointer; }
 .ftc-auto small { color: var(--muted); font-variant-numeric: tabular-nums; }
 #chords.quizzing summary { pointer-events: none; }
