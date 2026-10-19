@@ -1553,6 +1553,28 @@
   document.getElementById('ftc-keys-up').addEventListener('click', function () { ftcStep('keys', 1); });
   document.getElementById('ftc-chords-dn').addEventListener('click', function () { ftcStep('chords', -1); });
   document.getElementById('ftc-chords-up').addEventListener('click', function () { ftcStep('chords', 1); });
+  // local testing: the same one-step-at-a-time moves the automatic level-up makes, up or back down
+  function ftcDifficulty(dir) {
+    var l = ftcLevels(), maxC = FindChord.maxChords(state.mode, ftcPop());
+    if (dir > 0) {
+      var up = FindChord.levelUp(state.mode, ftcPop(), l.keys, l.chords, ftcNext);
+      if (!up) return;
+      ftcLv[state.mode] = { keys: up.keys, chords: up.chords }; ftcNext = up.next;
+    } else {
+      var first = ftcNext === 'chords' ? 'keys' : 'chords';          // the dial raised last goes down first
+      var order = first === 'keys' ? ['keys', 'chords'] : ['chords', 'keys'], done = false;
+      order.forEach(function (d) {
+        if (done || l[d] <= 1) return;
+        var nl = { keys: l.keys, chords: l.chords }; nl[d]--;
+        ftcLv[state.mode] = nl; ftcNext = d; done = true;
+      });
+      if (!done) return;
+    }
+    ftcStreak = 0;
+    saveFtc(); updateFtc(); updateChordPanel();
+  }
+  document.getElementById('ftc-harder').addEventListener('click', function () { ftcDifficulty(1); });
+  document.getElementById('ftc-easier').addEventListener('click', function () { ftcDifficulty(-1); });
   ftcAutoBox.addEventListener('change', function () { ftcAuto = ftcAutoBox.checked; ftcStreak = 0; saveFtc(); updateFtc(); });
   loadFtc();
   ftcAutoBox.checked = ftcAuto;

@@ -594,6 +594,10 @@ html.is-local body { border-top: 6px solid #ea580c; }
 @keyframes levelup-in { from { transform: scale(0.85); opacity: 0; } to { transform: none; opacity: 1; } }
 .confetti { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 50; }
 @media (prefers-reduced-motion: reduce) { .levelup { animation: none; } }
+
+/* local-only testing controls */
+.ftc-local { display: none; gap: 4px; margin-left: 4px; }
+html.is-local .ftc-local { display: inline-flex; }
 </style>
 </head>
 <body>
@@ -688,6 +692,10 @@ html.is-local body { border-top: 6px solid #ea580c; }
           <small id="ftc-chords-list" class="ftc-list"></small>
         </div>
         <label class="ftc-auto"><input type="checkbox" id="ftc-auto" checked> Level up automatically <small id="ftc-streak"></small></label>
+        <span class="ftc-local" aria-label="Test controls (local only)">
+          <button type="button" id="ftc-harder" class="btn-reset ftc-btn" aria-label="Harder (local test)" title="Harder (local test)">&#9650;</button>
+          <button type="button" id="ftc-easier" class="btn-reset ftc-btn" aria-label="Easier (local test)" title="Easier (local test)">&#9660;</button>
+        </span>
       </div>
     </section>
 
@@ -4461,6 +4469,28 @@ var KeyboardRender = (function () {
   document.getElementById('ftc-keys-up').addEventListener('click', function () { ftcStep('keys', 1); });
   document.getElementById('ftc-chords-dn').addEventListener('click', function () { ftcStep('chords', -1); });
   document.getElementById('ftc-chords-up').addEventListener('click', function () { ftcStep('chords', 1); });
+  // local testing: the same one-step-at-a-time moves the automatic level-up makes, up or back down
+  function ftcDifficulty(dir) {
+    var l = ftcLevels(), maxC = FindChord.maxChords(state.mode, ftcPop());
+    if (dir > 0) {
+      var up = FindChord.levelUp(state.mode, ftcPop(), l.keys, l.chords, ftcNext);
+      if (!up) return;
+      ftcLv[state.mode] = { keys: up.keys, chords: up.chords }; ftcNext = up.next;
+    } else {
+      var first = ftcNext === 'chords' ? 'keys' : 'chords';          // the dial raised last goes down first
+      var order = first === 'keys' ? ['keys', 'chords'] : ['chords', 'keys'], done = false;
+      order.forEach(function (d) {
+        if (done || l[d] <= 1) return;
+        var nl = { keys: l.keys, chords: l.chords }; nl[d]--;
+        ftcLv[state.mode] = nl; ftcNext = d; done = true;
+      });
+      if (!done) return;
+    }
+    ftcStreak = 0;
+    saveFtc(); updateFtc(); updateChordPanel();
+  }
+  document.getElementById('ftc-harder').addEventListener('click', function () { ftcDifficulty(1); });
+  document.getElementById('ftc-easier').addEventListener('click', function () { ftcDifficulty(-1); });
   ftcAutoBox.addEventListener('change', function () { ftcAuto = ftcAutoBox.checked; ftcStreak = 0; saveFtc(); updateFtc(); });
   loadFtc();
   ftcAutoBox.checked = ftcAuto;
