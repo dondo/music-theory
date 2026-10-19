@@ -1484,7 +1484,7 @@ var Weights = (function () {
 /* "Find the chord": the difficulty ladder and the question picker. Pure functions, no DOM.
  *
  * Two independent dials, both counted from 1:
- *   keys   - how many keys are in play (most common first: C, G, F, D, B♭ ... ; A, E, D, B, G ... in minor)
+ *   keys   - how many keys are in play (C, D, G, A, F first, then D♭, B♭, E♭ ...; their relative minors in minor)
  *   chords - how many chord groups are in play (I IV V V7 first, then vi ii, then the sevenths ...)
  * A chord is { deg: 0..6, type } exactly as the chord selector uses it.
  */
@@ -1496,8 +1496,8 @@ var Weights = (function () {
 
   // pitch classes, most familiar key first
   var KEY_ORDER = {
-    major: [0, 7, 5, 2, 10, 9, 3, 4, 8, 11, 1, 6],     // C G F D B♭ A E♭ E A♭ B D♭ F♯/G♭
-    minor: [9, 4, 2, 11, 7, 6, 0, 1, 5, 8, 10, 3]      // A E D B G F♯ C C♯ F G♯ B♭ D♯/E♭
+    major: [0, 2, 7, 9, 5, 1, 10, 3, 4, 8, 11, 6],     // C D G A F, then D♭ B♭ E♭, then E A♭ B F♯/G♭
+    minor: [9, 11, 4, 6, 2, 10, 7, 0, 1, 5, 8, 3]      // the same keys' relatives: A B E F♯ D, B♭ G C, C♯ F G♯ D♯/E♭
   };
 
   function c(deg, type) { return { deg: deg, type: type || 'triad' }; }
@@ -1645,13 +1645,31 @@ var Weights = (function () {
   // Levelling up by itself: after STREAK first-try answers in a row the next dial goes up one, keys and
   // chords taking turns (keys first). Returns the new { keys, chords, next } or null when nothing can rise.
   var STREAK = 5;
-  function levelUp(mode, pop, keysLevel, chordsLevel, nextDial) {
-    var dials = nextDial === 'chords' ? ['chords', 'keys'] : ['keys', 'chords'];
-    for (var i = 0; i < 2; i++) {
-      if (dials[i] === 'keys' && keysLevel < maxKeys()) return { keys: keysLevel + 1, chords: chordsLevel, next: 'chords' };
-      if (dials[i] === 'chords' && chordsLevel < maxChords(mode, pop)) return { keys: keysLevel, chords: chordsLevel + 1, next: 'keys' };
-    }
-    return null;
+  // The order the levels come in: which dial goes up at each step (step 0 takes level 1 to level 2).
+  // Four more keys (C already; D G A F), then the vi ii chords, then three more keys (D♭ B♭ E♭), then the sevenths,
+  // then two keys (E A♭), then iii and vii°, then two keys (B F♯/G♭), then their sevenths; after that only chords are left.
+  var PLAN = ['keys', 'keys', 'keys', 'keys', 'chords', 'keys', 'keys', 'keys', 'chords', 'keys', 'keys', 'chords', 'keys', 'keys', 'chords'];
+  // the dial the next level raises (or null at the top); a dial that is already full gives way to the other
+  function planDial(mode, pop, keysLevel, chordsLevel) {
+    var d = PLAN[keysLevel + chordsLevel - 2] || 'chords';
+    var canKeys = keysLevel < maxKeys(), canChords = chordsLevel < maxChords(mode, pop);
+    if (d === 'keys' && !canKeys) d = 'chords';
+    else if (d === 'chords' && !canChords) d = 'keys';
+    return (d === 'keys' ? canKeys : canChords) ? d : null;
+  }
+  // the dial whose raising led to this level (null at level 1)
+  function lastDial(mode, pop, keysLevel, chordsLevel) {
+    if (keysLevel + chordsLevel <= 2) return null;
+    var d = PLAN[keysLevel + chordsLevel - 3] || 'chords';
+    if (d === 'keys' && keysLevel <= 1) d = 'chords';
+    else if (d === 'chords' && chordsLevel <= 1) d = 'keys';
+    return d;
+  }
+  function levelUp(mode, pop, keysLevel, chordsLevel) {
+    var d = planDial(mode, pop, keysLevel, chordsLevel);
+    if (!d) return null;
+    var k = keysLevel + (d === 'keys' ? 1 : 0), ch = chordsLevel + (d === 'chords' ? 1 : 0);
+    return { keys: k, chords: ch, next: planDial(mode, pop, k, ch) || d };
   }
 
   // "Find a chord": which of the key's chords is exactly the notes picked on the keyboard?
@@ -1681,7 +1699,7 @@ var Weights = (function () {
   }
 
   return { KEY_ORDER: KEY_ORDER, STREAK: STREAK, groups: groups, maxKeys: maxKeys, maxChords: maxChords,
-           clamp: clamp, keys: keys, chords: chords, pick: pick, levelUp: levelUp, identify: identify,
+           clamp: clamp, keys: keys, chords: chords, pick: pick, levelUp: levelUp, planDial: planDial, lastDial: lastDial, identify: identify,
            weightKey: weightKey, weightOf: weightOf, miss: miss, hit: hit, loadWeights: loadWeights, saveWeights: saveWeights, resetWeights: resetWeights,
            pickInversion: pickInversion, freshTest: freshTest, freshPlan: freshPlan, freshRecord: freshRecord,
            levelNumber: levelNumber, levelCount: levelCount, FRESH_WINDOW: FRESH_WINDOW, FRESH_MIN: FRESH_MIN };
@@ -4575,7 +4593,7 @@ var KeyboardRender = (function () {
       ftcLv[state.mode] = { keys: up.keys, chords: up.chords }; ftcNext = up.next;
       ftcRaised(up.keys > l.keys ? 'keys' : 'chords');
     } else {
-      var first = ftcNext === 'chords' ? 'keys' : 'chords';          // the dial raised last goes down first
+      var first = FindChord.lastDial(state.mode, ftcPop(), l.keys, l.chords) || 'chords';          // the dial raised last goes down first
       var order = first === 'keys' ? ['keys', 'chords'] : ['chords', 'keys'], done = false;
       order.forEach(function (d) {
         if (done || l[d] <= 1) return;

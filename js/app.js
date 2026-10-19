@@ -1610,7 +1610,7 @@
       ftcLv[state.mode] = { keys: up.keys, chords: up.chords }; ftcNext = up.next;
       ftcRaised(up.keys > l.keys ? 'keys' : 'chords');
     } else {
-      var first = ftcNext === 'chords' ? 'keys' : 'chords';          // the dial raised last goes down first
+      var first = FindChord.lastDial(state.mode, ftcPop(), l.keys, l.chords) || 'chords';          // the dial raised last goes down first
       var order = first === 'keys' ? ['keys', 'chords'] : ['chords', 'keys'], done = false;
       order.forEach(function (d) {
         if (done || l[d] <= 1) return;

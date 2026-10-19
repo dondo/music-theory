@@ -184,3 +184,6 @@ Automatic level-ups now show a banner saying what was added (a new key, or which
 
 ### Levels in Find the chord
 The row shows "Level n" (keys level + chords level − 1). Each level adds one challenge — a new key or a new group of chords — and that newest challenge is weighted up (×4) while it is new, and every run of five questions is guaranteed at least two about it.
+
+### The level order (Find the chord)
+Levels follow a fixed plan rather than alternating: keys C, D, G, A, F first (levels 2–5), then the vi and ii chords, then keys D♭, B♭, E♭, then the sevenths of I IV ii vi, then E and A♭, then iii and vii°, then B and F♯/G♭, then their sevenths; once all twelve keys are in, only chords remain. Minor uses the relative minors of the same keys (A, B, E, F♯, D, then B♭, G, C, …).
