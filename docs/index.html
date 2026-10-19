@@ -5028,7 +5028,7 @@ var KeyboardRender = (function () {
   // horizontal -> vertical: clones of the existing staves slide to the open spaces (sharps first, then flats)
   function layoutIn(svg) {
     var natives = Array.prototype.filter.call(svg.querySelectorAll('.box'), function (b) { return !b.closest('.xbox'); });
-    var DUR = 700, SHAKE = 500, DIM = 400, GAP = 700, SEQ = DUR + SHAKE + DIM;     // per group: slide, shake in place, dim
+    var DUR = 700, SHAKE = 500, DIM = 400, GAP = 350, SEQ = DUR + SHAKE + DIM;     // per group: slide, shake in place, dim
     Array.prototype.forEach.call(svg.querySelectorAll('.xbox'), function (x) {
       var eb = x.querySelector('.box');
       var nb = natives.filter(function (b) { return b.dataset.pc === eb.dataset.pc && b.dataset.spell === eb.dataset.spell; })[0];
