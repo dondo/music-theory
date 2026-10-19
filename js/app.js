@@ -291,8 +291,13 @@
         return Chords.chordInKey(rootName, state.mode, x, 'triad')[key] - Chords.chordInKey(rootName, state.mode, y, 'triad')[key];
       });
     }
+    // Find the chord: only the degrees and types that can come up at the current chords level are offered
+    var inPlay = quizOn() && !alt ? FindChord.chords(state.mode, ftcPop(), ftcLevels().chords) : null;
+    function degInPlay(dd) { return !inPlay || inPlay.some(function (c) { return c.deg === dd; }); }
+    function typeInPlay(id) { return !inPlay || inPlay.some(function (c) { return c.type === id; }); }
     for (var oi = 0; oi < order.length; oi++) {
       var d = order[oi];
+      if (!degInPlay(d)) continue;
       var b = el('button', 'chip chip-deg');
       b.type = 'button';
       b.setAttribute('data-deg', d);
@@ -320,7 +325,7 @@
     var types = alt ? Chords.ALT_TYPES.filter(function (t) {
       for (var i = 0; i < sc.offsets.length; i++) if (Chords.chordInScale(sc, i, t.id)) return true;
       return false;
-    }) : Chords.TYPES.filter(function (t) { return !pop || POP_HIDDEN_TYPES.indexOf(t.id) < 0; });
+    }) : Chords.TYPES.filter(function (t) { return (!pop || POP_HIDDEN_TYPES.indexOf(t.id) < 0) && typeInPlay(t.id); });
     if (!alt && typeSortBy !== 'complexity') {         // stable sort: ties keep the complexity (list) order
       var rank = null;
       if (typeSortBy === 'ambiguity' || typeSortBy === 'tension') {
@@ -1519,6 +1524,7 @@
     ftcStreak = 0;
     saveFtc();
     updateFtc();
+    if (dial === 'chords') updateChordPanel();         // the chips offered follow the chords level
   }
 
   function updateFtc() {
