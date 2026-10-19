@@ -458,15 +458,25 @@
   var STATE_KEY = 'music-theory-state-v1';
   var restoring = false;
 
+  var pendingStudy = null;
   function saveState() {
-    if (restoring || state.flash) return;
+    if (restoring) return;
     try {
-      window.localStorage.setItem(STATE_KEY, JSON.stringify({
-        root: state.root, spell: state.spell, selected: state.selected, mode: state.mode, level: level,
-        scaleKind: state.scaleKind, chord: state.chord, chordTypes: chordTypes_, typePicked: typePicked,
-        chordsOpen: chordsDetails.open, progOpen: progDetails.open, progIndex: progIndex, progRevealed: progRevealed, clef: state.clef,
-        layout: state.layout
-      }));
+      var o;
+      if (state.flash) {          // Study: the Explore picks are kept as they were; only what is shared and the Study view itself change
+        try { o = JSON.parse(window.localStorage.getItem(STATE_KEY)); } catch (e) { o = null; }
+        o = Object.assign(o && typeof o === 'object' ? o : {}, { mode: state.mode, level: level, layout: state.layout, clef: state.clef });
+      } else {
+        o = {
+          root: state.root, spell: state.spell, selected: state.selected, mode: state.mode, level: level,
+          scaleKind: state.scaleKind, chord: state.chord, chordTypes: chordTypes_, typePicked: typePicked,
+          chordsOpen: chordsDetails.open, progOpen: progDetails.open, progIndex: progIndex, progRevealed: progRevealed, clef: state.clef,
+          layout: state.layout
+        };
+      }
+      o.flash = !!state.flash;
+      o.cardMode = state.cardMode;
+      window.localStorage.setItem(STATE_KEY, JSON.stringify(o));
     } catch (e) { /* storage unavailable */ }
   }
 
@@ -501,6 +511,7 @@
         state.chord = { deg: c.deg, type: c.type };
       }
     }
+    if (s.flash && FM_IDS[s.cardMode]) pendingStudy = s.cardMode;      // Study view: reopened once everything is set up (below)
     typePicked = !!s.typePicked;
     progRevealed = !!s.progRevealed;
     if (Number.isInteger(s.progIndex) && s.progIndex >= 0 && s.progIndex < prog.length) progIndex = s.progIndex;
@@ -1404,7 +1415,7 @@
 
   function enterQuiz() {
     restoring = true;                                 // opening the selector must not wipe what the toggle handler resets
-    setTimeout(function () { restoring = false; }, 80);
+    setTimeout(function () { restoring = false; saveState(); }, 80);       // (the save skipped meanwhile, e.g. the Study mode, is made now)
     if (ftcPrevChordsOpen === null) ftcPrevChordsOpen = chordsDetails.open;
     chordsDetails.open = true;
     state.scaleKind = 'full';
@@ -2320,5 +2331,10 @@
   restoreState();
   syncStudyOptions();
   updateScore();
+  if (pendingStudy) {                                   // reload in Study: back to the same Study mode
+    document.getElementById('view-flash').checked = true;
+    setCardMode(pendingStudy);
+    setView(true);
+  }
   draw(false, false);
 })();
