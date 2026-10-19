@@ -1570,7 +1570,7 @@
     chordsPanel.classList.toggle('quizzing', on);
     if (!on || !ftcQ) return;
     var l = ftcLevels(), maxC = FindChord.maxChords(state.mode, ftcPop());
-    document.getElementById('ftc-level').textContent = 'Level ' + FindChord.levelNumber(l.keys, l.chords) + ' of ' + FindChord.levelCount(state.mode, ftcPop());
+    document.getElementById('ftc-level').textContent = 'Level ' + FindChord.levelNumber(l.keys, l.chords);
     document.getElementById('ftc-keys-n').textContent = l.keys;
     document.getElementById('ftc-chords-n').textContent = l.chords;
     document.getElementById('ftc-keys-dn').disabled = l.keys <= 1;

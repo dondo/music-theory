@@ -599,7 +599,9 @@ html.is-local body { border-top: 6px solid #ea580c; }
 .ftc-local { display: none; gap: 4px; margin-left: 4px; }
 html.is-local .ftc-local { display: inline-flex; }
 
-.ftc-level { font-size: 1.05rem; padding: 4px 12px; border-radius: 999px; background: #dbeafe; color: #1e3a8a; }
+.ftc-side { margin-left: auto; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
+.ftc-side-row { display: flex; align-items: center; gap: 4px; }
+.ftc-level { font-size: 0.78rem; font-weight: 600; color: var(--muted); }
 </style>
 </head>
 <body>
@@ -693,12 +695,16 @@ html.is-local .ftc-local { display: inline-flex; }
           <button type="button" id="ftc-chords-up" class="btn-reset ftc-btn" aria-label="More chords">+</button>
           <small id="ftc-chords-list" class="ftc-list"></small>
         </div>
-        <b id="ftc-level" class="ftc-level">Level 1</b>
+        <div class="ftc-side">
+        <span id="ftc-level" class="ftc-level">Level 1</span>
+        <div class="ftc-side-row">
         <label class="ftc-auto"><input type="checkbox" id="ftc-auto" checked> Level up automatically <small id="ftc-streak"></small></label>
         <span class="ftc-local" aria-label="Test controls (local only)">
           <button type="button" id="ftc-harder" class="btn-reset ftc-btn" aria-label="Harder (local test)" title="Harder (local test)">&#9650;</button>
           <button type="button" id="ftc-easier" class="btn-reset ftc-btn" aria-label="Easier (local test)" title="Easier (local test)">&#9660;</button>
         </span>
+        </div>
+        </div>
       </div>
     </section>
 
@@ -4524,7 +4530,7 @@ var KeyboardRender = (function () {
     chordsPanel.classList.toggle('quizzing', on);
     if (!on || !ftcQ) return;
     var l = ftcLevels(), maxC = FindChord.maxChords(state.mode, ftcPop());
-    document.getElementById('ftc-level').textContent = 'Level ' + FindChord.levelNumber(l.keys, l.chords) + ' of ' + FindChord.levelCount(state.mode, ftcPop());
+    document.getElementById('ftc-level').textContent = 'Level ' + FindChord.levelNumber(l.keys, l.chords);
     document.getElementById('ftc-keys-n').textContent = l.keys;
     document.getElementById('ftc-chords-n').textContent = l.chords;
     document.getElementById('ftc-keys-dn').disabled = l.keys <= 1;
