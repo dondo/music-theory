@@ -187,3 +187,6 @@ The row shows "Level n" (keys level + chords level − 1). Each level adds one c
 
 ### The level order (Find the chord)
 Levels follow a fixed plan rather than alternating: keys C, D, G, A, F first (levels 2–5), then the vi and ii chords, then keys D♭, B♭, E♭, then the sevenths of I IV ii vi, then E and A♭, then iii and vii°, then B and F♯/G♭, then their sevenths; once all twelve keys are in, only chords remain. Minor uses the relative minors of the same keys (A, B, E, F♯, D, then B♭, G, C, …).
+
+### iPhone
+On phone-sized screens (narrow, or a phone on its side) the Keys / Chords / Level controls are hidden in Find the chord; the level-up banner and confetti still appear, just under the keyboard. A new Find the chord question also scrolls the staff to the middle of the screen so the clef is in view.

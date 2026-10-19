@@ -1226,6 +1226,10 @@
     updateProgPanel();
     syncSound();
     var svg = stage.firstElementChild;
+    if (centerStage) {
+      centerStage = false;
+      if (stage.scrollWidth > stage.clientWidth) stage.scrollLeft = (stage.scrollWidth - stage.clientWidth) / 2;
+    }
     if (svg && pendingLayout === 'in') layoutIn(svg);
     else if (svg && ghosts) layoutOut(svg, ghosts);
     if (anim && svg && !reduceMotion) {
@@ -1279,6 +1283,7 @@
   var ftcLast = { major: null, minor: null };        // per mode: the dial raised most recently = where the new challenge is
   var ftcFresh = { asked: 0, fresh: 0 };              // questions about the new challenge in the current run of five
   function ftcRaised(dial) { ftcLast[state.mode] = dial; ftcFresh = { asked: 0, fresh: 0 }; }
+  var centerStage = false;
   var ftcQ = null;                                    // { pc, spell, deg, type, inv }  (inv: the inversion shown, 0 = root position)
   var ftcW = FindChord.loadWeights();                 // chords you have missed turn up more often (persisted)
   var ftcMissed = false;                              // a wrong Check on this question: no streak credit
@@ -1424,6 +1429,7 @@
     var oldSvg = stage.firstElementChild;
     var oldKey = animate && oldSvg ? oldSvg.querySelector('.key[data-pc="' + q.pc + '"]') : null;
     ftcQ = q;
+    centerStage = true;                               // (a narrow screen scrolls to the middle, where the card is)
     state.answered = false;
     state.root = q.pc;
     state.spell = q.spell;
