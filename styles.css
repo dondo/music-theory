@@ -536,7 +536,7 @@ button, .inv-zone, .clef-hit, .key, svg { touch-action: manipulation; }
 .ftc-list { color: var(--muted); line-height: 1.5; }
 .ftc-auto { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); cursor: pointer; }
 .ftc-auto small { color: var(--muted); font-variant-numeric: tabular-nums; }
-#chords.quizzing summary { pointer-events: none; }
+#chords.quizzing summary { pointer-events: none; display: none; }       /* Find the chord: no "Chords in the key of …" header */
 @media (hover: none) { .ftc-btn { width: 40px; height: 40px; } }
 
 /* Chords: find a chord from keys picked on the keyboard */

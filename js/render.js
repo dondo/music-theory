@@ -786,7 +786,7 @@ var KeyboardRender = (function () {
         var cx = left + slot / 2;
         var ink = INK;
         if (c.lit) {                              // drawn beneath the staff lines, in the key's own tint
-          under.push('<rect x="' + f(left + 2) + '" y="' + f(YB - 4 * SB - 5.5 * SB) + '" width="' + f(slot - 4) + '" height="' + f(14.5 * SB + 40) + '" rx="8" fill="' + pal[0] + '" stroke="' + pal[1] + '" stroke-width="1.2"/>');
+          under.push('<rect class="lit-box" x="' + f(left + 2) + '" y="' + f(YB - 4 * SB - 5.5 * SB) + '" width="' + f(slot - 4) + '" height="' + f(14.5 * SB + 40) + '" rx="8" fill="' + pal[0] + '" stroke="' + pal[1] + '" stroke-width="1.2"/>');
         }
         out.push(chordOnStave(cx, c.notes, sigVal, ink, clef));
         var yTop = YB + 2.5 * SB + 24, ySub = YB + 2.5 * SB + 41;

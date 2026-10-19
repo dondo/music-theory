@@ -1226,10 +1226,9 @@
     updateProgPanel();
     syncSound();
     var svg = stage.firstElementChild;
-    if (centerStage) {
-      centerStage = false;
-      if (stage.scrollWidth > stage.clientWidth) stage.scrollLeft = (stage.scrollWidth - stage.clientWidth) / 2;
-    }
+    if (quizOn() && state.answered && !stageAnswered) centerStage = 'open';      // the staff has just opened out
+    stageAnswered = quizOn() && state.answered;
+    if (centerStage) { var how = centerStage; centerStage = false; centreQuizStage(how); }
     if (svg && pendingLayout === 'in') layoutIn(svg);
     else if (svg && ghosts) layoutOut(svg, ghosts);
     if (anim && svg && !reduceMotion) {
@@ -1283,7 +1282,34 @@
   var ftcLast = { major: null, minor: null };        // per mode: the dial raised most recently = where the new challenge is
   var ftcFresh = { asked: 0, fresh: 0 };              // questions about the new challenge in the current run of five
   function ftcRaised(dial) { ftcLast[state.mode] = dial; ftcFresh = { asked: 0, fresh: 0 }; }
-  var centerStage = false;
+  var centerStage = false, stageAnswered = false;
+  // Narrow screens scroll the stage sideways. 'card': centre the question's card with its "I give up" button;
+  // 'open': the staff of inversions has opened, so show its clef through to the highlighted chord (centred if both fit)
+  function centreQuizStage(how) {
+    if (stage.scrollWidth <= stage.clientWidth) return;
+    var base = stage.getBoundingClientRect().left - stage.scrollLeft;         // x of the stage's content origin on screen
+    var card = stage.querySelector('.chordcard');
+    if (!card) return;
+    var left, right;
+    if (how === 'open') {                                // the staff's left edge (the clef) through to the highlighted chord
+      var st = card.querySelector('.stave'), lit = card.querySelector('.lit-box');
+      if (!st) return;
+      var sr = st.getBoundingClientRect();
+      left = sr.left - base - 4;
+      right = sr.right - base + 4;
+      if (right - left > stage.clientWidth * 1.15) {      // too wide to show whole: the clef through to the highlighted chord
+        left -= 4;
+        right = (lit ? lit : st).getBoundingClientRect().right - base + 12;
+      }
+    } else {                                             // the card and the "I give up" button beside it
+      var frame = card.querySelector('rect'), gu = card.querySelector('.giveup-btn');
+      if (!frame) return;
+      left = frame.getBoundingClientRect().left - base;
+      right = (gu || frame).getBoundingClientRect().right - base;
+    }
+    var span = right - left, view = stage.clientWidth;
+    stage.scrollLeft = span <= view ? left - (view - span) / 2 : left;
+  }
   var ftcQ = null;                                    // { pc, spell, deg, type, inv }  (inv: the inversion shown, 0 = root position)
   var ftcW = FindChord.loadWeights();                 // chords you have missed turn up more often (persisted)
   var ftcMissed = false;                              // a wrong Check on this question: no streak credit
@@ -1429,7 +1455,7 @@
     var oldSvg = stage.firstElementChild;
     var oldKey = animate && oldSvg ? oldSvg.querySelector('.key[data-pc="' + q.pc + '"]') : null;
     ftcQ = q;
-    centerStage = true;                               // (a narrow screen scrolls to the middle, where the card is)
+    centerStage = 'card';                             // (a narrow screen scrolls so the card and its button are in view)
     state.answered = false;
     state.root = q.pc;
     state.spell = q.spell;
