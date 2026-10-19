@@ -1047,34 +1047,45 @@
   // that were on the right glide to the left octave, the ones on the left slide off the left margin,
   // and the new ones for the right octave slide in from further right.
   function boxSwap(oldSvg, newSvg) {
-    var oldBoxes = Array.prototype.filter.call(oldSvg.querySelectorAll('.box'), function (b) { return !b.closest('.xbox'); });
     var opts = { duration: SLIDE_MS, easing: EASE };
-    var ghost = null;
-    function lineOf(b) { var l = b.previousElementSibling; return l && l.tagName.toLowerCase() === 'line' ? l : null; }
-    Array.prototype.forEach.call(newSvg.querySelectorAll('.box'), function (nb) {
-      if (nb.closest('.xbox')) return;
-      var ob = oldBoxes.filter(function (b) { return b.dataset.pc === nb.dataset.pc && b.dataset.spell === nb.dataset.spell; })[0];
-      if (!ob) return;
-      var d = ob.querySelector('rect').getAttribute('x') - nb.querySelector('rect').getAttribute('x');   // > 0: it was to the right
-      if (Math.abs(d) < 1) return;
-      var from = d;
-      if (d < 0) {                                   // it would travel right: instead the old one leaves on the left, a new one enters from the right
-        from = -d;
-        if (!ghost) { ghost = document.createElementNS('http://www.w3.org/2000/svg', 'g'); ghost.setAttribute('pointer-events', 'none'); }
-        var gl = lineOf(ob), gg = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-        gg.innerHTML = (gl ? gl.outerHTML : '') + ob.outerHTML;
-        gg.animate([{ transform: 'translateX(0)', opacity: 1 }, { transform: 'translateX(' + d + 'px)', opacity: 0 }], opts);
-        ghost.appendChild(gg);
-      }
-      var kf = [{ transform: 'translateX(' + from + 'px)' }, { transform: 'translateX(0)' }];
-      nb.animate(kf, opts);
-      var line = lineOf(nb);
-      if (line) line.animate(kf, opts);
-    });
-    if (ghost) {
-      newSvg.appendChild(ghost);
-      setTimeout(function () { ghost.remove(); }, SLIDE_MS + 50);
+    function list(svg) {
+      return Array.prototype.map.call(svg.querySelectorAll('.box'), function (b) {
+        return { el: b, key: b.dataset.pc + '/' + b.dataset.spell, x: +b.querySelector('rect').getAttribute('x'), extra: !!b.closest('.xbox') };
+      });
     }
+    function lineOf(b) { var l = b.previousElementSibling; return l && l.tagName.toLowerCase() === 'line' ? l : null; }
+    var olds = list(oldSvg), news = list(newSvg);
+    function find(arr, key, x) { return arr.filter(function (b) { return b.key === key && Math.abs(b.x - x) < 1; })[0]; }
+    // one octave of boxes = the distance between two boxes of the same key
+    var X = 0;
+    olds.concat(news).forEach(function (a) { olds.concat(news).forEach(function (b) { if (!X && a.key === b.key && Math.abs(a.x - b.x) > 1) X = Math.abs(a.x - b.x); }); });
+    if (!X) return;
+    // vertical layout: the same boxes sit in the same places, only which are the originals changes: then everything still shifts
+    var shift = news.some(function (n) { var o = find(olds, n.key, n.x); return o && o.extra !== n.extra; });
+    var horizontal = olds.length === news.length && !news.some(function (n) { return n.extra; });
+    var forced = shift && !horizontal;
+    var used = [];
+    var ghost = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    ghost.setAttribute('pointer-events', 'none');
+    news.forEach(function (n) {
+      var stay = !forced && find(olds, n.key, n.x);
+      if (stay) { used.push(stay); return; }
+      var from = find(olds, n.key, n.x + X);                     // the old box one octave to the right glides here
+      if (from) used.push(from);
+      var kf = [{ transform: 'translateX(' + X + 'px)' }, { transform: 'translateX(0)' }];     // (none: a new one enters from the right)
+      n.el.animate(kf, opts);
+      var ln = lineOf(n.el);
+      if (ln) ln.animate(kf, opts);
+    });
+    olds.forEach(function (o) {                                    // the rest leave off the left margin
+      if (used.indexOf(o) >= 0) return;
+      var gl = lineOf(o.el), gg = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      gg.innerHTML = (gl ? gl.outerHTML : '') + o.el.outerHTML;
+      gg.animate([{ transform: 'translateX(0)', opacity: 1 }, { transform: 'translateX(' + (-X) + 'px)', opacity: 0 }], opts);
+      ghost.appendChild(gg);
+    });
+    newSvg.appendChild(ghost);
+    setTimeout(function () { ghost.remove(); }, SLIDE_MS + 50);
   }
 
   // what the big stave shows: the progression (Progressions open), else the selected chord and its inversions (Chords open)
@@ -2146,7 +2157,7 @@
   // horizontal -> vertical: clones of the existing staves slide to the open spaces (sharps first, then flats)
   function layoutIn(svg) {
     var natives = Array.prototype.filter.call(svg.querySelectorAll('.box'), function (b) { return !b.closest('.xbox'); });
-    var DUR = 700, SHAKE = 500, DIM = 400, GAP = 350, SEQ = DUR + SHAKE + DIM;     // per group: slide, shake in place, dim
+    var DUR = 700, SHAKE = 500, DIM = 400, GAP = 175, SEQ = DUR + SHAKE + DIM;     // per group: slide, shake in place, dim
     Array.prototype.forEach.call(svg.querySelectorAll('.xbox'), function (x) {
       var eb = x.querySelector('.box');
       var nb = natives.filter(function (b) { return b.dataset.pc === eb.dataset.pc && b.dataset.spell === eb.dataset.spell; })[0];
