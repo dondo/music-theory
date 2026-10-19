@@ -1060,15 +1060,13 @@
     var X = 0;
     olds.concat(news).forEach(function (a) { olds.concat(news).forEach(function (b) { if (!X && a.key === b.key && Math.abs(a.x - b.x) > 1) X = Math.abs(a.x - b.x); }); });
     if (!X) return;
-    // vertical layout: the same boxes sit in the same places, only which are the originals changes: then everything still shifts
-    var shift = news.some(function (n) { var o = find(olds, n.key, n.x); return o && o.extra !== n.extra; });
-    var horizontal = olds.length === news.length && !news.some(function (n) { return n.extra; });
-    var forced = shift && !horizontal;
+    // vertical layout: the same boxes sit in the same places, so they stay put (the new key's box is just highlighted)
+    if (olds.some(function (o) { return o.extra; }) || news.some(function (n) { return n.extra; })) return;
     var used = [];
     var ghost = document.createElementNS('http://www.w3.org/2000/svg', 'g');
     ghost.setAttribute('pointer-events', 'none');
     news.forEach(function (n) {
-      var stay = !forced && find(olds, n.key, n.x);
+      var stay = find(olds, n.key, n.x);
       if (stay) { used.push(stay); return; }
       var from = find(olds, n.key, n.x + X);                     // the old box one octave to the right glides here
       if (from) used.push(from);
