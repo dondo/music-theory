@@ -1276,6 +1276,9 @@
   var FM_IDS = { key: 'fm-key', sig: 'fm-sig', chord: 'fm-chord' };
   var ftcLv = { major: { keys: 1, chords: 1 }, minor: { keys: 1, chords: 1 } };
   var ftcAuto = true, ftcNext = 'keys', ftcStreak = 0;
+  var ftcLast = { major: null, minor: null };        // per mode: the dial raised most recently = where the new challenge is
+  var ftcFresh = { asked: 0, fresh: 0 };              // questions about the new challenge in the current run of five
+  function ftcRaised(dial) { ftcLast[state.mode] = dial; ftcFresh = { asked: 0, fresh: 0 }; }
   var ftcQ = null;                                    // { pc, spell, deg, type, inv }  (inv: the inversion shown, 0 = root position)
   var ftcW = FindChord.loadWeights();                 // chords you have missed turn up more often (persisted)
   var ftcMissed = false;                              // a wrong Check on this question: no streak credit
@@ -1299,15 +1302,17 @@
       });
       ftcAuto = o.auto !== false;
       ftcNext = o.next === 'chords' ? 'chords' : 'keys';
+      ['major', 'minor'].forEach(function (m) { if (o.last && (o.last[m] === 'keys' || o.last[m] === 'chords')) ftcLast[m] = o.last[m]; });
+      if (o.fresh && Number.isInteger(o.fresh.asked) && Number.isInteger(o.fresh.fresh) && o.fresh.asked >= 0 && o.fresh.asked < 5 && o.fresh.fresh >= 0) ftcFresh = { asked: o.fresh.asked, fresh: o.fresh.fresh };
       ftcStreak = Number.isInteger(o.streak) ? Math.max(0, Math.min(FindChord.STREAK - 1, o.streak)) : 0;
     } catch (e) { /* defaults */ }
   }
   function saveFtc() {
-    try { window.localStorage.setItem(FTC_KEY, JSON.stringify({ levels: ftcLv, auto: ftcAuto, next: ftcNext, streak: ftcStreak })); } catch (e) { /* storage unavailable */ }
+    try { window.localStorage.setItem(FTC_KEY, JSON.stringify({ levels: ftcLv, auto: ftcAuto, next: ftcNext, streak: ftcStreak, last: ftcLast, fresh: ftcFresh })); } catch (e) { /* storage unavailable */ }
   }
   function resetFtc() {
     ftcLv = { major: { keys: 1, chords: 1 }, minor: { keys: 1, chords: 1 } };
-    ftcAuto = true; ftcNext = 'keys'; ftcStreak = 0;
+    ftcAuto = true; ftcNext = 'keys'; ftcStreak = 0; ftcLast = { major: null, minor: null }; ftcFresh = { asked: 0, fresh: 0 };
     ftcAutoBox.checked = true;
     try { window.localStorage.removeItem(FTC_KEY); } catch (e) { /* storage unavailable */ }
   }
@@ -1336,7 +1341,7 @@
     return 'New chords to find: ' + names.join(' and ') + ' chords on ' + romans.join(', ') + '.';
   }
   function celebrate(note) {
-    levelText.textContent = note;
+    levelText.textContent = 'You are on level ' + FindChord.levelNumber(ftcLevels().keys, ftcLevels().chords) + '. ' + note;
     levelBanner.hidden = false;
     levelBanner.style.animation = 'none'; void levelBanner.offsetWidth; levelBanner.style.animation = '';
     if (reduceMotion) return;
@@ -1405,12 +1410,15 @@
 
   function ftcNewQuestion(animate) {
     var l = ftcLevels();
-    var q = FindChord.pick(state.mode, ftcPop(), l.keys, l.chords, Math.random, ftcQ, function (c) { return FindChord.weightOf(ftcW, state.mode, c); });
+    var isFresh = FindChord.freshTest(state.mode, ftcPop(), l.keys, l.chords, ftcLast[state.mode]);
+    var q = FindChord.pick(state.mode, ftcPop(), l.keys, l.chords, Math.random, ftcQ, function (c) { return FindChord.weightOf(ftcW, state.mode, c); },
+                           isFresh, isFresh ? FindChord.freshPlan(ftcFresh) : null);
     q = { pc: q.pc, deg: q.deg, type: q.type };
     q.spell = Math.floor(Math.random() * Theory.specsFor(state.mode, q.pc).length);
     var resumed = resumeQ && resumeQ.cardMode === 'chord' ? resumeQ : null;
     resumeQ = null;
     if (resumed) q = { pc: resumed.pc, deg: resumed.deg, type: resumed.type, spell: resumed.spell };
+    else if (isFresh) { FindChord.freshRecord(ftcFresh, isFresh(q)); saveFtc(); }
     var nNotes = Chords.chordInKey(Theory.specsFor(state.mode, q.pc)[q.spell].name, state.mode, q.deg, q.type).pcOffsets.length;
     q.inv = resumed ? resumed.inv : FindChord.pickInversion(nNotes, !ftcPop(), Math.random);              // Jazz: inversions mixed in at every level
     var oldSvg = stage.firstElementChild;
@@ -1511,6 +1519,7 @@
           if (up) {
             ftcLv[state.mode] = { keys: up.keys, chords: up.chords };
             ftcNext = up.next;
+            ftcRaised(up.keys > l.keys ? 'keys' : 'chords');
             levelUpNote = levelUpText(l, up);
             text += ' Level up! ' + levelUpNote;
           }
@@ -1549,6 +1558,7 @@
     if (next === l[dial]) return;
     ftcLv[state.mode] = { keys: dial === 'keys' ? next : l.keys, chords: dial === 'chords' ? next : l.chords };
     ftcStreak = 0;
+    ftcRaised(delta > 0 ? dial : null);
     saveFtc();
     updateFtc();
     if (dial === 'chords') updateChordPanel();         // the chips offered follow the chords level
@@ -1560,6 +1570,7 @@
     chordsPanel.classList.toggle('quizzing', on);
     if (!on || !ftcQ) return;
     var l = ftcLevels(), maxC = FindChord.maxChords(state.mode, ftcPop());
+    document.getElementById('ftc-level').textContent = 'Level ' + FindChord.levelNumber(l.keys, l.chords) + ' of ' + FindChord.levelCount(state.mode, ftcPop());
     document.getElementById('ftc-keys-n').textContent = l.keys;
     document.getElementById('ftc-chords-n').textContent = l.chords;
     document.getElementById('ftc-keys-dn').disabled = l.keys <= 1;
@@ -1587,6 +1598,7 @@
       var up = FindChord.levelUp(state.mode, ftcPop(), l.keys, l.chords, ftcNext);
       if (!up) return;
       ftcLv[state.mode] = { keys: up.keys, chords: up.chords }; ftcNext = up.next;
+      ftcRaised(up.keys > l.keys ? 'keys' : 'chords');
     } else {
       var first = ftcNext === 'chords' ? 'keys' : 'chords';          // the dial raised last goes down first
       var order = first === 'keys' ? ['keys', 'chords'] : ['chords', 'keys'], done = false;
@@ -1596,6 +1608,7 @@
         ftcLv[state.mode] = nl; ftcNext = d; done = true;
       });
       if (!done) return;
+      ftcRaised(null);
     }
     ftcStreak = 0;
     saveFtc(); updateFtc(); updateChordPanel();
@@ -1912,7 +1925,7 @@
       state.answered = false;
       state.guess = null;
       state.card = null;
-      if (quizOn()) { ftcQ = null; ftcStreak = 0; state.chord = null; typePicked = false; ftcNewQuestion(false); }
+      if (quizOn()) { ftcQ = null; ftcStreak = 0; ftcFresh = { asked: 0, fresh: 0 }; state.chord = null; typePicked = false; ftcNewQuestion(false); }
       else newCard();
     }
     draw(state.flash ? 'fade' : false, false);

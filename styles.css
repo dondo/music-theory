@@ -581,3 +581,5 @@ html.is-local body { border-top: 6px solid #ea580c; }
 /* local-only testing controls */
 .ftc-local { display: none; gap: 4px; margin-left: 4px; }
 html.is-local .ftc-local { display: inline-flex; }
+
+.ftc-level { font-size: 1.05rem; padding: 4px 12px; border-radius: 999px; background: #dbeafe; color: #1e3a8a; }

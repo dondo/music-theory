@@ -581,5 +581,44 @@ check('find the chord inversions: Pop is always root position; Jazz mixes every 
   assert.strictEqual(FC.pickInversion(7, true, function () { return 0.999999; }), 6);
 });
 
+
+check('find the chord: each run of five questions has at least two about the level\'s new challenge', function () {
+  var FCx = FC, rngSeed = 7;
+  function rnd() { rngSeed = (rngSeed * 16807) % 2147483647; return rngSeed / 2147483647; }
+  ['major', 'minor'].forEach(function (mode) {
+    [true, false].forEach(function (pop) {
+      var mc = FCx.maxChords(mode, pop);
+      [['keys', 5, 3], ['chords', 4, 4], ['chords', 1, 2], ['keys', 12, mc], ['chords', 12, mc]].forEach(function (c) {
+        var last = c[0], kl = Math.min(c[1], 12), cl = Math.min(c[2], mc);
+        if (last === 'chords' && cl < 2 || last === 'keys' && kl < 2) return;
+        var fresh = FCx.freshTest(mode, pop, kl, cl, last), tr = { asked: 0, fresh: 0 }, runs = 0;
+        assert.ok(fresh, 'fresh predicate exists');
+        for (var run = 0; run < 200; run++) {
+          var n = 0;
+          for (var k = 0; k < 5; k++) {
+            var q = FCx.pick(mode, pop, kl, cl, rnd, null, null, fresh, FCx.freshPlan(tr));
+            var f = fresh(q); if (f) n++;
+            FCx.freshRecord(tr, f);
+          }
+          assert.ok(n >= 2, mode + ' ' + (pop ? 'pop' : 'jazz') + ' ' + last + ' ' + kl + '/' + cl + ': only ' + n + ' fresh in a run');
+          runs++;
+        }
+      });
+    });
+  });
+  assert.strictEqual(FCx.freshTest('major', true, 1, 1, 'keys'), null);
+  assert.strictEqual(FCx.freshTest('major', true, 3, 3, null), null);
+  assert.strictEqual(FCx.levelNumber(1, 1), 1);
+  assert.strictEqual(FCx.levelCount('major', true), FCx.maxKeys() + FCx.maxChords('major', true) - 1);
+});
+
+check('find the chord: the new challenge is asked about often at the start of a level', function () {
+  var seed = 11; function rnd() { seed = (seed * 16807) % 2147483647; return seed / 2147483647; }
+  var fresh = FC.freshTest('major', true, 6, 3, 'keys'), hits = 0, N = 2000;
+  for (var i = 0; i < N; i++) hits += fresh(FC.pick('major', true, 6, 3, rnd, null, null, fresh, 'boost')) ? 1 : 0;
+  // one key of six would be ~17% unboosted; boosted it is clearly more
+  assert.ok(hits / N > 0.4, 'boosted share ' + hits / N);
+});
+
 console.log(failures ? '\n' + failures + ' FAILED' : '\nall tests passed');
 process.exit(failures ? 1 : 0);

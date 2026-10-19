@@ -181,3 +181,6 @@ A small rotating dial at the top right of the Explore keyboard switches the sign
 
 ## Find the chord: level-up and the opened stave
 Automatic level-ups now show a banner saying what was added (a new key, or which chords on which numerals) with a confetti burst (none under reduced motion); the banner stays until the next question. When the stave opens after a correct guess, any spare width is used to give the highlighted chord room on either side, so its box doesn't touch the neighbouring inversions' labels.
+
+### Levels in Find the chord
+The row shows "Level n of N" (keys level + chords level − 1). Each level adds one challenge — a new key or a new group of chords — and that newest challenge is weighted up (×4) while it is new, and every run of five questions is guaranteed at least two about it.

@@ -102,7 +102,8 @@
   // one question: a key (pc) and a chord, never the same pair as `avoid` (when there is any choice);
   // `weight(q)` (optional, >= 1) makes the chords you have missed more likely
   // `rng` returns [0, 1); `avoid` is { pc, deg, type } or null
-  function pick(mode, pop, keysLevel, chordsLevel, rng, avoid, weight) {
+  // `fresh(q)` (optional) marks the new challenge of the level; `how` is 'only' (just those) or 'boost' (those weigh FRESH_BOOST times more)
+  function pick(mode, pop, keysLevel, chordsLevel, rng, avoid, weight, fresh, how) {
     var ks = keys(mode, keysLevel), cs = chords(mode, pop, chordsLevel);
     var all = [];
     ks.forEach(function (pc) { cs.forEach(function (ch) { all.push({ pc: pc, deg: ch.deg, type: ch.type }); }); });
@@ -110,12 +111,45 @@
       return !(avoid && q.pc === avoid.pc && q.deg === avoid.deg && q.type === avoid.type);
     });
     if (!pool.length) pool = all;
-    if (!weight) return pool[Math.min(pool.length - 1, Math.floor(rng() * pool.length))];
-    var ws = pool.map(function (q) { return Math.max(0, weight(q)); }), total = ws.reduce(function (a, b) { return a + b; }, 0);
+    if (!weight && !(fresh && how)) return pool[Math.min(pool.length - 1, Math.floor(rng() * pool.length))];
+    var ws = pool.map(function (q) {
+      var w = weight ? Math.max(0, weight(q)) : 1;
+      if (fresh && how) { if (fresh(q)) w *= how === 'boost' ? FRESH_BOOST : 1; else if (how === 'only') w = 0; }
+      return w;
+    }), total = ws.reduce(function (a, b) { return a + b; }, 0);
+    if (total <= 0) return pool[Math.min(pool.length - 1, Math.floor(rng() * pool.length))];
     var x = rng() * total;
     for (var i = 0; i < pool.length; i++) { x -= ws[i]; if (x < 0) return pool[i]; }
     return pool[pool.length - 1];
   }
+
+  // ---- the newest challenge of a level (a new key, or a new group of chords) ----
+  // It is asked about often at first, and in every run of FRESH_WINDOW questions at least FRESH_MIN are about it.
+  var FRESH_WINDOW = 5, FRESH_MIN = 2, FRESH_BOOST = 4;
+  // `last`: the dial raised most recently, 'keys' | 'chords' | null (nothing new). Returns a predicate or null.
+  function freshTest(mode, pop, keysLevel, chordsLevel, last) {
+    if (last === 'keys') {
+      var pc = keys(mode, keysLevel).slice(-1)[0];
+      return keysLevel > 1 ? function (q) { return q.pc === pc; } : null;
+    }
+    if (last === 'chords') {
+      var g = groups(mode, pop), grp = g[Math.min(g.length, Math.max(1, chordsLevel)) - 1];
+      return chordsLevel > 1 ? function (q) { return grp.some(function (c) { return c.deg === q.deg && c.type === q.type; }); } : null;
+    }
+    return null;
+  }
+  // t = { asked, fresh } for the current run: 'only' when the run needs every question left to reach the minimum, else 'boost'
+  function freshPlan(t) {
+    var remaining = FRESH_WINDOW - t.asked, need = FRESH_MIN - t.fresh;
+    return need > 0 && remaining <= need ? 'only' : 'boost';
+  }
+  function freshRecord(t, wasFresh) {
+    t.asked++;
+    if (wasFresh) t.fresh++;
+    if (t.asked >= FRESH_WINDOW) { t.asked = 0; t.fresh = 0; }
+  }
+  function levelNumber(keysLevel, chordsLevel) { return keysLevel + chordsLevel - 1; }
+  function levelCount(mode, pop) { return levelNumber(maxKeys(), maxChords(mode, pop)); }
 
   // Which inversion to show: always root position in Pop; in Jazz root position about 40% of the time,
   // the rest shared out equally among the inversions (0 = root position). `notes` = notes in the chord.
@@ -166,5 +200,6 @@
   return { KEY_ORDER: KEY_ORDER, STREAK: STREAK, groups: groups, maxKeys: maxKeys, maxChords: maxChords,
            clamp: clamp, keys: keys, chords: chords, pick: pick, levelUp: levelUp, identify: identify,
            weightKey: weightKey, weightOf: weightOf, miss: miss, hit: hit, loadWeights: loadWeights, saveWeights: saveWeights, resetWeights: resetWeights,
-           pickInversion: pickInversion };
+           pickInversion: pickInversion, freshTest: freshTest, freshPlan: freshPlan, freshRecord: freshRecord,
+           levelNumber: levelNumber, levelCount: levelCount, FRESH_WINDOW: FRESH_WINDOW, FRESH_MIN: FRESH_MIN };
 });
