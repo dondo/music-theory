@@ -459,6 +459,7 @@
   var restoring = false;
 
   var pendingStudy = null;
+  var reopening = false;                    // true while a reload reopens the Study view
   var resumeQ = null;                       // a saved Study question, used once by the next newCard / ftcNewQuestion
   function saveState() {
     if (restoring) return;
@@ -1298,10 +1299,11 @@
       });
       ftcAuto = o.auto !== false;
       ftcNext = o.next === 'chords' ? 'chords' : 'keys';
+      ftcStreak = Number.isInteger(o.streak) ? Math.max(0, Math.min(FindChord.STREAK - 1, o.streak)) : 0;
     } catch (e) { /* defaults */ }
   }
   function saveFtc() {
-    try { window.localStorage.setItem(FTC_KEY, JSON.stringify({ levels: ftcLv, auto: ftcAuto, next: ftcNext })); } catch (e) { /* storage unavailable */ }
+    try { window.localStorage.setItem(FTC_KEY, JSON.stringify({ levels: ftcLv, auto: ftcAuto, next: ftcNext, streak: ftcStreak })); } catch (e) { /* storage unavailable */ }
   }
   function resetFtc() {
     ftcLv = { major: { keys: 1, chords: 1 }, minor: { keys: 1, chords: 1 } };
@@ -1434,7 +1436,7 @@
     state.scaleKind = 'full';
     document.getElementById('sk-full').checked = true;
     ftcQ = null;
-    ftcStreak = 0;
+    if (!resumeQ && !reopening) ftcStreak = 0;                      // (a reload keeps the streak it had)
     ftcNewQuestion(false);
   }
   function exitQuiz() {
@@ -1527,6 +1529,7 @@
     if (!ftcMissed) ftcNoteMiss();
     ftcMissed = true;
     ftcStreak = 0;
+    saveFtc();
     ftcWrong = true;                                  // (the chips keep showing the wrong chord until the next click)
     var have = Chords.chordInKey(ftcSpec().name, state.mode, got.deg, got.type);
     state.card.status = 'That is ' + have.symbol + ' (' + have.roman + '). Try again.';
@@ -1570,7 +1573,7 @@
       return Chords.chordInKey(home, state.mode, ch.deg, ch.type).roman;
     }).join(' ');
     document.getElementById('ftc-chords-list').textContent = (l.chords === 1 ? '' : '+ ') + group;
-    document.getElementById('ftc-streak').textContent = ftcAuto ? '(' + ftcStreak + '/' + FindChord.STREAK + ')' : '';
+    document.getElementById('ftc-streak').textContent = ftcAuto ? '(' + ftcStreak + ' of ' + FindChord.STREAK + ' right in a row)' : '';
   }
 
   document.getElementById('ftc-keys-dn').addEventListener('click', function () { ftcStep('keys', -1); });
@@ -2352,7 +2355,9 @@
   if (pendingStudy) {                                   // reload in Study: back to the same Study mode
     document.getElementById('view-flash').checked = true;
     setCardMode(pendingStudy);
+    reopening = true;
     setView(true);
+    reopening = false;
   }
   draw(false, false);
 })();
