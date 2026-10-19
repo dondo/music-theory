@@ -459,6 +459,7 @@
   var restoring = false;
 
   var pendingStudy = null;
+  var resumeQ = null;                       // a saved Study question, used once by the next newCard / ftcNewQuestion
   function saveState() {
     if (restoring) return;
     try {
@@ -476,6 +477,11 @@
       }
       o.flash = !!state.flash;
       o.cardMode = state.cardMode;
+      delete o.q;
+      if (state.flash && !state.answered) {            // the open question, so a reload cannot be used to swap it
+        if (quizOn() && ftcQ) o.q = { mode: state.mode, cardMode: 'chord', pc: ftcQ.pc, spell: ftcQ.spell, deg: ftcQ.deg, type: ftcQ.type, inv: ftcQ.inv, missed: ftcMissed };
+        else if (!quizOn() && state.card) o.q = { mode: state.mode, cardMode: state.cardMode, pc: state.card.pc, spell: state.card.spell, missed: missedThisCard };
+      }
       window.localStorage.setItem(STATE_KEY, JSON.stringify(o));
     } catch (e) { /* storage unavailable */ }
   }
@@ -511,7 +517,11 @@
         state.chord = { deg: c.deg, type: c.type };
       }
     }
-    if (s.flash && FM_IDS[s.cardMode]) pendingStudy = s.cardMode;      // Study view: reopened once everything is set up (below)
+    if (s.flash && FM_IDS[s.cardMode]) pendingStudy = s.cardMode;
+    var rq = s.q;
+    if (pendingStudy && rq && rq.cardMode === pendingStudy && rq.mode === state.mode && Number.isInteger(rq.pc) && rq.pc >= 0 && rq.pc < 12 &&
+        Number.isInteger(rq.spell) && rq.spell >= 0 && rq.spell < Theory.specsFor(state.mode, rq.pc).length &&
+        (rq.cardMode !== 'chord' || (Number.isInteger(rq.deg) && rq.deg >= 0 && rq.deg < 7 && typeIds('full').indexOf(rq.type) >= 0 && Number.isInteger(rq.inv) && rq.inv >= 0 && rq.inv < 7))) resumeQ = rq;      // Study view: reopened once everything is set up (below)
     typePicked = !!s.typePicked;
     progRevealed = !!s.progRevealed;
     if (Number.isInteger(s.progIndex) && s.progIndex >= 0 && s.progIndex < prog.length) progIndex = s.progIndex;
@@ -1396,8 +1406,11 @@
     var q = FindChord.pick(state.mode, ftcPop(), l.keys, l.chords, Math.random, ftcQ, function (c) { return FindChord.weightOf(ftcW, state.mode, c); });
     q = { pc: q.pc, deg: q.deg, type: q.type };
     q.spell = Math.floor(Math.random() * Theory.specsFor(state.mode, q.pc).length);
+    var resumed = resumeQ && resumeQ.cardMode === 'chord' ? resumeQ : null;
+    resumeQ = null;
+    if (resumed) q = { pc: resumed.pc, deg: resumed.deg, type: resumed.type, spell: resumed.spell };
     var nNotes = Chords.chordInKey(Theory.specsFor(state.mode, q.pc)[q.spell].name, state.mode, q.deg, q.type).pcOffsets.length;
-    q.inv = FindChord.pickInversion(nNotes, !ftcPop(), Math.random);              // Jazz: inversions mixed in at every level
+    q.inv = resumed ? resumed.inv : FindChord.pickInversion(nNotes, !ftcPop(), Math.random);              // Jazz: inversions mixed in at every level
     var oldSvg = stage.firstElementChild;
     var oldKey = animate && oldSvg ? oldSvg.querySelector('.key[data-pc="' + q.pc + '"]') : null;
     ftcQ = q;
@@ -1407,7 +1420,7 @@
     state.selected = true;                            // (the chord selector needs the key; the keyboard picture ignores it)
     chordCleared = false;
     ftcClearPicks();
-    ftcMissed = false;
+    ftcMissed = resumed ? !!resumed.missed : false;
     state.card = { pc: q.pc, spell: q.spell, chord: { notes: ftcNotes() }, symbol: ftcChord().symbol, deg: q.deg, type: q.type, inv: q.inv, title: '', status: '' };   // (symbol: for the tests and screen readers' sake, not drawn)
     ftcSay('', '');
     return oldKey ? { oldKeyS: parseInt(oldKey.getAttribute('data-s'), 10) } : (animate ? 'fade' : false);
@@ -1672,6 +1685,11 @@
     state.guess = null;
     // a two-spelling key shows one spelling on the cue (random), both once solved; the shown one is lit
     state.card = { pc: pc, spell: Math.floor(Math.random() * Theory.specsFor(state.mode, pc).length) };
+    if (resumeQ && resumeQ.cardMode !== 'chord') {      // reloaded mid-question: the same card again
+      state.card = { pc: resumeQ.pc, spell: resumeQ.spell };
+      missedThisCard = !!resumeQ.missed;
+    }
+    resumeQ = null;
     if (state.cardMode === 'sig') {               // find-the-signature: the keyboard is rooted on the card's tonic
       state.root = pc;
       state.spell = state.card.spell;
