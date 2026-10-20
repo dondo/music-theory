@@ -162,6 +162,7 @@
   var chordDegrees = document.getElementById('chord-degrees');
   var chordTypes = document.getElementById('chord-types');
   var chordInfo = document.getElementById('chord-info');
+  var levelsBox = document.querySelector('.ftc-levels'), levelsHome = levelsBox.parentNode;
   var legendChord = document.querySelectorAll('.legend-chord');
 
   function currentSpec() {
@@ -359,8 +360,13 @@
     var scoreHere = quizOn() && score.ok + score.bad > 0;       // Find the chord: after the first guess the score replaces the instruction
     if (scoreHere) { chordInfo.appendChild(scoreBox); scoreBox.hidden = false; }
     else if (scoreBox.parentNode !== scoreHome) scoreHome.appendChild(scoreBox);
+    if (quizOn()) {                                              // Find the chord: no chord description; the level controls sit below the score
+      if (!scoreHere) chordInfo.appendChild(el('p', 'chord-hint', 'Choose a type and a degree, in either order. The second one you choose is your answer.'));
+      chordInfo.appendChild(levelsBox);
+      return;
+    }
+    if (levelsBox.parentNode !== levelsHome) levelsHome.appendChild(levelsBox);
     if (!state.chord) {
-      if (scoreHere) return;
       chordInfo.appendChild(el('p', 'chord-hint', findOn ? findHint() : quizOn() ? 'Choose a type and a degree, in either order. The second one you choose is your answer.' : alt
         ? 'Pick a note to light up the chord built on it, then try the other types. Only chords whose notes all belong to this scale are offered.'
         : 'Pick a type and a degree to light up the chord on the keyboard. ' +
