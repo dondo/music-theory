@@ -592,7 +592,6 @@ html.is-local body { border-top: 6px solid #ea580c; }
   background: linear-gradient(90deg, #fef9c3, #dcfce7); border: 1px solid #86efac; color: #14532d; animation: levelup-in 0.5s cubic-bezier(.2,1.4,.4,1); }
 .levelup[hidden] { display: none; }
 .levelup-icon { font-size: 1.8rem; }
-.levelup-bubs { display: flex; gap: 5px; margin-top: 6px; }
 .levelup strong { font-size: 1.05rem; }
 @keyframes levelup-in { from { transform: scale(0.85); opacity: 0; } to { transform: none; opacity: 1; } }
 .confetti { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 50; }
@@ -726,7 +725,7 @@ html.is-local .ftc-local { display: inline-flex; }
       <p id="ftc-msg" class="sr-only" role="status" aria-live="polite"></p>
       <div id="ftc-levelup" class="levelup" role="status" hidden>
         <span class="levelup-icon" aria-hidden="true">&#127881;</span>
-        <div><strong>Level up!</strong> <span id="ftc-levelup-text"></span><div id="ftc-levelup-bubs" class="levelup-bubs" aria-hidden="true"></div></div>
+        <div><strong>Level up!</strong> <span id="ftc-levelup-text"></span></div>
       </div>
       <span id="ftc-level" class="ftc-level">Level 1</span>
       <div class="ftc-side-row" id="ftc-autorow">
@@ -4445,9 +4444,6 @@ var KeyboardRender = (function () {
   }
   function celebrate(note) {
     levelText.textContent = 'You are on level ' + FindChord.levelNumber(ftcLevels().keys, ftcLevels().chords) + '. ' + note;
-    var bubs = document.getElementById('ftc-levelup-bubs');          // the row that earned it: all green
-    bubs.textContent = '';
-    for (var i = 0; i < streakNeed(); i++) { var d = document.createElement('span'); d.className = 'bub ok'; d.textContent = '\u2713'; bubs.appendChild(d); }
     levelBanner.hidden = false;
     levelBanner.style.animation = 'none'; void levelBanner.offsetWidth; levelBanner.style.animation = '';
     if (reduceMotion) return;

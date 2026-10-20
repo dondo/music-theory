@@ -1433,9 +1433,6 @@
   }
   function celebrate(note) {
     levelText.textContent = 'You are on level ' + FindChord.levelNumber(ftcLevels().keys, ftcLevels().chords) + '. ' + note;
-    var bubs = document.getElementById('ftc-levelup-bubs');          // the row that earned it: all green
-    bubs.textContent = '';
-    for (var i = 0; i < streakNeed(); i++) { var d = document.createElement('span'); d.className = 'bub ok'; d.textContent = '\u2713'; bubs.appendChild(d); }
     levelBanner.hidden = false;
     levelBanner.style.animation = 'none'; void levelBanner.offsetWidth; levelBanner.style.animation = '';
     if (reduceMotion) return;
