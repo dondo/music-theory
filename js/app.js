@@ -1620,7 +1620,7 @@
             text += ' Level up! ' + levelUpNote;
           }
           ftcStreak = 0; ftcTried = 0; ftcRight = 0;
-          if (up) bubFull = true; else { ftcBub = null; bubFull = false; }        // (a level-up leaves the full green row up until the next answer)
+          ftcBub = null; bubFull = false;                                           // (a new level starts with empty bubbles)
         }
       }
       saveFtc();
