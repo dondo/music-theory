@@ -147,6 +147,7 @@ body {
   font-weight: 600;
 }
 .score[hidden] { display: none; }
+.score.quiz .score-ok, .score.quiz .score-bad, .score.quiz #score-reset, .score:not(.quiz) .score-streak { display: none; }
 .score b { font-variant-numeric: tabular-nums; }
 .score-ok { color: #15803d; }
 .score-bad { color: #b91c1c; }
@@ -602,7 +603,7 @@ html.is-local .ftc-local { display: inline-flex; }
 
 .ftc-side { margin-left: auto; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
 .ftc-side-row { display: flex; align-items: center; gap: 4px; }
-.ftc-level { font-size: 0.78rem; font-weight: 600; color: var(--muted); }
+.ftc-level { font-weight: 600; }
 
 /* iPhone-sized screens (portrait, or a phone turned sideways): no difficulty controls in Find the chord;
    the level-up banner stays, on its own, under the keyboard */
@@ -679,6 +680,7 @@ html.is-local .ftc-local { display: inline-flex; }
       <button type="button" id="reset" class="btn-reset" hidden>Reset view</button>
       <div id="score" class="score" hidden aria-label="Score">
         <span class="score-ok"><span aria-hidden="true">✓</span> <b id="n-ok">0</b> correct</span>
+        <span class="score-streak"><b id="n-streak">0</b> correct of <b id="n-need">10</b> guesses</span>
         <span class="score-bad"><span aria-hidden="true">✗</span> <b id="n-bad">0</b> incorrect</span>
         <button type="button" id="score-reset" class="btn-reset">Reset score</button>
       </div>
@@ -1668,7 +1670,7 @@ var Weights = (function () {
 
   // Levelling up by itself: after STREAK first-try answers in a row the next dial goes up one, keys and
   // chords taking turns (keys first). Returns the new { keys, chords, next } or null when nothing can rise.
-  var STREAK = 5;
+  var STREAK = 10;                      // (the app drops this to 5 in the local copy, for testing)
   // The order the levels come in: which dial goes up at each step (step 0 takes level 1 to level 2).
   // Four more keys (C already; D G A F), then the vi ii chords, then three more keys (D♭ B♭ E♭), then the sevenths,
   // then two keys (E A♭), then iii and vii°, then two keys (B F♯/G♭), then their sevenths; after that only chords are left.
@@ -4317,6 +4319,11 @@ var KeyboardRender = (function () {
   var FM_IDS = { key: 'fm-key', sig: 'fm-sig', chord: 'fm-chord' };
   var ftcLv = { major: { keys: 1, chords: 1 }, minor: { keys: 1, chords: 1 } };
   var ftcAuto = true, ftcNext = 'keys', ftcStreak = 0;
+  function streakNeed() { return window.MUSIC_THEORY_LOCAL ? 5 : FindChord.STREAK; }      // (the local copy levels up faster, to test)
+  function showStreak() {                                       // "x correct of y guesses": y is the streak a level-up needs
+    document.getElementById('n-streak').textContent = ftcStreak;
+    document.getElementById('n-need').textContent = streakNeed();
+  }
   var ftcLast = { major: null, minor: null };        // per mode: the dial raised most recently = where the new challenge is
   var ftcFresh = { asked: 0, fresh: 0 };              // questions about the new challenge in the current run of five
   function ftcRaised(dial) { ftcLast[state.mode] = dial; ftcFresh = { asked: 0, fresh: 0 }; }
@@ -4373,7 +4380,7 @@ var KeyboardRender = (function () {
       ftcNext = o.next === 'chords' ? 'chords' : 'keys';
       ['major', 'minor'].forEach(function (m) { if (o.last && (o.last[m] === 'keys' || o.last[m] === 'chords')) ftcLast[m] = o.last[m]; });
       if (o.fresh && Number.isInteger(o.fresh.asked) && Number.isInteger(o.fresh.fresh) && o.fresh.asked >= 0 && o.fresh.asked < 5 && o.fresh.fresh >= 0) ftcFresh = { asked: o.fresh.asked, fresh: o.fresh.fresh };
-      ftcStreak = Number.isInteger(o.streak) ? Math.max(0, Math.min(FindChord.STREAK - 1, o.streak)) : 0;
+      ftcStreak = Number.isInteger(o.streak) ? Math.max(0, Math.min(streakNeed() - 1, o.streak)) : 0;
     } catch (e) { /* defaults */ }
   }
   function saveFtc() {
@@ -4583,7 +4590,7 @@ var KeyboardRender = (function () {
       if (ftcMissed) ftcStreak = 0;
       else {
         ftcStreak++;
-        if (ftcAuto && ftcStreak >= FindChord.STREAK) {
+        if (ftcAuto && ftcStreak >= streakNeed()) {
           var l = ftcLevels();
           var up = FindChord.levelUp(state.mode, ftcPop(), l.keys, l.chords, ftcNext);
           if (up) {
@@ -4664,7 +4671,8 @@ var KeyboardRender = (function () {
     document.getElementById('ftc-chords-list').textContent = FindChord.chords(state.mode, ftcPop(), l.chords).map(function (ch) {
       return Chords.chordInKey(home, state.mode, ch.deg, ch.type).roman;
     }).join('  ');                                                                                                      // every chord in play
-    document.getElementById('ftc-streak').textContent = ftcAuto ? '(' + ftcStreak + ' of ' + FindChord.STREAK + ' right in a row)' : '';
+    document.getElementById('ftc-streak').textContent = '';
+    showStreak();
   }
 
   document.getElementById('ftc-keys-dn').addEventListener('click', function () { ftcStep('keys', -1); });
@@ -4796,6 +4804,8 @@ var KeyboardRender = (function () {
 
   function updateScore() {
     okEl.textContent = score.ok;
+    scoreBox.classList.toggle('quiz', quizOn());
+    showStreak();
     badEl.textContent = score.bad;
     scoreBox.hidden = !state.flash || (quizOn() && score.ok + score.bad === 0);
     if (!(quizOn() && score.ok + score.bad > 0) && scoreBox.parentNode !== scoreHome) scoreHome.appendChild(scoreBox);

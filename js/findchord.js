@@ -161,7 +161,7 @@
 
   // Levelling up by itself: after STREAK first-try answers in a row the next dial goes up one, keys and
   // chords taking turns (keys first). Returns the new { keys, chords, next } or null when nothing can rise.
-  var STREAK = 5;
+  var STREAK = 10;                      // (the app drops this to 5 in the local copy, for testing)
   // The order the levels come in: which dial goes up at each step (step 0 takes level 1 to level 2).
   // Four more keys (C already; D G A F), then the vi ii chords, then three more keys (D♭ B♭ E♭), then the sevenths,
   // then two keys (E A♭), then iii and vii°, then two keys (B F♯/G♭), then their sevenths; after that only chords are left.

@@ -1306,6 +1306,11 @@
   var FM_IDS = { key: 'fm-key', sig: 'fm-sig', chord: 'fm-chord' };
   var ftcLv = { major: { keys: 1, chords: 1 }, minor: { keys: 1, chords: 1 } };
   var ftcAuto = true, ftcNext = 'keys', ftcStreak = 0;
+  function streakNeed() { return window.MUSIC_THEORY_LOCAL ? 5 : FindChord.STREAK; }      // (the local copy levels up faster, to test)
+  function showStreak() {                                       // "x correct of y guesses": y is the streak a level-up needs
+    document.getElementById('n-streak').textContent = ftcStreak;
+    document.getElementById('n-need').textContent = streakNeed();
+  }
   var ftcLast = { major: null, minor: null };        // per mode: the dial raised most recently = where the new challenge is
   var ftcFresh = { asked: 0, fresh: 0 };              // questions about the new challenge in the current run of five
   function ftcRaised(dial) { ftcLast[state.mode] = dial; ftcFresh = { asked: 0, fresh: 0 }; }
@@ -1362,7 +1367,7 @@
       ftcNext = o.next === 'chords' ? 'chords' : 'keys';
       ['major', 'minor'].forEach(function (m) { if (o.last && (o.last[m] === 'keys' || o.last[m] === 'chords')) ftcLast[m] = o.last[m]; });
       if (o.fresh && Number.isInteger(o.fresh.asked) && Number.isInteger(o.fresh.fresh) && o.fresh.asked >= 0 && o.fresh.asked < 5 && o.fresh.fresh >= 0) ftcFresh = { asked: o.fresh.asked, fresh: o.fresh.fresh };
-      ftcStreak = Number.isInteger(o.streak) ? Math.max(0, Math.min(FindChord.STREAK - 1, o.streak)) : 0;
+      ftcStreak = Number.isInteger(o.streak) ? Math.max(0, Math.min(streakNeed() - 1, o.streak)) : 0;
     } catch (e) { /* defaults */ }
   }
   function saveFtc() {
@@ -1572,7 +1577,7 @@
       if (ftcMissed) ftcStreak = 0;
       else {
         ftcStreak++;
-        if (ftcAuto && ftcStreak >= FindChord.STREAK) {
+        if (ftcAuto && ftcStreak >= streakNeed()) {
           var l = ftcLevels();
           var up = FindChord.levelUp(state.mode, ftcPop(), l.keys, l.chords, ftcNext);
           if (up) {
@@ -1653,7 +1658,8 @@
     document.getElementById('ftc-chords-list').textContent = FindChord.chords(state.mode, ftcPop(), l.chords).map(function (ch) {
       return Chords.chordInKey(home, state.mode, ch.deg, ch.type).roman;
     }).join('  ');                                                                                                      // every chord in play
-    document.getElementById('ftc-streak').textContent = ftcAuto ? '(' + ftcStreak + ' of ' + FindChord.STREAK + ' right in a row)' : '';
+    document.getElementById('ftc-streak').textContent = '';
+    showStreak();
   }
 
   document.getElementById('ftc-keys-dn').addEventListener('click', function () { ftcStep('keys', -1); });
@@ -1785,6 +1791,8 @@
 
   function updateScore() {
     okEl.textContent = score.ok;
+    scoreBox.classList.toggle('quiz', quizOn());
+    showStreak();
     badEl.textContent = score.bad;
     scoreBox.hidden = !state.flash || (quizOn() && score.ok + score.bad === 0);
     if (!(quizOn() && score.ok + score.bad > 0) && scoreBox.parentNode !== scoreHome) scoreHome.appendChild(scoreBox);
