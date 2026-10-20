@@ -853,9 +853,12 @@
   function applySound() {
     ChordAudio.engine.setNotes(holding ? heldNotes() : litNotes(), true);
   }
+  var ftcNextBtn = document.getElementById('ftc-next');
+  function syncNext() { ftcNextBtn.hidden = !(quizOn() && state.answered && !chordsPanel.hidden); }
+  ftcNextBtn.addEventListener('click', function (e) { nextCard(e.detail === 0); });
   function syncSound() {
     var ok = state.selected && (!state.flash || quizOn());
-    var canHold = ok && !!state.chord && chordsDetails.open && !chordsPanel.hidden;
+    var canHold = ok && !!state.chord && chordsDetails.open && !chordsPanel.hidden && !(quizOn() && state.answered);      // (Find the chord: no sound button once solved)
     chordSoundRow.hidden = !canHold;
     if (holding && (!canHold || chordSig() !== holdSig)) holding = false;
     chordPlayBtn.classList.toggle('playing', holding);
@@ -1263,6 +1266,7 @@
     }
     saveState();
     syncOrientation();
+    syncNext();
   }
 
   // ---- actions --------------------------------------------------------------
@@ -1581,7 +1585,7 @@
     ftcSay('The answer: ' + state.card.title + '.');
     updateScore();
     draw(false, false);
-    if (viaKeyboard) { var nb = stage.querySelector('.next-btn'); if (nb) nb.focus({ preventScroll: true }); }
+    if (viaKeyboard && !ftcNextBtn.hidden) ftcNextBtn.focus({ preventScroll: true });
   }
 
   // a chip was chosen: type and degree can come in either order; the second one is the guess

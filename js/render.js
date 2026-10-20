@@ -675,7 +675,6 @@ var KeyboardRender = (function () {
       '<g transform="translate(0,' + f(dy) + ')">', bigStave(Object.assign({}, stave, { slot: slot, litGap: gap, litW: litW }), winL, winR, rootSpec, mode), '</g>'];
     out.push('<text x="' + cx + '" y="' + ty + '" text-anchor="middle" font-size="16" font-weight="bold" fill="#15803d" pointer-events="none">' + esc(card.title || '') + '</text>');
     if (card.modeLine) out.push('<text class="mode-line" x="' + cx + '" y="' + (ty + 24) + '" text-anchor="middle" font-size="15" fill="#5d6475" pointer-events="none">' + esc(card.modeLine) + '</text>');
-    out.push(nextButton(cx + 150, ty + 12));
     out.push('<text class="fb-nope" x="' + f(winL + 12) + '" y="56" font-size="34" font-weight="bold" fill="#dc2626" opacity="0" pointer-events="none">✗ Nope</text>');
     out.push('<text class="fb-yes" x="' + f(winL + 12) + '" y="56" font-size="34" font-weight="bold" fill="#16a34a" opacity="0" pointer-events="none">✓ Yes!</text>');
     out.push('</g>');

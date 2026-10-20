@@ -649,6 +649,13 @@ html.is-local .ftc-local { display: inline-flex; }
 #streak-text { display: flex; align-items: center; }
 .ftc-head .ftc-level { line-height: 1; }
 .ftc-head .score { line-height: 1; }
+
+/* Find the chord: Next sits at the bottom right of the chord picker */
+.ftc-next-row { display: flex; justify-content: flex-end; }
+.ftc-next { margin-top: 12px; padding: 10px 26px; border-radius: 24px; background: #2563eb; border: 1px solid #2563eb; color: #fff; font-size: 1.1rem; font-weight: 700; cursor: pointer; }
+.ftc-next[hidden] { display: none; }
+.ftc-next:focus-visible { outline: 3px solid #1e3a8a; outline-offset: 2px; }
+@media (hover: hover) { .ftc-next:hover { background: #1d4ed8; } }
 </style>
 </head>
 <body>
@@ -804,6 +811,7 @@ html.is-local .ftc-local { display: inline-flex; }
         </button>
       </div>
       </details>
+      <div class="ftc-next-row"><button type="button" id="ftc-next" class="btn-reset ftc-next" hidden>Next &rarr;</button></div>
     </section>
 
     <p id="sound-note" class="sound-note" role="status" hidden>Your browser is holding the sound back. Click anywhere on the page once, then try again.</p>
@@ -2704,7 +2712,6 @@ var KeyboardRender = (function () {
       '<g transform="translate(0,' + f(dy) + ')">', bigStave(Object.assign({}, stave, { slot: slot, litGap: gap, litW: litW }), winL, winR, rootSpec, mode), '</g>'];
     out.push('<text x="' + cx + '" y="' + ty + '" text-anchor="middle" font-size="16" font-weight="bold" fill="#15803d" pointer-events="none">' + esc(card.title || '') + '</text>');
     if (card.modeLine) out.push('<text class="mode-line" x="' + cx + '" y="' + (ty + 24) + '" text-anchor="middle" font-size="15" fill="#5d6475" pointer-events="none">' + esc(card.modeLine) + '</text>');
-    out.push(nextButton(cx + 150, ty + 12));
     out.push('<text class="fb-nope" x="' + f(winL + 12) + '" y="56" font-size="34" font-weight="bold" fill="#dc2626" opacity="0" pointer-events="none">✗ Nope</text>');
     out.push('<text class="fb-yes" x="' + f(winL + 12) + '" y="56" font-size="34" font-weight="bold" fill="#16a34a" opacity="0" pointer-events="none">✓ Yes!</text>');
     out.push('</g>');
@@ -3869,9 +3876,12 @@ var KeyboardRender = (function () {
   function applySound() {
     ChordAudio.engine.setNotes(holding ? heldNotes() : litNotes(), true);
   }
+  var ftcNextBtn = document.getElementById('ftc-next');
+  function syncNext() { ftcNextBtn.hidden = !(quizOn() && state.answered && !chordsPanel.hidden); }
+  ftcNextBtn.addEventListener('click', function (e) { nextCard(e.detail === 0); });
   function syncSound() {
     var ok = state.selected && (!state.flash || quizOn());
-    var canHold = ok && !!state.chord && chordsDetails.open && !chordsPanel.hidden;
+    var canHold = ok && !!state.chord && chordsDetails.open && !chordsPanel.hidden && !(quizOn() && state.answered);      // (Find the chord: no sound button once solved)
     chordSoundRow.hidden = !canHold;
     if (holding && (!canHold || chordSig() !== holdSig)) holding = false;
     chordPlayBtn.classList.toggle('playing', holding);
@@ -4279,6 +4289,7 @@ var KeyboardRender = (function () {
     }
     saveState();
     syncOrientation();
+    syncNext();
   }
 
   // ---- actions --------------------------------------------------------------
@@ -4597,7 +4608,7 @@ var KeyboardRender = (function () {
     ftcSay('The answer: ' + state.card.title + '.');
     updateScore();
     draw(false, false);
-    if (viaKeyboard) { var nb = stage.querySelector('.next-btn'); if (nb) nb.focus({ preventScroll: true }); }
+    if (viaKeyboard && !ftcNextBtn.hidden) ftcNextBtn.focus({ preventScroll: true });
   }
 
   // a chip was chosen: type and degree can come in either order; the second one is the guess
