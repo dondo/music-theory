@@ -642,6 +642,9 @@ html.is-local .ftc-local { display: inline-flex; }
 .ftc-head .ftc-side-row { margin-left: auto; font-size: 0.9rem; }
 .ftc > .ftc-level, .ftc > .ftc-side-row { display: none; }     /* (they live in the progress row once it shows) */
 .ftc-head { flex-wrap: wrap; }
+.chord-info.quiz { min-height: 0; margin: 0 0 12px; padding: 8px 12px; }
+.chord-info.quiz .ftc-head { margin: 0; }
+.chord-info.quiz .chord-hint { padding: 2px 0; }
 </style>
 </head>
 <body>
@@ -3367,6 +3370,10 @@ var KeyboardRender = (function () {
       chordTypes.appendChild(tb);
     });
 
+    var firstRow = chordsDetails.querySelector('.chord-row'), infoHome = document.getElementById('chord-sound');
+    if (quizOn()) { if (chordInfo.nextSibling !== firstRow) chordsDetails.insertBefore(chordInfo, firstRow); }      // Find the chord: the progress row leads the box
+    else if (chordInfo.nextSibling !== infoHome) chordsDetails.insertBefore(chordInfo, infoHome);
+    chordInfo.classList.toggle('quiz', quizOn());
     chordInfo.textContent = '';
     var scoreHere = quizOn() && score.ok + score.bad > 0;       // Find the chord: after the first guess the score replaces the instruction
     if (quizOn() && scoreHere) {

@@ -358,6 +358,10 @@
       chordTypes.appendChild(tb);
     });
 
+    var firstRow = chordsDetails.querySelector('.chord-row'), infoHome = document.getElementById('chord-sound');
+    if (quizOn()) { if (chordInfo.nextSibling !== firstRow) chordsDetails.insertBefore(chordInfo, firstRow); }      // Find the chord: the progress row leads the box
+    else if (chordInfo.nextSibling !== infoHome) chordsDetails.insertBefore(chordInfo, infoHome);
+    chordInfo.classList.toggle('quiz', quizOn());
     chordInfo.textContent = '';
     var scoreHere = quizOn() && score.ok + score.bad > 0;       // Find the chord: after the first guess the score replaces the instruction
     if (quizOn() && scoreHere) {
