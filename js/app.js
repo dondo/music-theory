@@ -162,8 +162,8 @@
   var chordDegrees = document.getElementById('chord-degrees');
   var chordTypes = document.getElementById('chord-types');
   var chordInfo = document.getElementById('chord-info');
-  var levelsBox = document.querySelector('.ftc-levels'), levelsHome = levelsBox.parentNode;
-  var levelTag = document.getElementById('ftc-level'), levelTagHome = levelTag.parentNode, levelTagNext = levelTag.nextSibling;
+  var autoRow = document.getElementById('ftc-autorow');
+  var levelTag = document.getElementById('ftc-level');
   var quizHead = el('div', 'ftc-head');                         // Find the chord: "Level n" then the score, top left of the grey box
   var legendChord = document.querySelectorAll('.legend-chord');
 
@@ -363,24 +363,16 @@
     if (quizOn() && scoreHere) {
       quizHead.appendChild(levelTag);
       quizHead.appendChild(scoreBox); scoreBox.hidden = false;
+      quizHead.appendChild(autoRow);
       chordInfo.appendChild(quizHead);
-    } else {
-      if (levelTag.parentNode !== levelTagHome) levelTagHome.insertBefore(levelTag, levelTagNext);
-      if (scoreBox.parentNode !== scoreHome) scoreHome.appendChild(scoreBox);
-    }
+    } else if (scoreBox.parentNode !== scoreHome) scoreHome.appendChild(scoreBox);
     if (quizOn()) {                                              // Find the chord: no chord description; the level controls sit below the score
       if (!scoreHere) {                                          // before the first guess: just the instruction
-        if (levelsBox.parentNode !== levelsHome) levelsHome.appendChild(levelsBox);
-        levelsBox.hidden = true;
         chordInfo.appendChild(el('p', 'chord-hint', 'Choose a type and a degree, in either order. The second one you choose is your answer.'));
         return;
       }
-      levelsBox.hidden = false;
-      chordInfo.appendChild(levelsBox);
       return;
     }
-    levelsBox.hidden = false;
-    if (levelsBox.parentNode !== levelsHome) levelsHome.appendChild(levelsBox);
     if (!state.chord) {
       chordInfo.appendChild(el('p', 'chord-hint', findOn ? findHint() : quizOn() ? 'Choose a type and a degree, in either order. The second one you choose is your answer.' : alt
         ? 'Pick a note to light up the chord built on it, then try the other types. Only chords whose notes all belong to this scale are offered.'
@@ -1684,25 +1676,10 @@
     if (!on || !ftcQ) return;
     var l = ftcLevels(), maxC = FindChord.maxChords(state.mode, ftcPop());
     document.getElementById('ftc-level').textContent = 'Level ' + FindChord.levelNumber(l.keys, l.chords);
-    document.getElementById('ftc-keys-n').textContent = l.keys;
-    document.getElementById('ftc-chords-n').textContent = l.chords;
-    document.getElementById('ftc-keys-dn').disabled = l.keys <= 1;
-    document.getElementById('ftc-keys-up').disabled = l.keys >= FindChord.maxKeys();
-    document.getElementById('ftc-chords-dn').disabled = l.chords <= 1;
-    document.getElementById('ftc-chords-up').disabled = l.chords >= maxC;
-    document.getElementById('ftc-keys-list').textContent = FindChord.keys(state.mode, l.keys).map(ftcKeyName).join('  ');     // every key in play
-    var home = state.mode === 'minor' ? 'A' : 'C';
-    document.getElementById('ftc-chords-list').textContent = FindChord.chords(state.mode, ftcPop(), l.chords).map(function (ch) {
-      return Chords.chordInKey(home, state.mode, ch.deg, ch.type).roman;
-    }).join('  ');                                                                                                      // every chord in play
     document.getElementById('ftc-streak').textContent = '';
     showStreak();
   }
 
-  document.getElementById('ftc-keys-dn').addEventListener('click', function () { ftcStep('keys', -1); });
-  document.getElementById('ftc-keys-up').addEventListener('click', function () { ftcStep('keys', 1); });
-  document.getElementById('ftc-chords-dn').addEventListener('click', function () { ftcStep('chords', -1); });
-  document.getElementById('ftc-chords-up').addEventListener('click', function () { ftcStep('chords', 1); });
   // local testing: the same one-step-at-a-time moves the automatic level-up makes, up or back down
   function ftcDifficulty(dir) {
     var l = ftcLevels(), maxC = FindChord.maxChords(state.mode, ftcPop());
