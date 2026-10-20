@@ -627,3 +627,8 @@ html.is-local .ftc-local { display: inline-flex; }
 .chord-info.quiz { min-height: 0; margin: 0 0 12px; padding: 8px 12px; }
 .chord-info.quiz .ftc-head { margin: 0; }
 .chord-info.quiz .chord-hint { padding: 2px 0; }
+/* bubbles centred on the line of text beside them */
+.score-streak { display: flex; align-items: center; line-height: 0; }
+#streak-text { display: flex; align-items: center; }
+.ftc-head .ftc-level { line-height: 1; }
+.ftc-head .score { line-height: 1; }
