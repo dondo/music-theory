@@ -154,6 +154,7 @@
   var layoutDial = document.getElementById('layout-dial');
   var pendingLayout = null;                 // 'in' | 'out': the layout animation the next draw() runs
   var scoreBox = document.getElementById('score');
+  var scoreHome = scoreBox.parentNode;                 // (Find the chord shows it in the chord info instead, after the first guess)
   var okEl = document.getElementById('n-ok');
   var badEl = document.getElementById('n-bad');
   var scoreReset = document.getElementById('score-reset');
@@ -355,7 +356,11 @@
     });
 
     chordInfo.textContent = '';
+    var scoreHere = quizOn() && score.ok + score.bad > 0;       // Find the chord: after the first guess the score replaces the instruction
+    if (scoreHere) { chordInfo.appendChild(scoreBox); scoreBox.hidden = false; }
+    else if (scoreBox.parentNode !== scoreHome) scoreHome.appendChild(scoreBox);
     if (!state.chord) {
+      if (scoreHere) return;
       chordInfo.appendChild(el('p', 'chord-hint', findOn ? findHint() : quizOn() ? 'Choose a type and a degree, in either order. The second one you choose is your answer.' : alt
         ? 'Pick a note to light up the chord built on it, then try the other types. Only chords whose notes all belong to this scale are offered.'
         : 'Pick a type and a degree to light up the chord on the keyboard. ' +
@@ -1240,6 +1245,7 @@
       if (k) k.focus({ preventScroll: true });
     }
     saveState();
+    syncOrientation();
   }
 
   // ---- actions --------------------------------------------------------------
@@ -1759,7 +1765,8 @@
   function updateScore() {
     okEl.textContent = score.ok;
     badEl.textContent = score.bad;
-    scoreBox.hidden = !state.flash;
+    scoreBox.hidden = !state.flash || (quizOn() && score.ok + score.bad === 0);
+    if (!(quizOn() && score.ok + score.bad > 0) && scoreBox.parentNode !== scoreHome) scoreHome.appendChild(scoreBox);
     flashModeGroup.hidden = !state.flash;
     kindGroup.hidden = state.flash || level === 'pop';
   }
@@ -2401,9 +2408,32 @@
     score.bad = 0;
     lastResult = '';
     updateScore();
+    updateChordPanel();                                // (Find the chord: the instruction is back)
   });
 
   resetBtn.addEventListener('click', reset);
+
+  // Phones: Find the chord wants the phone upright, every other view wants it on its side. A web page cannot force that
+  // (iOS ignores the orientation lock), so a notice covers the app until the phone is turned the right way.
+  var rotateHint = document.getElementById('rotate-hint'), rotateText = document.getElementById('rotate-text'), lockedFor = null;
+  function isPhone() {
+    return !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches && Math.min(window.screen.width, window.screen.height) <= 500);
+  }
+  function syncOrientation() {
+    if (!isPhone()) { rotateHint.hidden = true; return; }
+    var wantPortrait = quizOn(), portrait = window.matchMedia('(orientation: portrait)').matches;
+    rotateHint.hidden = wantPortrait === portrait;
+    rotateText.textContent = wantPortrait ? 'Hold your phone upright for Find the chord' : 'Turn your phone sideways for this view';
+    if (lockedFor !== wantPortrait) {                     // (works where the browser allows it, e.g. an installed Android app)
+      lockedFor = wantPortrait;
+      try {
+        var lock = window.screen.orientation && window.screen.orientation.lock && window.screen.orientation.lock(wantPortrait ? 'portrait' : 'landscape');
+        if (lock && lock.catch) lock.catch(function () { /* not allowed here */ });
+      } catch (e) { /* unsupported */ }
+    }
+  }
+  window.addEventListener('resize', syncOrientation);
+  window.addEventListener('orientationchange', syncOrientation);
 
   restoreState();
   syncStudyOptions();

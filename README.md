@@ -190,3 +190,7 @@ Levels follow a fixed plan rather than alternating: keys C, D, G, A, F first (le
 
 ### iPhone
 On phone-sized screens (narrow, or a phone on its side) the Keys / Chords / Level controls are hidden in Find the chord; the level-up banner and confetti still appear, just under the keyboard. A new Find the chord question also scrolls the staff to the middle of the screen so the clef is in view.
+
+### Find the chord: score and phone orientation
+- After the first guess the instruction text is replaced by the correct/incorrect count and the Reset score button.
+- On a phone, Find the chord wants the phone upright and every other view wants it on its side. Browsers (iOS in particular) cannot force this, so a "turn your phone" notice covers the app until the phone is turned; where the browser allows an orientation lock it is requested too. Desktop and iPad are unaffected.
