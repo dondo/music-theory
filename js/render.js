@@ -664,12 +664,15 @@ var KeyboardRender = (function () {
       var c = chords[j];
       hw = Math.max(hw, Math.max(String(c.top).length * fsT * 0.54, String(c.sub || '').length * fsS * 0.5) / 2);
     });
-    var gap = Math.max(0, Math.min(hw - slot / 2 + 10, (avail - n * slot) / 2));
+    var lc = chords[lit], litW = Math.max(slot - 4, Math.max(String(lc.top).length * fsT * 0.54, String(lc.sub || '').length * fsS * 0.5) + 16);   // the box must hold its own labels
+    var gap = Math.max(0, (litW - slot + 4) / 2, hw ? litW / 2 + hw + 6 - slot : 0);
+    gap = Math.min(gap, Math.max(0, (avail - n * slot) / 2));
+    litW = Math.min(litW, slot - 4 + 2 * gap);
     var need = header + n * slot + 2 * gap + 18;
     var winL = Math.max(8, Math.min(cardX - header - (lit * slot + gap + slot / 2), WIDTH - 8 - need)), winR = winL + need;
     var cx = WIDTH / 2, ty = 262;
     var out = ['<g class="flashcard chordcard opened" data-answer-pc="' + card.pc + '" data-chord="' + esc(card.symbol || '') + '" data-qdeg="' + card.deg + '" data-qtype="' + esc(card.type || '') + '" data-qinv="' + (card.inv || 0) + '">',
-      '<g transform="translate(0,' + f(dy) + ')">', bigStave(Object.assign({}, stave, { slot: slot, litGap: gap }), winL, winR, rootSpec, mode), '</g>'];
+      '<g transform="translate(0,' + f(dy) + ')">', bigStave(Object.assign({}, stave, { slot: slot, litGap: gap, litW: litW }), winL, winR, rootSpec, mode), '</g>'];
     out.push('<text x="' + cx + '" y="' + ty + '" text-anchor="middle" font-size="16" font-weight="bold" fill="#15803d" pointer-events="none">' + esc(card.title || '') + '</text>');
     if (card.modeLine) out.push('<text class="mode-line" x="' + cx + '" y="' + (ty + 24) + '" text-anchor="middle" font-size="15" fill="#5d6475" pointer-events="none">' + esc(card.modeLine) + '</text>');
     out.push(nextButton(cx + 150, ty + 12));
@@ -783,10 +786,11 @@ var KeyboardRender = (function () {
       var lg = data.litGap && litIdx >= 0 ? data.litGap : 0;          // extra room either side of the lit chord
       chords.forEach(function (c, j) {
         var left = startX + j * slot + (j < litIdx || lg === 0 ? 0 : j === litIdx ? lg : 2 * lg);
+        var boxW = Math.max(slot - 4, data.litW || 0);
         var cx = left + slot / 2;
         var ink = INK;
         if (c.lit) {                              // drawn beneath the staff lines, in the key's own tint
-          under.push('<rect class="lit-box" x="' + f(left + 2) + '" y="' + f(YB - 4 * SB - 5.5 * SB) + '" width="' + f(slot - 4) + '" height="' + f(14.5 * SB + 40) + '" rx="8" fill="' + pal[0] + '" stroke="' + pal[1] + '" stroke-width="1.2"/>');
+          under.push('<rect class="lit-box" x="' + f(left + slot / 2 - boxW / 2) + '" y="' + f(YB - 4 * SB - 5.5 * SB) + '" width="' + f(boxW) + '" height="' + f(14.5 * SB + 40) + '" rx="8" fill="' + pal[0] + '" stroke="' + pal[1] + '" stroke-width="1.2"/>');
         }
         out.push(chordOnStave(cx, c.notes, sigVal, ink, clef));
         var yTop = YB + 2.5 * SB + 24, ySub = YB + 2.5 * SB + 41;

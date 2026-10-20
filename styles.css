@@ -590,14 +590,15 @@ html.is-local .ftc-local { display: inline-flex; }
 /* iPhone-sized screens (portrait, or a phone turned sideways): no difficulty controls in Find the chord;
    the level-up banner stays, on its own, under the keyboard */
 @media (max-width: 600px), (max-height: 500px) and (pointer: coarse) {
-  .ftc-levels { display: none; }
+  .ftc-levels, .ftc-level { display: none; }
   .ftc { padding: 0; margin-top: 8px; border: 0; background: transparent; box-shadow: none; }
   .levelup { margin-bottom: 0; padding: 10px 12px; font-size: 0.9rem; }
   .levelup-icon { font-size: 1.4rem; }
 }
 
 /* Find the chord score: shown where the instruction was, once a guess has been made */
-.chord-info .score { display: flex; margin: 0 0 8px; }
+.ftc-head { display: flex; align-items: center; gap: 16px; margin: 0 0 8px; }
+.chord-info .score { display: flex; flex-basis: auto; margin: 0; }
 /* phones: a view asks for one orientation; the app says so when the phone is held the other way */
 .rotate-hint { position: fixed; inset: 0; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: 8px; background: var(--bg, #f5f6fa); color: var(--ink, #1c2330); text-align: center; padding: 24px; font-size: 1.1rem; font-weight: 600; }

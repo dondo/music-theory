@@ -163,6 +163,8 @@
   var chordTypes = document.getElementById('chord-types');
   var chordInfo = document.getElementById('chord-info');
   var levelsBox = document.querySelector('.ftc-levels'), levelsHome = levelsBox.parentNode;
+  var levelTag = document.getElementById('ftc-level'), levelTagHome = levelTag.parentNode, levelTagNext = levelTag.nextSibling;
+  var quizHead = el('div', 'ftc-head');                         // Find the chord: "Level n" then the score, top left of the grey box
   var legendChord = document.querySelectorAll('.legend-chord');
 
   function currentSpec() {
@@ -358,8 +360,15 @@
 
     chordInfo.textContent = '';
     var scoreHere = quizOn() && score.ok + score.bad > 0;       // Find the chord: after the first guess the score replaces the instruction
-    if (scoreHere) { chordInfo.appendChild(scoreBox); scoreBox.hidden = false; }
-    else if (scoreBox.parentNode !== scoreHome) scoreHome.appendChild(scoreBox);
+    if (quizOn()) {
+      quizHead.appendChild(levelTag);
+      if (scoreHere) { quizHead.appendChild(scoreBox); scoreBox.hidden = false; }
+      else if (scoreBox.parentNode === quizHead) scoreHome.appendChild(scoreBox);
+      chordInfo.appendChild(quizHead);
+    } else {
+      if (levelTag.parentNode !== levelTagHome) levelTagHome.insertBefore(levelTag, levelTagNext);
+      if (scoreBox.parentNode !== scoreHome) scoreHome.appendChild(scoreBox);
+    }
     if (quizOn()) {                                              // Find the chord: no chord description; the level controls sit below the score
       if (!scoreHere) chordInfo.appendChild(el('p', 'chord-hint', 'Choose a type and a degree, in either order. The second one you choose is your answer.'));
       chordInfo.appendChild(levelsBox);

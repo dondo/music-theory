@@ -607,14 +607,15 @@ html.is-local .ftc-local { display: inline-flex; }
 /* iPhone-sized screens (portrait, or a phone turned sideways): no difficulty controls in Find the chord;
    the level-up banner stays, on its own, under the keyboard */
 @media (max-width: 600px), (max-height: 500px) and (pointer: coarse) {
-  .ftc-levels { display: none; }
+  .ftc-levels, .ftc-level { display: none; }
   .ftc { padding: 0; margin-top: 8px; border: 0; background: transparent; box-shadow: none; }
   .levelup { margin-bottom: 0; padding: 10px 12px; font-size: 0.9rem; }
   .levelup-icon { font-size: 1.4rem; }
 }
 
 /* Find the chord score: shown where the instruction was, once a guess has been made */
-.chord-info .score { display: flex; margin: 0 0 8px; }
+.ftc-head { display: flex; align-items: center; gap: 16px; margin: 0 0 8px; }
+.chord-info .score { display: flex; flex-basis: auto; margin: 0; }
 /* phones: a view asks for one orientation; the app says so when the phone is held the other way */
 .rotate-hint { position: fixed; inset: 0; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: 8px; background: var(--bg, #f5f6fa); color: var(--ink, #1c2330); text-align: center; padding: 24px; font-size: 1.1rem; font-weight: 600; }
@@ -2685,12 +2686,15 @@ var KeyboardRender = (function () {
       var c = chords[j];
       hw = Math.max(hw, Math.max(String(c.top).length * fsT * 0.54, String(c.sub || '').length * fsS * 0.5) / 2);
     });
-    var gap = Math.max(0, Math.min(hw - slot / 2 + 10, (avail - n * slot) / 2));
+    var lc = chords[lit], litW = Math.max(slot - 4, Math.max(String(lc.top).length * fsT * 0.54, String(lc.sub || '').length * fsS * 0.5) + 16);   // the box must hold its own labels
+    var gap = Math.max(0, (litW - slot + 4) / 2, hw ? litW / 2 + hw + 6 - slot : 0);
+    gap = Math.min(gap, Math.max(0, (avail - n * slot) / 2));
+    litW = Math.min(litW, slot - 4 + 2 * gap);
     var need = header + n * slot + 2 * gap + 18;
     var winL = Math.max(8, Math.min(cardX - header - (lit * slot + gap + slot / 2), WIDTH - 8 - need)), winR = winL + need;
     var cx = WIDTH / 2, ty = 262;
     var out = ['<g class="flashcard chordcard opened" data-answer-pc="' + card.pc + '" data-chord="' + esc(card.symbol || '') + '" data-qdeg="' + card.deg + '" data-qtype="' + esc(card.type || '') + '" data-qinv="' + (card.inv || 0) + '">',
-      '<g transform="translate(0,' + f(dy) + ')">', bigStave(Object.assign({}, stave, { slot: slot, litGap: gap }), winL, winR, rootSpec, mode), '</g>'];
+      '<g transform="translate(0,' + f(dy) + ')">', bigStave(Object.assign({}, stave, { slot: slot, litGap: gap, litW: litW }), winL, winR, rootSpec, mode), '</g>'];
     out.push('<text x="' + cx + '" y="' + ty + '" text-anchor="middle" font-size="16" font-weight="bold" fill="#15803d" pointer-events="none">' + esc(card.title || '') + '</text>');
     if (card.modeLine) out.push('<text class="mode-line" x="' + cx + '" y="' + (ty + 24) + '" text-anchor="middle" font-size="15" fill="#5d6475" pointer-events="none">' + esc(card.modeLine) + '</text>');
     out.push(nextButton(cx + 150, ty + 12));
@@ -2804,10 +2808,11 @@ var KeyboardRender = (function () {
       var lg = data.litGap && litIdx >= 0 ? data.litGap : 0;          // extra room either side of the lit chord
       chords.forEach(function (c, j) {
         var left = startX + j * slot + (j < litIdx || lg === 0 ? 0 : j === litIdx ? lg : 2 * lg);
+        var boxW = Math.max(slot - 4, data.litW || 0);
         var cx = left + slot / 2;
         var ink = INK;
         if (c.lit) {                              // drawn beneath the staff lines, in the key's own tint
-          under.push('<rect class="lit-box" x="' + f(left + 2) + '" y="' + f(YB - 4 * SB - 5.5 * SB) + '" width="' + f(slot - 4) + '" height="' + f(14.5 * SB + 40) + '" rx="8" fill="' + pal[0] + '" stroke="' + pal[1] + '" stroke-width="1.2"/>');
+          under.push('<rect class="lit-box" x="' + f(left + slot / 2 - boxW / 2) + '" y="' + f(YB - 4 * SB - 5.5 * SB) + '" width="' + f(boxW) + '" height="' + f(14.5 * SB + 40) + '" rx="8" fill="' + pal[0] + '" stroke="' + pal[1] + '" stroke-width="1.2"/>');
         }
         out.push(chordOnStave(cx, c.notes, sigVal, ink, clef));
         var yTop = YB + 2.5 * SB + 24, ySub = YB + 2.5 * SB + 41;
@@ -3167,6 +3172,8 @@ var KeyboardRender = (function () {
   var chordTypes = document.getElementById('chord-types');
   var chordInfo = document.getElementById('chord-info');
   var levelsBox = document.querySelector('.ftc-levels'), levelsHome = levelsBox.parentNode;
+  var levelTag = document.getElementById('ftc-level'), levelTagHome = levelTag.parentNode, levelTagNext = levelTag.nextSibling;
+  var quizHead = el('div', 'ftc-head');                         // Find the chord: "Level n" then the score, top left of the grey box
   var legendChord = document.querySelectorAll('.legend-chord');
 
   function currentSpec() {
@@ -3362,8 +3369,15 @@ var KeyboardRender = (function () {
 
     chordInfo.textContent = '';
     var scoreHere = quizOn() && score.ok + score.bad > 0;       // Find the chord: after the first guess the score replaces the instruction
-    if (scoreHere) { chordInfo.appendChild(scoreBox); scoreBox.hidden = false; }
-    else if (scoreBox.parentNode !== scoreHome) scoreHome.appendChild(scoreBox);
+    if (quizOn()) {
+      quizHead.appendChild(levelTag);
+      if (scoreHere) { quizHead.appendChild(scoreBox); scoreBox.hidden = false; }
+      else if (scoreBox.parentNode === quizHead) scoreHome.appendChild(scoreBox);
+      chordInfo.appendChild(quizHead);
+    } else {
+      if (levelTag.parentNode !== levelTagHome) levelTagHome.insertBefore(levelTag, levelTagNext);
+      if (scoreBox.parentNode !== scoreHome) scoreHome.appendChild(scoreBox);
+    }
     if (quizOn()) {                                              // Find the chord: no chord description; the level controls sit below the score
       if (!scoreHere) chordInfo.appendChild(el('p', 'chord-hint', 'Choose a type and a degree, in either order. The second one you choose is your answer.'));
       chordInfo.appendChild(levelsBox);
