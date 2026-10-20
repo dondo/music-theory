@@ -586,7 +586,11 @@ html.is-local .ftc-local { display: inline-flex; }
 
 .ftc-side { margin-left: auto; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
 .ftc-side-row { display: flex; align-items: center; gap: 4px; }
-.ftc-level { font-weight: 600; }
+.ftc-level { font-size: 1.2rem; font-weight: 700; }
+.score-streak { font-size: 0.88rem; }
+.score-streak b { color: #15803d; }
+/* the card around the level-up banner has nothing else in it now: no banner, no card */
+.ftc:not(:has(> .levelup:not([hidden]))) { display: none; }
 
 /* iPhone-sized screens (portrait, or a phone turned sideways): no difficulty controls in Find the chord;
    the level-up banner stays, on its own, under the keyboard */
