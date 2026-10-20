@@ -1437,6 +1437,9 @@
   }
   function celebrate(note) {
     levelText.textContent = 'You are on level ' + FindChord.levelNumber(ftcLevels().keys, ftcLevels().chords) + '. ' + note;
+    var bubs = document.getElementById('ftc-levelup-bubs');          // the row that earned it: all green
+    bubs.textContent = '';
+    for (var i = 0; i < streakNeed(); i++) { var d = document.createElement('span'); d.className = 'bub ok'; d.textContent = '\u2713'; bubs.appendChild(d); }
     levelBanner.hidden = false;
     levelBanner.style.animation = 'none'; void levelBanner.offsetWidth; levelBanner.style.animation = '';
     if (reduceMotion) return;
@@ -1504,6 +1507,7 @@
   }
 
   function ftcNewQuestion(animate) {
+    if (bubFull) { ftcBub = null; bubFull = false; showStreak(); }                  // ("Next": the new level starts with empty bubbles)
     var l = ftcLevels();
     var isFresh = FindChord.freshTest(state.mode, ftcPop(), l.keys, l.chords, ftcLast[state.mode]);
     var q = FindChord.pick(state.mode, ftcPop(), l.keys, l.chords, Math.random, ftcQ, function (c) { return FindChord.weightOf(ftcW, state.mode, c); },
@@ -1620,7 +1624,7 @@
             text += ' Level up! ' + levelUpNote;
           }
           ftcStreak = 0; ftcTried = 0; ftcRight = 0;
-          ftcBub = null; bubFull = false;                                           // (a new level starts with empty bubbles)
+          if (up) bubFull = true; else { ftcBub = null; bubFull = false; }          // (the full green row stays up while the banner shows; the next question empties it)
         }
       }
       saveFtc();
