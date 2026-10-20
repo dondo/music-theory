@@ -360,20 +360,26 @@
 
     chordInfo.textContent = '';
     var scoreHere = quizOn() && score.ok + score.bad > 0;       // Find the chord: after the first guess the score replaces the instruction
-    if (quizOn()) {
+    if (quizOn() && scoreHere) {
       quizHead.appendChild(levelTag);
-      if (scoreHere) { quizHead.appendChild(scoreBox); scoreBox.hidden = false; }
-      else if (scoreBox.parentNode === quizHead) scoreHome.appendChild(scoreBox);
+      quizHead.appendChild(scoreBox); scoreBox.hidden = false;
       chordInfo.appendChild(quizHead);
     } else {
       if (levelTag.parentNode !== levelTagHome) levelTagHome.insertBefore(levelTag, levelTagNext);
       if (scoreBox.parentNode !== scoreHome) scoreHome.appendChild(scoreBox);
     }
     if (quizOn()) {                                              // Find the chord: no chord description; the level controls sit below the score
-      if (!scoreHere) chordInfo.appendChild(el('p', 'chord-hint', 'Choose a type and a degree, in either order. The second one you choose is your answer.'));
+      if (!scoreHere) {                                          // before the first guess: just the instruction
+        if (levelsBox.parentNode !== levelsHome) levelsHome.appendChild(levelsBox);
+        levelsBox.hidden = true;
+        chordInfo.appendChild(el('p', 'chord-hint', 'Choose a type and a degree, in either order. The second one you choose is your answer.'));
+        return;
+      }
+      levelsBox.hidden = false;
       chordInfo.appendChild(levelsBox);
       return;
     }
+    levelsBox.hidden = false;
     if (levelsBox.parentNode !== levelsHome) levelsHome.appendChild(levelsBox);
     if (!state.chord) {
       chordInfo.appendChild(el('p', 'chord-hint', findOn ? findHint() : quizOn() ? 'Choose a type and a degree, in either order. The second one you choose is your answer.' : alt
