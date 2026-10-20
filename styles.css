@@ -635,7 +635,7 @@ html.is-local .ftc-local { display: inline-flex; }
 
 /* Find the chord: Next sits at the bottom right of the chord picker */
 .ftc-next-row { display: flex; justify-content: flex-end; }
-.ftc-next { margin-top: 12px; padding: 10px 26px; border-radius: 24px; background: #16a34a; border: 1px solid #16a34a; color: #fff; font-size: 1.1rem; font-weight: 700; cursor: pointer; }
+.ftc-next { margin-top: 12px; padding: 10px 26px; border-radius: 24px; background: #dcfce7; border: 2px solid #16a34a; color: #166534; font-size: 1.1rem; font-weight: 700; cursor: pointer; }
 .ftc-next[hidden] { display: none; }
 .ftc-next:focus-visible { outline: 3px solid #14532d; outline-offset: 2px; }
-@media (hover: hover) { .ftc-next:hover { background: #15803d; } }
+@media (hover: hover) { .ftc-next:hover { background: #bbf7d0; } }
