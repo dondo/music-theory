@@ -589,7 +589,8 @@ html.is-local .ftc-local { display: inline-flex; }
 .ftc-level { font-size: 1.2rem; font-weight: 700; }
 .score-streak { font-size: 0.88rem; }
 .score-streak { color: #15803d; font-weight: 600; }
-.score-streak .bad { color: #b91c1c; }
+.score-streak .none { color: var(--muted); }
+.score-streak .rest { color: var(--ink, #1c2330); font-weight: 400; }
 /* the card around the level-up banner has nothing else in it now: no banner, no card */
 .ftc:not(:has(> .levelup:not([hidden]))) { display: none; }
 

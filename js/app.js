@@ -1308,15 +1308,16 @@
   var ftcAuto = true, ftcNext = 'keys', ftcStreak = 0, ftcTried = 0;     // (ftcTried: questions answered since the last level change)
   function streakNeed() { return window.MUSIC_THEORY_LOCAL ? 5 : FindChord.STREAK; }      // (the local copy levels up faster, to test)
   function showStreak() {                                       // "x correct of y guesses": y is the streak a level-up needs
-    var y = Math.min(streakNeed(), Math.max(1, ftcTried)), x = ftcStreak, t = '', bad = false;
-    if (ftcTried === 1) { bad = x !== 1 && !state.answered; t = x === 1 ? 'Correct!' : bad ? 'Nope. Try again!' : 'no correct guesses out of 1 attempts'; }      // after the very first guess
-    else if (ftcTried > 1) {
-      var guesses = (x === 1 ? '1 correct guess' : (x || 'no') + ' correct guesses');
-      t = ftcTried > x ? guesses + ' out of ' + y + ' attempts' : guesses;                 // "out of" only once something has been missed
+    var y = Math.min(streakNeed(), Math.max(1, ftcTried)), x = ftcStreak, st = document.getElementById('streak-text');
+    var good = '', rest = '', none = false;
+    if (ftcTried > 0) {
+      if (x === 0) { good = 'No correct guesses yet...'; none = true; }                  // (until the first correct one)
+      else if (ftcTried <= x) good = x + ' correct!';                                    // nothing missed
+      else { good = x + (x === 1 ? ' correct guess' : ' correct guesses'); rest = ' of ' + y + ' attempts.'; }
     }
-    var st = document.getElementById('streak-text');
-    st.textContent = t;
-    st.classList.toggle('bad', bad);
+    st.textContent = '';
+    var g = document.createElement('span'); g.className = none ? 'none' : 'good'; g.textContent = good; st.appendChild(g);
+    if (rest) { var r = document.createElement('span'); r.className = 'rest'; r.textContent = rest; st.appendChild(r); }
   }
   var ftcLast = { major: null, minor: null };        // per mode: the dial raised most recently = where the new challenge is
   var ftcFresh = { asked: 0, fresh: 0 };              // questions about the new challenge in the current run of five
