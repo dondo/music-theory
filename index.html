@@ -290,6 +290,7 @@
         document.getElementById('local-badge').hidden = false;
         document.title = '[LOCAL] ' + document.title;
         document.documentElement.classList.add('is-local');
+        if (window.musicTheoryLocalReady) window.musicTheoryLocalReady();      // (the app has already started: let it pick up the local settings)
       };
       document.head.appendChild(s);
     })();

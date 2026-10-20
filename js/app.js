@@ -1305,19 +1305,40 @@
   var FTC_KEY = 'music-theory-ftc-v1';
   var FM_IDS = { key: 'fm-key', sig: 'fm-sig', chord: 'fm-chord' };
   var ftcLv = { major: { keys: 1, chords: 1 }, minor: { keys: 1, chords: 1 } };
-  var ftcAuto = true, ftcNext = 'keys', ftcStreak = 0, ftcTried = 0;     // (ftcTried: questions answered since the last level change)
+  var ftcAuto = true, ftcNext = 'keys', ftcStreak = 0, ftcTried = 0, ftcRight = 0;     // (ftcTried: questions answered since the last level change)
   function streakNeed() { return window.MUSIC_THEORY_LOCAL ? 5 : FindChord.STREAK; }      // (the local copy levels up faster, to test)
-  function showStreak() {                                       // "x correct of y guesses": y is the streak a level-up needs
-    var y = Math.min(streakNeed(), Math.max(1, ftcTried)), x = ftcStreak, st = document.getElementById('streak-text');
-    var good = '', rest = '', none = false;
-    if (ftcTried > 0) {
-      if (x === 0) { good = 'No correct guesses yet...'; none = true; }                  // (until the first correct one)
-      else if (ftcTried <= x) good = x + ' correct!';                                    // nothing missed
-      else { good = x + (x === 1 ? ' correct guess' : ' correct guesses'); rest = ' of ' + y + ' attempts.'; }
-    }
+  // The last few first-try answers as bubbles, newest on the left: green when right, a red X when wrong. A full green row is a level-up.
+  var ftcBub = null, bubFull = false;
+  function bubbles() {
+    var n = streakNeed();
+    if (!ftcBub) ftcBub = [];
+    ftcBub.length = n;
+    for (var i = 0; i < n; i++) if (ftcBub[i] !== 'ok' && ftcBub[i] !== 'bad') ftcBub[i] = null;
+    return ftcBub;
+  }
+  function bubblesFull() { var b = bubbles(); return b.every(function (r) { return r === 'ok'; }); }
+  window.musicTheoryLocalReady = function () {                  // local.js loads after the app starts: the streak length may change
+    if (bubFull || (ftcBub && ftcBub.length)) bubFull = bubblesFull();
+    ftcStreak = Math.min(ftcStreak, streakNeed() - 1);
+    if (typeof updateFtc === 'function' && quizOn()) { updateFtc(); updateChordPanel(); }
+  };
+  function pushBub(result) {
+    if (bubFull) { ftcBub = null; bubFull = false; }          // (the full green row stayed up for the celebration)
+    var b = bubbles();
+    b.unshift(result); b.length = streakNeed();
+  }
+  function showStreak() {
+    var st = document.getElementById('streak-text'), b = bubbles(), right = 0;
     st.textContent = '';
-    var g = document.createElement('span'); g.className = none ? 'none' : 'good'; g.textContent = good; st.appendChild(g);
-    if (rest) { var r = document.createElement('span'); r.className = 'rest'; r.textContent = rest; st.appendChild(r); }
+    b.forEach(function (r) {
+      var d = document.createElement('span');
+      d.className = 'bub' + (r ? ' ' + r : '');
+      if (r === 'ok') right++;
+      d.textContent = r === 'bad' ? '\u2715' : r === 'ok' ? '\u2713' : '';
+      st.appendChild(d);
+    });
+    st.setAttribute('role', 'img');
+    st.setAttribute('aria-label', 'Last answers: ' + right + ' right out of ' + b.filter(Boolean).length);
   }
   var ftcLast = { major: null, minor: null };        // per mode: the dial raised most recently = where the new challenge is
   var ftcFresh = { asked: 0, fresh: 0 };              // questions about the new challenge in the current run of five
@@ -1376,15 +1397,17 @@
       ['major', 'minor'].forEach(function (m) { if (o.last && (o.last[m] === 'keys' || o.last[m] === 'chords')) ftcLast[m] = o.last[m]; });
       if (o.fresh && Number.isInteger(o.fresh.asked) && Number.isInteger(o.fresh.fresh) && o.fresh.asked >= 0 && o.fresh.asked < 5 && o.fresh.fresh >= 0) ftcFresh = { asked: o.fresh.asked, fresh: o.fresh.fresh };
       ftcStreak = Number.isInteger(o.streak) ? Math.max(0, Math.min(streakNeed() - 1, o.streak)) : 0;
-      ftcTried = ftcStreak;
+      ftcTried = ftcRight = ftcStreak;
+      ftcBub = Array.isArray(o.bub) ? o.bub.slice(0, 40) : null;
+      bubFull = bubblesFull();
     } catch (e) { /* defaults */ }
   }
   function saveFtc() {
-    try { window.localStorage.setItem(FTC_KEY, JSON.stringify({ levels: ftcLv, auto: ftcAuto, next: ftcNext, streak: ftcStreak, last: ftcLast, fresh: ftcFresh })); } catch (e) { /* storage unavailable */ }
+    try { window.localStorage.setItem(FTC_KEY, JSON.stringify({ levels: ftcLv, auto: ftcAuto, next: ftcNext, streak: ftcStreak, bub: bubbles(), last: ftcLast, fresh: ftcFresh })); } catch (e) { /* storage unavailable */ }
   }
   function resetFtc() {
     ftcLv = { major: { keys: 1, chords: 1 }, minor: { keys: 1, chords: 1 } };
-    ftcAuto = true; ftcNext = 'keys'; ftcStreak = 0; ftcTried = 0; ftcLast = { major: null, minor: null }; ftcFresh = { asked: 0, fresh: 0 };
+    ftcAuto = true; ftcNext = 'keys'; ftcStreak = 0; ftcTried = 0; ftcRight = 0; ftcBub = null; bubFull = false; ftcLast = { major: null, minor: null }; ftcFresh = { asked: 0, fresh: 0 };
     ftcAutoBox.checked = true;
     try { window.localStorage.removeItem(FTC_KEY); } catch (e) { /* storage unavailable */ }
   }
@@ -1517,7 +1540,7 @@
     state.scaleKind = 'full';
     document.getElementById('sk-full').checked = true;
     ftcQ = null;
-    if (!resumeQ && !reopening) ftcStreak = 0; ftcTried = 0;                      // (a reload keeps the streak it had)
+    if (!resumeQ && !reopening) { ftcStreak = 0; ftcTried = 0; ftcRight = 0; ftcBub = null; bubFull = false; }                      // (a reload keeps the streak it had)
     ftcNewQuestion(false);
   }
   function exitQuiz() {
@@ -1546,7 +1569,7 @@
   function ftcGiveUp(viaKeyboard) {
     if (!quizOn() || state.answered || !ftcQ) return;
     var want = ftcChord();
-    if (!ftcMissed) { score.bad++; ftcTried++; ftcNoteMiss(); }
+    if (!ftcMissed) { score.bad++; ftcTried++; pushBub('bad'); ftcNoteMiss(); }
     ftcMissed = true;
     ftcStreak = 0;
     ftcWrong = false;
@@ -1585,7 +1608,7 @@
       var text = 'Correct: ' + state.card.title + '.', levelUpNote = '';
       if (ftcMissed) ftcStreak = 0;
       else {
-        ftcStreak++; ftcTried++;
+        ftcStreak++; ftcTried++; ftcRight++; pushBub('ok');
         if (ftcAuto && ftcStreak >= streakNeed()) {
           var l = ftcLevels();
           var up = FindChord.levelUp(state.mode, ftcPop(), l.keys, l.chords, ftcNext);
@@ -1596,7 +1619,8 @@
             levelUpNote = levelUpText(l, up);
             text += ' Level up! ' + levelUpNote;
           }
-          ftcStreak = 0; ftcTried = 0;
+          ftcStreak = 0; ftcTried = 0; ftcRight = 0;
+          if (up) bubFull = true; else { ftcBub = null; bubFull = false; }        // (a level-up leaves the full green row up until the next answer)
         }
       }
       saveFtc();
@@ -1608,7 +1632,7 @@
       return;
     }
     score.bad++;
-    if (!ftcMissed) { ftcNoteMiss(); ftcTried++; }
+    if (!ftcMissed) { ftcNoteMiss(); ftcTried++; pushBub('bad'); }
     ftcMissed = true;
     ftcStreak = 0;
     saveFtc();
@@ -1641,7 +1665,7 @@
     var next = FindChord.clamp(l[dial] + delta, 1, max);
     if (next === l[dial]) return;
     ftcLv[state.mode] = { keys: dial === 'keys' ? next : l.keys, chords: dial === 'chords' ? next : l.chords };
-    ftcStreak = 0; ftcTried = 0;
+    ftcStreak = 0; ftcTried = 0; ftcRight = 0; ftcBub = null; bubFull = false;
     ftcRaised(delta > 0 ? dial : null);
     saveFtc();
     updateFtc();
@@ -1694,13 +1718,13 @@
       if (!done) return;
       ftcRaised(null);
     }
-    ftcStreak = 0; ftcTried = 0;
+    ftcStreak = 0; ftcTried = 0; ftcRight = 0; ftcBub = null; bubFull = false;
     saveFtc(); updateFtc(); updateChordPanel();
     ftcRevalidate();
   }
   document.getElementById('ftc-harder').addEventListener('click', function () { ftcDifficulty(1); });
   document.getElementById('ftc-easier').addEventListener('click', function () { ftcDifficulty(-1); });
-  ftcAutoBox.addEventListener('change', function () { ftcAuto = ftcAutoBox.checked; ftcStreak = 0; ftcTried = 0; saveFtc(); updateFtc(); });
+  ftcAutoBox.addEventListener('change', function () { ftcAuto = ftcAutoBox.checked; ftcStreak = 0; ftcTried = 0; ftcRight = 0; ftcBub = null; bubFull = false; saveFtc(); updateFtc(); });
   loadFtc();
   ftcAutoBox.checked = ftcAuto;
 
@@ -2013,7 +2037,7 @@
       state.answered = false;
       state.guess = null;
       state.card = null;
-      if (quizOn()) { ftcQ = null; ftcStreak = 0; ftcTried = 0; ftcFresh = { asked: 0, fresh: 0 }; state.chord = null; typePicked = false; ftcNewQuestion(false); }
+      if (quizOn()) { ftcQ = null; ftcStreak = 0; ftcTried = 0; ftcRight = 0; ftcBub = null; bubFull = false; ftcFresh = { asked: 0, fresh: 0 }; state.chord = null; typePicked = false; ftcNewQuestion(false); }
       else newCard();
     }
     draw(state.flash ? 'fade' : false, false);
