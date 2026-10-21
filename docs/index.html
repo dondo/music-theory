@@ -760,7 +760,7 @@ html.is-local .ftc-local { display: inline-flex; }
     <section id="ftc" class="ftc" aria-label="Find the chord" hidden>
       <p id="ftc-msg" class="sr-only" role="status" aria-live="polite"></p>
       <div id="ftc-levelup" class="levelup" role="status" hidden>
-        <span class="levelup-icon" aria-hidden="true">&#127881;</span>
+        <span class="levelup-icon" id="ftc-levelup-icon" aria-hidden="true">&#127881;</span>
         <div><strong id="ftc-levelup-title">Level up!</strong> <span id="ftc-levelup-text"></span></div>
       </div>
       <span id="ftc-level" class="ftc-level">Level 1</span>
@@ -4497,7 +4497,8 @@ var KeyboardRender = (function () {
     return 'New chords to find: ' + names.join(' and ') + ' chords on ' + romans.join(', ') + '.';
   }
   var bannerHold = false;                                       // a trial result stays up until the next pick
-  function showBanner(title, text, withConfetti) {
+  function showBanner(title, text, withConfetti, icon) {
+    document.getElementById('ftc-levelup-icon').textContent = icon || '\u{1F389}';
     document.getElementById('ftc-levelup-title').textContent = title;
     levelText.textContent = text;
     levelBanner.hidden = false;
@@ -4508,6 +4509,7 @@ var KeyboardRender = (function () {
     }
   }
   function celebrate(note) {
+    document.getElementById('ftc-levelup-icon').textContent = '\u{1F389}';
     document.getElementById('ftc-levelup-title').textContent = 'Level up!';
     levelText.textContent = 'You are on level ' + FindChord.levelNumber(ftcLevels().keys, ftcLevels().chords) + '. ' + note;
     levelBanner.hidden = false;
@@ -4767,7 +4769,7 @@ var KeyboardRender = (function () {
     ftcNewQuestionDraw();
     bannerHold = true;
     if (isBest) showBanner('New best time for level ' + level + '!', fmtTime(total) + (best != null ? ' (was ' + fmtTime(best.ms) + ')' : '') + ' \u00b7 ' + wrong + ' wrong', true);
-    else showBanner('Time trial complete', fmtTime(total) + ' \u00b7 ' + wrong + ' wrong \u2014 best is ' + fmtTime(best.ms), false);
+    else showBanner('Time trial complete', fmtTime(total) + ' \u00b7 ' + wrong + ' wrong \u2014 best is ' + fmtTime(best.ms), false, '\u{1F615}');
   }
 
   function ftcNextQuestion(viaKeyboard) {

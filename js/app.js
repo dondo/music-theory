@@ -1443,7 +1443,8 @@
     return 'New chords to find: ' + names.join(' and ') + ' chords on ' + romans.join(', ') + '.';
   }
   var bannerHold = false;                                       // a trial result stays up until the next pick
-  function showBanner(title, text, withConfetti) {
+  function showBanner(title, text, withConfetti, icon) {
+    document.getElementById('ftc-levelup-icon').textContent = icon || '\u{1F389}';
     document.getElementById('ftc-levelup-title').textContent = title;
     levelText.textContent = text;
     levelBanner.hidden = false;
@@ -1454,6 +1455,7 @@
     }
   }
   function celebrate(note) {
+    document.getElementById('ftc-levelup-icon').textContent = '\u{1F389}';
     document.getElementById('ftc-levelup-title').textContent = 'Level up!';
     levelText.textContent = 'You are on level ' + FindChord.levelNumber(ftcLevels().keys, ftcLevels().chords) + '. ' + note;
     levelBanner.hidden = false;
@@ -1713,7 +1715,7 @@
     ftcNewQuestionDraw();
     bannerHold = true;
     if (isBest) showBanner('New best time for level ' + level + '!', fmtTime(total) + (best != null ? ' (was ' + fmtTime(best.ms) + ')' : '') + ' \u00b7 ' + wrong + ' wrong', true);
-    else showBanner('Time trial complete', fmtTime(total) + ' \u00b7 ' + wrong + ' wrong \u2014 best is ' + fmtTime(best.ms), false);
+    else showBanner('Time trial complete', fmtTime(total) + ' \u00b7 ' + wrong + ' wrong \u2014 best is ' + fmtTime(best.ms), false, '\u{1F615}');
   }
 
   function ftcNextQuestion(viaKeyboard) {
