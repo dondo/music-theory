@@ -1342,7 +1342,8 @@
   }
   var ftcLast = { major: null, minor: null };        // per mode: the dial raised most recently = where the new challenge is
   var ftcFresh = { asked: 0, fresh: 0 };              // questions about the new challenge in the current run of five
-  function ftcRaised(dial) { ftcLast[state.mode] = dial; ftcFresh = { asked: 0, fresh: 0 }; }
+  var ftcHomeNext = false;                                        // a key was just added: its home triad is the first question in it
+  function ftcRaised(dial) { ftcLast[state.mode] = dial; ftcFresh = { asked: 0, fresh: 0 }; ftcHomeNext = dial === 'keys'; }
   var centerStage = false, stageAnswered = false;
   // Narrow screens scroll the stage sideways. 'card': centre the question's card with its "I give up" button;
   // 'open': the staff of inversions has opened, so show its clef through to the highlighted chord (centred if both fit)
@@ -1510,6 +1511,11 @@
     var q = FindChord.pick(state.mode, ftcPop(), l.keys, l.chords, Math.random, ftcQ, function (c) { return FindChord.weightOf(ftcW, state.mode, c); },
                            isFresh, isFresh ? FindChord.freshPlan(ftcFresh) : null);
     q = { pc: q.pc, deg: q.deg, type: q.type };
+    if (ftcHomeNext && !resumeQ) {                                  // the new key's first question is its home triad (I, or i in minor)
+      var newest = FindChord.keys(state.mode, l.keys).slice(-1)[0];
+      if (l.keys > 1 && newest !== undefined) q = { pc: newest, deg: 0, type: 'triad' };
+    }
+    ftcHomeNext = false;
     q.spell = Math.floor(Math.random() * Theory.specsFor(state.mode, q.pc).length);
     var resumed = resumeQ && resumeQ.cardMode === 'chord' ? resumeQ : null;
     resumeQ = null;
