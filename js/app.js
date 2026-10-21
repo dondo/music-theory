@@ -1588,7 +1588,7 @@
   var TRIALS_KEY = 'music-theory-trials-v1';
   var trialBox = el('div', 'trial-box'), trialBtn = el('button', 'btn-reset trial-btn', 'Time Trial \u25be'), trialList = el('div', 'trial-list'),
       trialClock = el('div', 'trial-clock'), trialPen = el('span', 'trial-pen'), trialStop = el('button', 'btn-reset trial-stop', 'Stop');
-  var trialListOpen = false, trialTick = null;
+  var trialListOpen = false, trialTick = null, trialCountdown = null;
   trialBtn.type = 'button'; trialStop.type = 'button';
   trialBtn.setAttribute('aria-haspopup', 'true');
   trialList.setAttribute('role', 'menu'); trialList.hidden = true;
@@ -1609,7 +1609,7 @@
     var t = Math.round(ms / 100) / 10, m = Math.floor(t / 60), sec = t - m * 60;
     return m ? m + ':' + (sec < 10 ? '0' : '') + sec.toFixed(1) : sec.toFixed(1) + 's';
   }
-  function trialElapsed() { return ftcTrial ? performance.now() - ftcTrial.t0 + ftcTrial.penalty : 0; }
+  function trialElapsed() { return ftcTrial && ftcTrial.t0 ? performance.now() - ftcTrial.t0 + ftcTrial.penalty : 0; }
   function drawClock() {
     var frac = (trialElapsed() % 60000) / 60000, a = frac * 2 * Math.PI;
     var x = CX + CR * Math.sin(a), y = CY - CR * Math.cos(a);
@@ -1658,14 +1658,31 @@
       snap: { bub: ftcBub, bubFull: bubFull, streak: ftcStreak, tried: ftcTried, right: ftcRight, home: ftcHomeNext, last: ftcLast[state.mode] } };
     ftcBub = null; bubFull = false; ftcStreak = 0; ftcTried = 0; ftcRight = 0; ftcHomeNext = false; ftcLast[state.mode] = null;
     bannerHold = false; levelBanner.hidden = true;
+    ftcTrial.t0 = 0; ftcTrial.counting = true;
     syncTrialBox(); drawClock();
-    trialTick = setInterval(drawClock, 50);
-    ftcNewQuestionDraw();
+    chordsPanel.classList.add('counting');
+    var steps = ['Ready?', '3\u2026', '2\u2026', '1\u2026'], i = 0;          // four seconds, then the first question
+    stage.innerHTML = '<div class="trial-count" role="status" aria-live="assertive"></div>';
+    var box = stage.firstChild;
+    (function step() {
+      box.textContent = steps[i];
+      if (i++ < steps.length - 1) { trialCountdown = setTimeout(step, 1000); return; }
+      trialCountdown = setTimeout(function () {
+        trialCountdown = null;
+        chordsPanel.classList.remove('counting');
+        ftcTrial.counting = false;
+        ftcTrial.t0 = ftcTrial.qStart = performance.now();
+        trialTick = setInterval(drawClock, 50);
+        ftcNewQuestionDraw();
+      }, 1000);
+    })();
   }
   // put the normal state back (no new question is drawn here)
   function abortTrial() {
     if (!ftcTrial) return;
     clearInterval(trialTick); trialTick = null;
+    clearTimeout(trialCountdown); trialCountdown = null;
+    chordsPanel.classList.remove('counting');
     var sn = ftcTrial.snap;
     ftcBub = sn.bub; bubFull = sn.bubFull; ftcStreak = sn.streak; ftcTried = sn.tried; ftcRight = sn.right; ftcHomeNext = sn.home; ftcLast[state.mode] = sn.last;
     ftcTrial = null; trialListOpen = false;
@@ -1732,6 +1749,7 @@
   // a chip was chosen: type and degree can come in either order; the second one is the guess
   function ftcPick(kind, value) {
     if (!quizOn() || state.answered || !ftcQ) return;
+    if (ftcTrial && ftcTrial.counting) return;
     if (bannerHold) { bannerHold = false; levelBanner.hidden = true; }
     if (ftcWrong) ftcClearPicks();                    // after a wrong guess the next click starts a new attempt
     ftcSel[kind] = value;

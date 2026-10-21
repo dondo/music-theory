@@ -660,3 +660,6 @@ html.is-local .ftc-local { display: inline-flex; }
 .tl-n { font-weight: 700; }
 .tl-best { font-size: 0.85rem; color: var(--muted); font-variant-numeric: tabular-nums; }
 .ftc-side-row[hidden] { display: none; }
+
+.trial-count { display: flex; align-items: center; justify-content: center; min-height: 260px; font-size: 3.2rem; font-weight: 800; color: #1e3a8a; }
+#chords.counting .chips { opacity: 0.35; pointer-events: none; }
