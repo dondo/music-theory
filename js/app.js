@@ -1328,12 +1328,12 @@
     ftcStreak = Math.min(ftcStreak, streakNeed() - 1);
     if (typeof updateFtc === 'function' && quizOn()) { updateFtc(); updateChordPanel(); }
   };
-  // the Time Trial button appears once 7 of the last 10 answers were right (4 of 5 in the local copy), and stays
+  // the Time Trial button appears once 7 of the last 10 answers were right (3 of 5 in the local copy), and stays
   var trialUnlocked = false;
   function checkTrialUnlock() {
     if (trialUnlocked || ftcTrial) return;
     var b = bubbles(), right = b.filter(function (r) { return r === 'ok'; }).length;
-    if (right >= Math.ceil(0.7 * b.length)) { trialUnlocked = true; if (typeof syncTrialBox === 'function') syncTrialBox(); }
+    if (right >= (window.MUSIC_THEORY_LOCAL ? 3 : Math.ceil(0.7 * b.length))) { trialUnlocked = true; if (typeof syncTrialBox === 'function') syncTrialBox(); }
   }
   function pushBub(result) {
     if (bubFull) { ftcBub = null; bubFull = false; }          // (the full green row stayed up for the celebration)
