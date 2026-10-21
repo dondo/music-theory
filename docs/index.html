@@ -694,7 +694,9 @@ html.is-local .ftc-local { display: inline-flex; }
 /* Time trial: the keyboard shortcut of each chip, small, bottom right (only where there is a keyboard: not phones or iPads) */
 @media (hover: hover) and (pointer: fine) {
   #chords.trialing .chip { position: relative; }
-  #chords.trialing .chip[data-key]::after { display: block; content: attr(data-key); position: absolute; top: auto; right: 7px; bottom: 3px; font-size: 0.62rem; font-weight: 600; line-height: 1; color: var(--muted); opacity: 0.75; }
+  #chords.trialing .chip-type { padding-bottom: 16px; }        /* room under the label for the hint */
+  #chords.trialing .chip-type[data-key]::after { bottom: 2px; }
+  #chords.trialing .chip[data-key]::after { display: block; content: attr(data-key); position: absolute; top: auto; right: auto; left: 50%; transform: translateX(-50%); bottom: 3px; font-size: 0.62rem; font-weight: 600; line-height: 1; color: var(--muted); opacity: 0.75; }
 }
 </style>
 </head>
