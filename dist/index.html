@@ -4421,7 +4421,7 @@ var KeyboardRender = (function () {
   var ftcLast = { major: null, minor: null };        // per mode: the dial raised most recently = where the new challenge is
   var ftcFresh = { asked: 0, fresh: 0 };              // questions about the new challenge in the current run of five
   var ftcHomeNext = false;                                        // a key was just added: its home triad is the first question in it
-  function ftcRaised(dial) { ftcLast[state.mode] = dial; ftcFresh = { asked: 0, fresh: 0 }; ftcHomeNext = dial === 'keys'; }
+  function ftcRaised(dial) { ftcLast[state.mode] = dial; ftcFresh = { asked: 0, fresh: 0 }; ftcHomeNext = dial === 'keys'; if (dial) { trialUnlocked = false; if (typeof syncTrialBox === 'function') syncTrialBox(); } }   // (a level-up locks Time Trial again)
   var centerStage = false, stageAnswered = false;
   // Narrow screens scroll the stage sideways. 'card': centre the question's card with its "I give up" button;
   // 'open': the staff of inversions has opened, so show its clef through to the highlighted chord (centred if both fit)
