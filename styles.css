@@ -663,3 +663,13 @@ html.is-local .ftc-local { display: inline-flex; }
 
 .trial-count { display: flex; align-items: center; justify-content: center; min-height: 260px; font-size: 3.2rem; font-weight: 800; color: #1e3a8a; }
 #chords.counting .chips { opacity: 0.35; pointer-events: none; }
+
+.trial-result { display: flex; flex-direction: column; align-items: center; gap: 4px; min-height: 260px; padding: 18px 12px; text-align: center; justify-content: center; }
+.tr-icon { font-size: 2.6rem; line-height: 1; }
+.tr-title { margin: 0; font-size: 1.25rem; }
+.tr-time { font-size: 3rem; font-weight: 800; color: #1e3a8a; font-variant-numeric: tabular-nums; }
+.tr-detail, .tr-best { margin: 0; color: var(--muted); }
+.tr-actions { display: flex; gap: 12px; margin-top: 14px; flex-wrap: wrap; justify-content: center; }
+.tr-actions button { padding: 10px 24px; border-radius: 999px; font-size: 1rem; font-weight: 700; cursor: pointer; border: 2px solid #2563eb; background: #eff6ff; color: #1e3a8a; }
+.tr-actions .tr-again { background: #2563eb; color: #fff; }
+.trial-stop[hidden] { display: none; }

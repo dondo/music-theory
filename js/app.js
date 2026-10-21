@@ -1245,6 +1245,7 @@
     state.quizStave = quizOn() && state.answered && state.card && state.card.chord ? buildQuizStave() : null;
     var ghosts = pendingLayout === 'out' && oldSvg ? Array.prototype.map.call(oldSvg.querySelectorAll('.xbox'), function (g) { return g.outerHTML; }).join('') : '';
     stage.innerHTML = KeyboardRender.render(quizOn() ? Object.assign({}, state, { selected: false }) : state);
+    if (ftcTrial && ftcTrial.view) ftcTrial.view();                       // (a countdown or the trial results fills the stage)
     if (!(quizOn() && state.answered) && !bannerHold) levelBanner.hidden = true;        // the level-up note stays until the next question
     resetBtn.hidden = !state.selected || (state.flash && state.cardMode === 'sig') || quizOn();
     updateCaption();
@@ -1623,6 +1624,7 @@
   function syncTrialBox() {
     trialBtn.hidden = !!ftcTrial;
     trialClock.hidden = !ftcTrial;
+    trialStop.hidden = !!(ftcTrial && ftcTrial.done);
     trialBtn.setAttribute('aria-expanded', trialListOpen ? 'true' : 'false');
     trialList.hidden = !trialListOpen || !!ftcTrial;
   }
@@ -1653,31 +1655,33 @@
   trialStop.addEventListener('click', function () { abortTrial(); ftcNewQuestionDraw(); });
   function ftcNewQuestionDraw() { var anim = ftcNewQuestion(false); updateScore(); draw(anim, false); }
   function startTrial(n) {
-    if (!quizOn() || ftcTrial) return;
+    if (!quizOn() || (ftcTrial && !ftcTrial.done)) return;
     var lv = FindChord.levelAt(state.mode, ftcPop(), n);
     trialListOpen = false;
-    ftcTrial = { level: n, keys: lv.keys, chords: lv.chords, n: 0, wrongs: 0, t0: performance.now(), qStart: performance.now(), penalty: 0, times: [],
-      snap: { bub: ftcBub, bubFull: bubFull, streak: ftcStreak, tried: ftcTried, right: ftcRight, home: ftcHomeNext, last: ftcLast[state.mode] } };
+    var snap = ftcTrial ? ftcTrial.snap                                   // ("Try again": the state from before the first trial is still the one to return to)
+      : { bub: ftcBub, bubFull: bubFull, streak: ftcStreak, tried: ftcTried, right: ftcRight, home: ftcHomeNext, last: ftcLast[state.mode] };
+    clearInterval(trialTick); trialTick = null;
+    ftcTrial = { level: n, keys: lv.keys, chords: lv.chords, n: 0, wrongs: 0, t0: 0, qStart: 0, penalty: 0, times: [], snap: snap, counting: true, done: false, view: null };
     ftcBub = null; bubFull = false; ftcStreak = 0; ftcTried = 0; ftcRight = 0; ftcHomeNext = false; ftcLast[state.mode] = null;
     bannerHold = false; levelBanner.hidden = true;
-    ftcTrial.t0 = 0; ftcTrial.counting = true;
-    syncTrialBox(); drawClock();
+    syncTrialBox(); drawClock(); updateFtc(); updateScore(); updateChordPanel();
     chordsPanel.classList.add('counting');
-    var steps = ['Ready?', '3\u2026', '2\u2026', '1\u2026'], i = 0;          // four seconds, then the first question
-    stage.innerHTML = '<div class="trial-count" role="status" aria-live="assertive"></div>';
-    var box = stage.firstChild;
-    (function step() {
-      box.textContent = steps[i];
-      if (i++ < steps.length - 1) { trialCountdown = setTimeout(step, 1000); return; }
-      trialCountdown = setTimeout(function () {
-        trialCountdown = null;
-        chordsPanel.classList.remove('counting');
-        ftcTrial.counting = false;
-        ftcTrial.t0 = ftcTrial.qStart = performance.now();
-        trialTick = setInterval(drawClock, 50);
-        ftcNewQuestionDraw();
-      }, 1000);
-    })();
+    var steps = ['Ready…', 'Set…'], i = 0;                    // two seconds, then the first question
+    var t = ftcTrial;
+    t.view = function () {
+      stage.innerHTML = '<div class="trial-count" role="status" aria-live="assertive"></div>';
+      stage.firstChild.textContent = steps[Math.min(i, steps.length - 1)];
+    };
+    t.view();
+    function go() {
+      trialCountdown = null;
+      chordsPanel.classList.remove('counting');
+      t.counting = false; t.view = null;
+      t.t0 = t.qStart = performance.now();
+      trialTick = setInterval(drawClock, 50);
+      ftcNewQuestionDraw();
+    }
+    trialCountdown = setTimeout(function () { i = 1; t.view(); trialCountdown = setTimeout(go, 1000); }, 1000);
   }
   // put the normal state back (no new question is drawn here)
   function abortTrial() {
@@ -1705,17 +1709,31 @@
     t.qStart = now;
     ftcNewQuestionDraw();
   }
+  // the results take the place of the staff: time, wrong answers, and two ways on
   function finishTrial(now) {
     var t = ftcTrial, total = now - t.t0 + t.penalty, key = trialKey(t.level), bests = trialBests(), best = bests[key];
-    var wrong = t.times.length ? t.wrongs : 0;
     var isBest = best == null || total < best.ms;
-    if (isBest) { bests[key] = { ms: total, wrong: wrong }; try { window.localStorage.setItem(TRIALS_KEY, JSON.stringify(bests)); } catch (e) { /* storage unavailable */ } }
-    var level = t.level;
-    abortTrial();
-    ftcNewQuestionDraw();
-    bannerHold = true;
-    if (isBest) showBanner('New best time for level ' + level + '!', fmtTime(total) + (best != null ? ' (was ' + fmtTime(best.ms) + ')' : '') + ' \u00b7 ' + wrong + ' wrong', true);
-    else showBanner('Time trial complete', fmtTime(total) + ' \u00b7 ' + wrong + ' wrong \u2014 best is ' + fmtTime(best.ms), false, '\u{1F615}');
+    if (isBest) { bests[key] = { ms: total, wrong: t.wrongs }; try { window.localStorage.setItem(TRIALS_KEY, JSON.stringify(bests)); } catch (e) { /* storage unavailable */ } }
+    clearInterval(trialTick); trialTick = null;
+    t.done = true; t.total = total;
+    state.card = null; ftcQ = null; state.answered = false; ftcClearPicks();
+    chordsPanel.classList.add('counting');
+    t.view = function () {
+      stage.innerHTML = '<div class="trial-result"><div class="tr-icon"></div><h3 class="tr-title"></h3><div class="tr-time"></div><p class="tr-detail"></p><p class="tr-best"></p>' +
+        '<div class="tr-actions"><button type="button" class="btn-reset tr-again">Try Again</button><button type="button" class="btn-reset tr-back">Back to Study</button></div></div>';
+      var q = function (c) { return stage.querySelector(c); };
+      q('.tr-icon').textContent = isBest ? '\u{1F389}' : '\u{1F615}';
+      q('.tr-title').textContent = isBest ? 'New best time for level ' + t.level + '!' : 'Level ' + t.level + ' time trial complete';
+      q('.tr-time').textContent = fmtTime(total);
+      q('.tr-detail').textContent = t.wrongs + ' wrong' + (t.wrongs ? ' (+' + (t.wrongs * TRIAL_PENALTY / 1000) + 's)' : '');
+      q('.tr-best').textContent = isBest ? (best ? 'Previous best: ' + fmtTime(best.ms) + ' · ' + best.wrong + ' wrong' : 'First time at this level') :
+        'Best: ' + fmtTime(best.ms) + (best.wrong == null ? '' : ' · ' + best.wrong + ' wrong');
+      q('.tr-again').addEventListener('click', function () { startTrial(t.level); });
+      q('.tr-back').addEventListener('click', function () { abortTrial(); ftcNewQuestionDraw(); });
+    };
+    syncTrialBox(); drawClock(); updateFtc(); updateScore(); updateChordPanel();
+    t.view();
+    if (isBest && !reduceMotion) { var r = stage.getBoundingClientRect(); confetti(r.left + r.width / 2, Math.max(60, r.top + r.height / 3)); }
   }
 
   function ftcNextQuestion(viaKeyboard) {
@@ -1751,7 +1769,7 @@
   // a chip was chosen: type and degree can come in either order; the second one is the guess
   function ftcPick(kind, value) {
     if (!quizOn() || state.answered || !ftcQ) return;
-    if (ftcTrial && ftcTrial.counting) return;
+    if (ftcTrial && (ftcTrial.counting || ftcTrial.done)) return;
     if (bannerHold) { bannerHold = false; levelBanner.hidden = true; }
     if (ftcWrong) ftcClearPicks();                    // after a wrong guess the next click starts a new attempt
     ftcSel[kind] = value;
