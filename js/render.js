@@ -714,7 +714,7 @@ var KeyboardRender = (function () {
     } else {
       out.push('<text x="' + cx + '" y="' + ty + '" text-anchor="middle" font-size="16" fill="#5d6475" pointer-events="none">Find this chord in the Chords section below.</text>');
     }
-    if (!answered) out.push(giveUpButton(left + boxW + 28, (top + bot) / 2));
+    if (!answered && !card.noGiveUp) out.push(giveUpButton(left + boxW + 28, (top + bot) / 2));
     out.push('<text class="fb-nope" x="' + f(left + boxW + 28) + '" y="' + ((top + bot) / 2 - 36) + '" font-size="34" font-weight="bold" fill="#dc2626" opacity="0" pointer-events="none">✗ Nope</text>');
     out.push('<text class="fb-yes" x="' + f(left - 28) + '" y="' + ((top + bot) / 2 + 10) + '" text-anchor="end" font-size="34" font-weight="bold" fill="#16a34a" opacity="0" pointer-events="none">✓ Yes!</text>');
     out.push('</g>');

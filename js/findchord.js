@@ -189,6 +189,13 @@
     return { keys: k, chords: ch, next: planDial(mode, pop, k, ch) || d };
   }
 
+  // the keys and chords levels that make up overall level n (1 = one key, the first chord group)
+  function levelAt(mode, pop, n) {
+    var k = 1, c = 1;
+    for (var i = 1; i < n; i++) { var up = levelUp(mode, pop, k, c); if (!up) break; k = up.keys; c = up.chords; }
+    return { keys: k, chords: c };
+  }
+
   // "Find a chord": which of the key's chords is exactly the notes picked on the keyboard?
   // `cands`: [{ deg, type, pcs: [absolute pitch classes], rootPc, rank }] (lower rank = more common);
   // `picked`: absolute key numbers (semitones), any octave. The picked pitch classes must equal a chord's;
@@ -216,7 +223,7 @@
   }
 
   return { KEY_ORDER: KEY_ORDER, STREAK: STREAK, groups: groups, maxKeys: maxKeys, maxChords: maxChords,
-           clamp: clamp, keys: keys, chords: chords, pick: pick, levelUp: levelUp, planDial: planDial, lastDial: lastDial, identify: identify,
+           clamp: clamp, keys: keys, chords: chords, pick: pick, levelUp: levelUp, levelAt: levelAt, planDial: planDial, lastDial: lastDial, identify: identify,
            weightKey: weightKey, weightOf: weightOf, miss: miss, hit: hit, loadWeights: loadWeights, saveWeights: saveWeights, resetWeights: resetWeights,
            pickInversion: pickInversion, freshTest: freshTest, freshPlan: freshPlan, freshRecord: freshRecord,
            levelNumber: levelNumber, levelCount: levelCount, FRESH_WINDOW: FRESH_WINDOW, FRESH_MIN: FRESH_MIN };

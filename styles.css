@@ -639,3 +639,23 @@ html.is-local .ftc-local { display: inline-flex; }
 .ftc-next[hidden] { display: none; }
 .ftc-next:focus-visible { outline: 3px solid #14532d; outline-offset: 2px; }
 @media (hover: hover) { .ftc-next:hover { background: #bbf7d0; } }
+
+/* Time trial */
+.trial-box { display: flex; align-items: center; gap: 8px; margin: 0 auto; }
+.trial-btn { padding: 6px 16px; border-radius: 999px; border: 2px solid #2563eb; background: #eff6ff; color: #1e3a8a; font-weight: 700; font-size: 0.9rem; cursor: pointer; }
+.trial-btn[hidden], .trial-clock[hidden] { display: none; }
+.trial-clock { display: flex; align-items: center; gap: 8px; }
+.trial-clock svg { display: block; }
+.tc-face { fill: #fff; stroke: #1e3a8a; stroke-width: 2; }
+.tc-fill { fill: #bfdbfe; }
+.tc-hand { stroke: #1e3a8a; stroke-width: 2; stroke-linecap: round; }
+.trial-stop { padding: 3px 10px; border-radius: 999px; border: 1px solid var(--line); background: #fff; font-size: 0.8rem; cursor: pointer; }
+.trial-pen { color: #b91c1c; font-weight: 700; opacity: 0; }
+.trial-pen.show { animation: trialpen 1.4s ease-out; }
+@keyframes trialpen { 0% { opacity: 1; transform: translateY(0); } 70% { opacity: 1; } 100% { opacity: 0; transform: translateY(-6px); } }
+.trial-list { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 0; }
+.trial-lvl { display: inline-flex; flex-direction: column; align-items: flex-start; padding: 6px 12px; border-radius: 10px; border: 1px solid var(--line); background: #fff; cursor: pointer; }
+.trial-lvl:hover { border-color: #2563eb; }
+.tl-n { font-weight: 700; }
+.tl-best { font-size: 0.78rem; color: var(--muted); }
+.ftc-side-row[hidden] { display: none; }

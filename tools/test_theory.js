@@ -595,6 +595,16 @@ check('find the chord inversions: Pop is always root position; Jazz mixes every 
 });
 
 
+check('find the chord: levelAt gives the keys and chords levels of each overall level', function () {
+  [['major', true], ['major', false], ['minor', true]].forEach(function (mp) {
+    var n = FC.levelCount(mp[0], mp[1]);
+    assert.deepStrictEqual(FC.levelAt(mp[0], mp[1], 1), { keys: 1, chords: 1 });
+    for (var i = 1; i <= n; i++) {
+      var l = FC.levelAt(mp[0], mp[1], i);
+      assert.strictEqual(FC.levelNumber(l.keys, l.chords), i);
+    }
+  });
+});
 check('find the chord: each run of five questions has at least two about the level\'s new challenge', function () {
   var FCx = FC, rngSeed = 7;
   function rnd() { rngSeed = (rngSeed * 16807) % 2147483647; return rngSeed / 2147483647; }
