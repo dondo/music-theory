@@ -371,7 +371,6 @@
       quizHead.appendChild(autoRow);
       autoRow.hidden = !!ftcTrial;
       chordInfo.appendChild(quizHead);
-      if (trialListOpen && !ftcTrial) chordInfo.appendChild(trialList);
     } else if (scoreBox.parentNode !== scoreHome) scoreHome.appendChild(scoreBox);
     if (quizOn()) {                                              // Find the chord: no chord description; the level controls sit below the score
       if (!scoreHere) {                                          // before the first guess: just the instruction
@@ -1587,18 +1586,25 @@
   // ---- Time trial: ten questions at a chosen level, against the clock ----
   // The normal state (bubbles, streak) is kept aside and put back afterwards. A wrong answer costs ten seconds and the trial moves on.
   var TRIALS_KEY = 'music-theory-trials-v1';
-  var trialBox = el('div', 'trial-box'), trialBtn = el('button', 'btn-reset trial-btn', 'Time Trial'), trialList = el('div', 'trial-list'),
+  var trialBox = el('div', 'trial-box'), trialBtn = el('button', 'btn-reset trial-btn', 'Time Trial \u25be'), trialList = el('div', 'trial-list'),
       trialClock = el('div', 'trial-clock'), trialPen = el('span', 'trial-pen'), trialStop = el('button', 'btn-reset trial-stop', 'Stop');
   var trialListOpen = false, trialTick = null;
   trialBtn.type = 'button'; trialStop.type = 'button';
+  trialBtn.setAttribute('aria-haspopup', 'true');
+  trialList.setAttribute('role', 'menu'); trialList.hidden = true;
   var CX = 20, CY = 20, CR = 17;
   trialClock.innerHTML = '<svg viewBox="0 0 40 40" width="40" height="40" aria-hidden="true"><circle cx="20" cy="20" r="18" class="tc-face"/>' +
     '<path class="tc-fill" d="M20 20"/><line class="tc-hand" x1="20" y1="20" x2="20" y2="3"/></svg>';
   trialClock.appendChild(trialPen); trialClock.appendChild(trialStop);
   trialClock.hidden = true;
-  trialBox.appendChild(trialBtn); trialBox.appendChild(trialClock);
+  trialBox.appendChild(trialBtn); trialBox.appendChild(trialClock); trialBox.appendChild(trialList);
   function trialKey(n) { return state.mode + ':' + (ftcPop() ? 'pop' : 'jazz') + ':' + n; }
-  function trialBests() { try { return JSON.parse(window.localStorage.getItem(TRIALS_KEY)) || {}; } catch (e) { return {}; } }
+  // best per level: { ms, wrong } (older saves held just the time)
+  function trialBests() {
+    var o; try { o = JSON.parse(window.localStorage.getItem(TRIALS_KEY)) || {}; } catch (e) { o = {}; }
+    Object.keys(o).forEach(function (k) { if (typeof o[k] === 'number') o[k] = { ms: o[k], wrong: null }; });
+    return o;
+  }
   function fmtTime(ms) {
     var t = Math.round(ms / 100) / 10, m = Math.floor(t / 60), sec = t - m * 60;
     return m ? m + ':' + (sec < 10 ? '0' : '') + sec.toFixed(1) : sec.toFixed(1) + 's';
@@ -1616,7 +1622,11 @@
     trialBtn.hidden = !!ftcTrial;
     trialClock.hidden = !ftcTrial;
     trialBtn.setAttribute('aria-expanded', trialListOpen ? 'true' : 'false');
+    trialList.hidden = !trialListOpen || !!ftcTrial;
   }
+  function closeTrialList() { if (trialListOpen) { trialListOpen = false; syncTrialBox(); } }
+  document.addEventListener('click', function (e) { if (trialListOpen && !trialBox.contains(e.target)) closeTrialList(); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && trialListOpen) { closeTrialList(); trialBtn.focus(); } });
   function buildTrialList() {
     trialList.textContent = '';
     var cur = FindChord.levelNumber(ftcLv[state.mode].keys, ftcLv[state.mode].chords), bests = trialBests();
@@ -1624,14 +1634,15 @@
       var b = el('button', 'btn-reset trial-lvl'), best = bests[trialKey(n)];
       b.type = 'button'; b.setAttribute('data-level', n);
       b.appendChild(el('span', 'tl-n', 'Level ' + n));
-      b.appendChild(el('span', 'tl-best', best ? 'best ' + fmtTime(best) : 'no time yet'));
+      b.setAttribute('role', 'menuitem');
+      b.appendChild(el('span', 'tl-best', best ? fmtTime(best.ms) + (best.wrong == null ? '' : ' \u00b7 ' + best.wrong + ' wrong') : 'no time yet'));
       trialList.appendChild(b);
     }
   }
   trialBtn.addEventListener('click', function () {
     trialListOpen = !trialListOpen;
     if (trialListOpen) buildTrialList();
-    syncTrialBox(); updateChordPanel();
+    syncTrialBox();
   });
   trialList.addEventListener('click', function (e) {
     var b = e.target.closest ? e.target.closest('.trial-lvl') : null;
@@ -1643,7 +1654,7 @@
     if (!quizOn() || ftcTrial) return;
     var lv = FindChord.levelAt(state.mode, ftcPop(), n);
     trialListOpen = false;
-    ftcTrial = { level: n, keys: lv.keys, chords: lv.chords, n: 0, t0: performance.now(), qStart: performance.now(), penalty: 0, times: [],
+    ftcTrial = { level: n, keys: lv.keys, chords: lv.chords, n: 0, wrongs: 0, t0: performance.now(), qStart: performance.now(), penalty: 0, times: [],
       snap: { bub: ftcBub, bubFull: bubFull, streak: ftcStreak, tried: ftcTried, right: ftcRight, home: ftcHomeNext, last: ftcLast[state.mode] } };
     ftcBub = null; bubFull = false; ftcStreak = 0; ftcTried = 0; ftcRight = 0; ftcHomeNext = false; ftcLast[state.mode] = null;
     bannerHold = false; levelBanner.hidden = true;
@@ -1664,7 +1675,7 @@
     var now = performance.now(), t = ftcTrial;
     t.times.push(now - t.qStart + (ok ? 0 : TRIAL_PENALTY));
     if (!ok) {
-      t.penalty += TRIAL_PENALTY;
+      t.penalty += TRIAL_PENALTY; t.wrongs++;
       trialPen.textContent = '+' + (TRIAL_PENALTY / 1000) + 's';
       trialPen.classList.remove('show'); void trialPen.offsetWidth; trialPen.classList.add('show');
     }
@@ -1677,14 +1688,15 @@
   }
   function finishTrial(now) {
     var t = ftcTrial, total = now - t.t0 + t.penalty, key = trialKey(t.level), bests = trialBests(), best = bests[key];
-    var isBest = best == null || total < best;
-    if (isBest) { bests[key] = total; try { window.localStorage.setItem(TRIALS_KEY, JSON.stringify(bests)); } catch (e) { /* storage unavailable */ } }
+    var wrong = t.times.length ? t.wrongs : 0;
+    var isBest = best == null || total < best.ms;
+    if (isBest) { bests[key] = { ms: total, wrong: wrong }; try { window.localStorage.setItem(TRIALS_KEY, JSON.stringify(bests)); } catch (e) { /* storage unavailable */ } }
     var level = t.level;
     abortTrial();
     ftcNewQuestionDraw();
     bannerHold = true;
-    if (isBest) showBanner('New best time for level ' + level + '!', fmtTime(total) + (best != null ? ' (was ' + fmtTime(best) + ')' : ''), true);
-    else showBanner('Time trial complete', fmtTime(total) + ' \u2014 best is ' + fmtTime(best), false);
+    if (isBest) showBanner('New best time for level ' + level + '!', fmtTime(total) + (best != null ? ' (was ' + fmtTime(best.ms) + ')' : '') + ' \u00b7 ' + wrong + ' wrong', true);
+    else showBanner('Time trial complete', fmtTime(total) + ' \u00b7 ' + wrong + ' wrong \u2014 best is ' + fmtTime(best.ms), false);
   }
 
   function ftcNextQuestion(viaKeyboard) {
