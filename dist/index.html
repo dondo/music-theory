@@ -4489,10 +4489,11 @@ var KeyboardRender = (function () {
     try { window.localStorage.setItem(FTC_KEY, JSON.stringify({ levels: ftcLv, auto: ftcAuto, next: ftcNext, streak: ftcStreak, bub: bubbles(), trial: trialUnlocked, last: ftcLast, fresh: ftcFresh })); } catch (e) { /* storage unavailable */ }
   }
   function resetFtc() {
+    abortTrial();
     ftcLv = { major: { keys: 1, chords: 1 }, minor: { keys: 1, chords: 1 } };
     trialUnlocked = false; ftcAuto = true; ftcNext = 'keys'; ftcStreak = 0; ftcTried = 0; ftcRight = 0; ftcBub = null; bubFull = false; ftcLast = { major: null, minor: null }; ftcFresh = { asked: 0, fresh: 0 };
     ftcAutoBox.checked = true;
-    try { window.localStorage.removeItem(FTC_KEY); } catch (e) { /* storage unavailable */ }
+    try { window.localStorage.removeItem(FTC_KEY); window.localStorage.removeItem(TRIALS_KEY); } catch (e) { /* storage unavailable */ }   // (the time trial bests go too)
   }
   // the levels in force: the chord dial is capped by what this level (Pop / Jazz) offers
   function ftcLevels() {
