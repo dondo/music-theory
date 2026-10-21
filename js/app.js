@@ -1638,6 +1638,7 @@
     trialBtn.hidden = !!ftcTrial || !trialUnlocked;
     trialClock.hidden = !ftcTrial;
     trialStop.hidden = !!(ftcTrial && ftcTrial.done);
+    chordsPanel.classList.toggle('trialing', !!ftcTrial);              // (keyboard hints on the chips, where there is a keyboard)
     trialBtn.setAttribute('aria-expanded', trialListOpen ? 'true' : 'false');
     trialList.hidden = !trialListOpen || !!ftcTrial;
   }
