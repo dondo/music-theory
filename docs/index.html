@@ -4392,10 +4392,18 @@ var KeyboardRender = (function () {
     ftcStreak = Math.min(ftcStreak, streakNeed() - 1);
     if (typeof updateFtc === 'function' && quizOn()) { updateFtc(); updateChordPanel(); }
   };
+  // the Time Trial button appears once 7 of the last 10 answers were right (4 of 5 in the local copy), and stays
+  var trialUnlocked = false;
+  function checkTrialUnlock() {
+    if (trialUnlocked || ftcTrial) return;
+    var b = bubbles(), right = b.filter(function (r) { return r === 'ok'; }).length;
+    if (right >= Math.ceil(0.7 * b.length)) { trialUnlocked = true; if (typeof syncTrialBox === 'function') syncTrialBox(); }
+  }
   function pushBub(result) {
     if (bubFull) { ftcBub = null; bubFull = false; }          // (the full green row stayed up for the celebration)
     var b = bubbles();
     b.unshift(result); b.length = bubN();
+    checkTrialUnlock();
   }
   function showStreak() {
     var st = document.getElementById('streak-text'), b = bubbles(), right = 0;
@@ -4471,15 +4479,18 @@ var KeyboardRender = (function () {
       ftcTried = ftcRight = ftcStreak;
       ftcBub = Array.isArray(o.bub) ? o.bub.slice(0, 40) : null;
       bubFull = bubblesFull();
+      trialUnlocked = o.trial === true;
+      checkTrialUnlock();
+      syncTrialBox();
     } catch (e) { /* defaults */ }
   }
   function saveFtc() {
     if (ftcTrial) return;                                        // (a trial is never saved: the normal state stays as it was)
-    try { window.localStorage.setItem(FTC_KEY, JSON.stringify({ levels: ftcLv, auto: ftcAuto, next: ftcNext, streak: ftcStreak, bub: bubbles(), last: ftcLast, fresh: ftcFresh })); } catch (e) { /* storage unavailable */ }
+    try { window.localStorage.setItem(FTC_KEY, JSON.stringify({ levels: ftcLv, auto: ftcAuto, next: ftcNext, streak: ftcStreak, bub: bubbles(), trial: trialUnlocked, last: ftcLast, fresh: ftcFresh })); } catch (e) { /* storage unavailable */ }
   }
   function resetFtc() {
     ftcLv = { major: { keys: 1, chords: 1 }, minor: { keys: 1, chords: 1 } };
-    ftcAuto = true; ftcNext = 'keys'; ftcStreak = 0; ftcTried = 0; ftcRight = 0; ftcBub = null; bubFull = false; ftcLast = { major: null, minor: null }; ftcFresh = { asked: 0, fresh: 0 };
+    trialUnlocked = false; ftcAuto = true; ftcNext = 'keys'; ftcStreak = 0; ftcTried = 0; ftcRight = 0; ftcBub = null; bubFull = false; ftcLast = { major: null, minor: null }; ftcFresh = { asked: 0, fresh: 0 };
     ftcAutoBox.checked = true;
     try { window.localStorage.removeItem(FTC_KEY); } catch (e) { /* storage unavailable */ }
   }
@@ -4664,6 +4675,7 @@ var KeyboardRender = (function () {
     '<path class="tc-fill" d="M20 20"/><line class="tc-hand" x1="20" y1="20" x2="20" y2="3"/></svg>';
   trialClock.appendChild(trialPen); trialClock.appendChild(trialStop);
   trialClock.hidden = true;
+  trialBtn.hidden = !trialUnlocked;
   trialBox.appendChild(trialBtn); trialBox.appendChild(trialClock); trialBox.appendChild(trialList);
   function trialKey(n) { return state.mode + ':' + (ftcPop() ? 'pop' : 'jazz') + ':' + n; }
   // best per level: { ms, wrong } (older saves held just the time)
@@ -4686,7 +4698,7 @@ var KeyboardRender = (function () {
       'M20 20 L20 ' + (CY - CR) + ' A' + CR + ' ' + CR + ' 0 ' + (frac > 0.5 ? 1 : 0) + ' 1 ' + x.toFixed(2) + ' ' + y.toFixed(2) + ' Z');   // swept from 12 o'clock to the hand
   }
   function syncTrialBox() {
-    trialBtn.hidden = !!ftcTrial;
+    trialBtn.hidden = !!ftcTrial || !trialUnlocked;
     trialClock.hidden = !ftcTrial;
     trialStop.hidden = !!(ftcTrial && ftcTrial.done);
     trialBtn.setAttribute('aria-expanded', trialListOpen ? 'true' : 'false');
