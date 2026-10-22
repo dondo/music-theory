@@ -492,22 +492,19 @@ check('find the chord: levels follow the plan: C D G A F, vi ii, D♭ B♭ E♭,
   assert.strictEqual(names(FC.keys('major', 5)), 'C D G A F');
   assert.strictEqual(names(FC.keys('major', 8)), 'C D G A F D♭ B♭ E♭');
   assert.strictEqual(names(FC.keys('minor', 5)), 'A B E F♯ D');
-  // walk the whole ladder from level 1
-  var k = 1, ch = 1, seq = [];
-  for (;;) {
-    var u = FC.levelUp('major', true, k, ch);
-    if (!u) break;
-    seq.push(u.keys > k ? 'k' : 'c'); k = u.keys; ch = u.chords;
-  }
-  assert.deepStrictEqual([k, ch], [12, FC.maxChords('major', true)]);
-  assert.strictEqual(seq.slice(0, 15).join(''), 'kkkkckkkckkckkc');         // D G A F | vi ii | D♭ B♭ E♭ | sevenths | E A♭ | iii vii° | B F♯ | ...
-  assert.ok(seq.slice(15).every(function (s) { return s === 'c'; }));
-  var u2 = FC.levelUp('major', true, 12, 3);                    // keys are full: chords go up instead
-  assert.deepStrictEqual([u2.keys, u2.chords], [12, 4]);
+  // the ladder: a new chord group sends the keys back to C D; a new key (once vi ii are in) sends the chords back to I IV V
+  var L = []; for (var n = 1, nn = FC.levelCount('major', true); n <= nn; n++) L.push(FC.levelAt('major', true, n));
+  var pairs = L.map(function (l) { return l.keys + '/' + l.chords; });
+  assert.strictEqual(pairs.slice(0, 14).join(' '), '1/1 2/1 3/1 4/1 5/1 2/2 3/2 4/2 5/2 6/1 6/2 7/1 7/2 8/1');
+  assert.strictEqual(pairs.slice(14, 18).join(' '), '8/2 2/3 3/3 4/3');
+  assert.strictEqual(new Set(pairs).size, pairs.length, 'no level repeats');
+  assert.deepStrictEqual(L[L.length - 1], { keys: 12, chords: FC.maxChords('major', true) });
+  var u = FC.levelUp('major', true, 5, 2); assert.deepStrictEqual([u.keys, u.chords], [6, 1]);
   assert.strictEqual(FC.levelUp('major', true, 12, FC.maxChords('major', true)), null);
   assert.strictEqual(FC.lastDial('major', true, 1, 1), null);
   assert.strictEqual(FC.lastDial('major', true, 5, 1), 'keys');
-  assert.strictEqual(FC.lastDial('major', true, 5, 2), 'chords');
+  assert.strictEqual(FC.lastDial('major', true, 2, 2), 'chords');
+  assert.strictEqual(FC.levelNumber('major', true, 6, 1), 10);
 });
 
 // ---- Find a chord: identifying the picked notes ----
@@ -601,7 +598,7 @@ check('find the chord: levelAt gives the keys and chords levels of each overall 
     assert.deepStrictEqual(FC.levelAt(mp[0], mp[1], 1), { keys: 1, chords: 1 });
     for (var i = 1; i <= n; i++) {
       var l = FC.levelAt(mp[0], mp[1], i);
-      assert.strictEqual(FC.levelNumber(l.keys, l.chords), i);
+      assert.strictEqual(FC.levelNumber(mp[0], mp[1], l.keys, l.chords), i);
     }
   });
 });
@@ -631,8 +628,7 @@ check('find the chord: each run of five questions has at least two about the lev
   });
   assert.strictEqual(FCx.freshTest('major', true, 1, 1, 'keys'), null);
   assert.strictEqual(FCx.freshTest('major', true, 3, 3, null), null);
-  assert.strictEqual(FCx.levelNumber(1, 1), 1);
-  assert.strictEqual(FCx.levelCount('major', true), FCx.maxKeys() + FCx.maxChords('major', true) - 1);
+  assert.strictEqual(FCx.levelNumber('major', true, 1, 1), 1);
 });
 
 check('find the chord: the new challenge is asked about often at the start of a level', function () {

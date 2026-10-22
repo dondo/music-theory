@@ -614,7 +614,7 @@ html.is-local .ftc-local { display: inline-flex; }
 /* iPhone-sized screens (portrait, or a phone turned sideways): no difficulty controls in Find the chord;
    the level-up banner stays, on its own, under the keyboard */
 @media (max-width: 600px), (max-height: 500px) and (pointer: coarse) {
-  .ftc-side-row { display: none; }
+  .ftc-side-row, .ftc-level { display: none; }
   .ftc { padding: 0; margin-top: 8px; border: 0; background: transparent; box-shadow: none; }
   .levelup { margin-bottom: 0; padding: 10px 12px; font-size: 0.9rem; }
   .levelup-icon { font-size: 1.4rem; }
@@ -623,6 +623,11 @@ html.is-local .ftc-local { display: inline-flex; }
 /* Find the chord score: shown where the instruction was, once a guess has been made */
 .ftc-head { display: flex; align-items: center; gap: 16px; margin: 0 0 8px; }
 .chord-info .score { display: flex; flex-basis: auto; margin: 0; }
+/* phones: a view asks for one orientation; the app says so when the phone is held the other way */
+.rotate-hint { position: fixed; inset: 0; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 8px; background: var(--bg, #f5f6fa); color: var(--ink, #1c2330); text-align: center; padding: 24px; font-size: 1.1rem; font-weight: 600; }
+.rotate-hint[hidden] { display: none; }
+.rotate-icon { font-size: 3rem; transform: rotate(90deg); }
 
 .ftc-levels[hidden] { display: none; }
 
@@ -696,6 +701,10 @@ html.is-local .ftc-local { display: inline-flex; }
 </style>
 </head>
 <body>
+  <div id="rotate-hint" class="rotate-hint" role="alert" hidden>
+    <div class="rotate-icon" aria-hidden="true">&#128241;</div>
+    <p id="rotate-text">Turn your phone sideways</p>
+  </div>
   <main class="page">
     <header class="intro">
       <h1><svg class="app-icon" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#2563eb"/><rect x="8" y="34" width="48" height="22" rx="3" fill="#fff"/><path d="M20 34v22M32 34v22M44 34v22" stroke="#94a3b8" stroke-width="1.5"/><rect x="17" y="34" width="6" height="13" rx="1" fill="#1c1c1c"/><rect x="29" y="34" width="6" height="13" rx="1" fill="#1c1c1c"/><rect x="41" y="34" width="6" height="13" rx="1" fill="#1c1c1c"/><ellipse cx="34" cy="27" rx="6.5" ry="4.5" transform="rotate(-20 34 27)" fill="#fff"/><rect x="38.6" y="8" width="2.8" height="19" fill="#fff"/><path d="M41 8C41 15 53 15 50 25C49 19 44 18 41 16Z" fill="#fff"/></svg><span>Music Theory (Piano)</span><span class="local-badge" id="local-badge" hidden title="This is your local copy (local.js is present)">LOCAL</span></h1>
@@ -1701,9 +1710,6 @@ var Weights = (function () {
     if (wasFresh) t.fresh++;
     if (t.asked >= FRESH_WINDOW) { t.asked = 0; t.fresh = 0; }
   }
-  function levelNumber(keysLevel, chordsLevel) { return keysLevel + chordsLevel - 1; }
-  function levelCount(mode, pop) { return levelNumber(maxKeys(), maxChords(mode, pop)); }
-
   // Which inversion to show: always root position in Pop; in Jazz root position about 40% of the time,
   // the rest shared out equally among the inversions (0 = root position). `notes` = notes in the chord.
   function pickInversion(notes, jazz, rng) {
@@ -1715,38 +1721,69 @@ var Weights = (function () {
   // Levelling up by itself: after STREAK first-try answers in a row the next dial goes up one, keys and
   // chords taking turns (keys first). Returns the new { keys, chords, next } or null when nothing can rise.
   var STREAK = 10;                      // (the app drops this to 5 in the local copy, for testing)
-  // The order the levels come in: which dial goes up at each step (step 0 takes level 1 to level 2).
+  // The order the new things are introduced in: which dial gets something new at each event.
   // Four more keys (C already; D G A F), then the vi ii chords, then three more keys (D♭ B♭ E♭), then the sevenths,
   // then two keys (E A♭), then iii and vii°, then two keys (B F♯/G♭), then their sevenths; after that only chords are left.
   var PLAN = ['keys', 'keys', 'keys', 'keys', 'chords', 'keys', 'keys', 'keys', 'chords', 'keys', 'keys', 'chords', 'keys', 'keys', 'chords'];
-  // the dial the next level raises (or null at the top); a dial that is already full gives way to the other
-  function planDial(mode, pop, keysLevel, chordsLevel) {
-    var d = PLAN[keysLevel + chordsLevel - 2] || 'chords';
-    var canKeys = keysLevel < maxKeys(), canChords = chordsLevel < maxChords(mode, pop);
-    if (d === 'keys' && !canKeys) d = 'chords';
-    else if (d === 'chords' && !canChords) d = 'keys';
-    return (d === 'keys' ? canKeys : canChords) ? d : null;
+  // The ladder of levels, one { keys, chords } per level (level 1 first). A new thing doesn't just stack on the old:
+  //  - a NEW CHORD GROUP sends the keys back to C and D, which then come back one at a time up to the keys already known;
+  //  - a NEW KEY, once chords beyond I IV V are known (chords level 2+), sends the chords back to I IV V,
+  //    which then come back one group at a time up to the chords already known.
+  var ladders = {};
+  function ladder(mode, pop) {
+    mode = mode === 'minor' ? 'minor' : 'major';
+    var id = mode + (pop ? '|pop' : '|jazz');
+    if (ladders[id]) return ladders[id];
+    var maxC = maxChords(mode, pop), kHi = 1, cHi = 1, out = [{ keys: 1, chords: 1 }];
+    for (var ev = 0; ; ev++) {
+      var d = PLAN[ev] || 'chords';
+      if (d === 'keys' && kHi >= maxKeys()) d = 'chords';
+      else if (d === 'chords' && cHi >= maxC) d = 'keys';
+      if (d === 'keys' ? kHi >= maxKeys() : cHi >= maxC) break;
+      var i;
+      if (d === 'keys') {
+        kHi++;
+        if (cHi >= 2) for (i = 1; i <= cHi; i++) out.push({ keys: kHi, chords: i });
+        else out.push({ keys: kHi, chords: cHi });
+      } else {
+        cHi++;
+        for (i = Math.min(2, kHi); i <= kHi; i++) out.push({ keys: i, chords: cHi });
+      }
+    }
+    return (ladders[id] = out);
   }
-  // the dial whose raising led to this level (null at level 1)
-  function lastDial(mode, pop, keysLevel, chordsLevel) {
-    if (keysLevel + chordsLevel <= 2) return null;
-    var d = PLAN[keysLevel + chordsLevel - 3] || 'chords';
-    if (d === 'keys' && keysLevel <= 1) d = 'chords';
-    else if (d === 'chords' && chordsLevel <= 1) d = 'keys';
-    return d;
+  // where (keys, chords) sits on the ladder (the nearest step when it is not on it, e.g. a level saved by an older version)
+  function indexOf(mode, pop, k, c) {
+    var L = ladder(mode, pop), best = 0, bd = Infinity;
+    for (var i = 0; i < L.length; i++) {
+      var dist = Math.abs(L[i].keys - k) + Math.abs(L[i].chords - c);
+      if (dist < bd) { bd = dist; best = i; if (!dist) break; }
+    }
+    return best;
   }
-  function levelUp(mode, pop, keysLevel, chordsLevel) {
-    var d = planDial(mode, pop, keysLevel, chordsLevel);
-    if (!d) return null;
-    var k = keysLevel + (d === 'keys' ? 1 : 0), ch = chordsLevel + (d === 'chords' ? 1 : 0);
-    return { keys: k, chords: ch, next: planDial(mode, pop, k, ch) || d };
-  }
-
+  // which dial a step moved: 'keys' when the keys went up, else 'chords'
+  function stepDial(L, i) { return L[i].keys > L[i - 1].keys ? 'keys' : 'chords'; }
+  function levelNumber(mode, pop, keysLevel, chordsLevel) { return indexOf(mode, pop, keysLevel, chordsLevel) + 1; }
+  function levelCount(mode, pop) { return ladder(mode, pop).length; }
   // the keys and chords levels that make up overall level n (1 = one key, the first chord group)
   function levelAt(mode, pop, n) {
-    var k = 1, c = 1;
-    for (var i = 1; i < n; i++) { var up = levelUp(mode, pop, k, c); if (!up) break; k = up.keys; c = up.chords; }
-    return { keys: k, chords: c };
+    var L = ladder(mode, pop), l = L[clamp(n, 1, L.length) - 1];
+    return { keys: l.keys, chords: l.chords };
+  }
+  // the dial the next level moves (or null at the top)
+  function planDial(mode, pop, keysLevel, chordsLevel) {
+    var L = ladder(mode, pop), i = indexOf(mode, pop, keysLevel, chordsLevel);
+    return i + 1 < L.length ? stepDial(L, i + 1) : null;
+  }
+  // the dial whose move led to this level (null at level 1)
+  function lastDial(mode, pop, keysLevel, chordsLevel) {
+    var L = ladder(mode, pop), i = indexOf(mode, pop, keysLevel, chordsLevel);
+    return i > 0 ? stepDial(L, i) : null;
+  }
+  function levelUp(mode, pop, keysLevel, chordsLevel) {
+    var L = ladder(mode, pop), i = indexOf(mode, pop, keysLevel, chordsLevel);
+    if (i + 1 >= L.length) return null;
+    return { keys: L[i + 1].keys, chords: L[i + 1].chords, next: i + 2 < L.length ? stepDial(L, i + 2) : stepDial(L, i + 1) };
   }
 
   // "Find a chord": which of the key's chords is exactly the notes picked on the keyboard?
@@ -3226,8 +3263,6 @@ var KeyboardRender = (function () {
   var chordTypes = document.getElementById('chord-types');
   var chordInfo = document.getElementById('chord-info');
   var autoRow = document.getElementById('ftc-autorow');
-  var phoneMq = window.matchMedia ? window.matchMedia('(max-width: 600px), (max-height: 500px) and (pointer: coarse)') : null;
-  function isPhoneLayout() { return !!(phoneMq && phoneMq.matches); }
   var levelTag = document.getElementById('ftc-level');
   var quizHead = el('div', 'ftc-head');                         // Find the chord: "Level n" then the score, top left of the grey box
   var legendChord = document.querySelectorAll('.legend-chord');
@@ -3429,8 +3464,7 @@ var KeyboardRender = (function () {
     chordInfo.classList.toggle('quiz', quizOn());
     chordInfo.textContent = '';
     var scoreHere = quizOn() && (score.ok + score.bad > 0 || !!ftcTrial);       // Find the chord: after the first guess the score replaces the instruction
-    var showHead = quizOn() && (scoreHere || isPhoneLayout());       // (on a phone the level and the bubbles show from the start)
-    if (showHead) {
+    if (quizOn() && scoreHere) {
       quizHead.appendChild(levelTag);
       quizHead.appendChild(scoreBox); scoreBox.hidden = false;
       quizHead.appendChild(trialBox);
@@ -3439,7 +3473,7 @@ var KeyboardRender = (function () {
       chordInfo.appendChild(quizHead);
     } else if (scoreBox.parentNode !== scoreHome) scoreHome.appendChild(scoreBox);
     if (quizOn()) {                                              // Find the chord: no chord description; the level controls sit below the score
-      if (!scoreHere) {                                          // before the first guess: the instruction
+      if (!scoreHere) {                                          // before the first guess: just the instruction
         chordInfo.appendChild(el('p', 'chord-hint', 'Choose a type and a degree, in either order. The second one you choose is your answer.'));
         return;
       }
@@ -4334,6 +4368,7 @@ var KeyboardRender = (function () {
       if (k) k.focus({ preventScroll: true });
     }
     saveState();
+    syncOrientation();
     syncNext();
   }
 
@@ -4510,7 +4545,8 @@ var KeyboardRender = (function () {
     var mode = state.mode, pop = ftcPop();
     if (up.keys > was.keys) {
       var pc = FindChord.keys(mode, up.keys).slice(-1)[0];
-      return 'A new key joins the questions: ' + Theory.keyTitle(Theory.specsFor(mode, pc)[0], mode) + '.';
+      var reset = up.chords < was.chords;                       // (a new key after the extra chords: they start over from I, IV and V)
+      return (reset ? 'A new key joins the questions: ' : 'Next key: ') + Theory.keyTitle(Theory.specsFor(mode, pc)[0], mode) + '.' + (reset ? ' The chords start over from I, IV and V.' : '');
     }
     var had = FindChord.chords(mode, pop, was.chords).map(function (c) { return c.deg + '|' + c.type; });
     var fresh = FindChord.chords(mode, pop, up.chords).filter(function (c) { return had.indexOf(c.deg + '|' + c.type) < 0; });
@@ -4518,7 +4554,8 @@ var KeyboardRender = (function () {
     var romans = fresh.map(function (c) { var cd = Chords.chordInKey(ref, mode, c.deg, c.type); return cd ? cd.roman : ''; }).filter(Boolean);
     var types = fresh.map(function (c) { return c.type; }).filter(function (t, i, a) { return a.indexOf(t) === i; });
     var names = types.map(function (t) { var d = Chords.TYPES.filter(function (x) { return x.id === t; })[0]; return d ? d.label : t; });
-    return 'New chords to find: ' + names.join(' and ') + ' chords on ' + romans.join(', ') + '.';
+    if (!fresh.length) return 'The chords are back: ' + FindChord.chords(mode, pop, up.chords).length + ' to find.';
+    return 'New chords to find: ' + names.join(' and ') + ' chords on ' + romans.join(', ') + '.' + (up.keys < was.keys ? ' The keys start over from C and D.' : '');
   }
   var bannerHold = false;                                       // a trial result stays up until the next pick
   function showBanner(title, text, withConfetti, icon) {
@@ -4535,7 +4572,7 @@ var KeyboardRender = (function () {
   function celebrate(note) {
     document.getElementById('ftc-levelup-icon').textContent = '\u{1F389}';
     document.getElementById('ftc-levelup-title').textContent = 'Level up!';
-    levelText.textContent = 'You are on level ' + FindChord.levelNumber(ftcLevels().keys, ftcLevels().chords) + '. ' + note;
+    levelText.textContent = 'You are on level ' + FindChord.levelNumber(state.mode, ftcPop(), ftcLevels().keys, ftcLevels().chords) + '. ' + note;
     levelBanner.hidden = false;
     levelBanner.style.animation = 'none'; void levelBanner.offsetWidth; levelBanner.style.animation = '';
     if (reduceMotion) return;
@@ -4712,7 +4749,7 @@ var KeyboardRender = (function () {
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && trialListOpen) { closeTrialList(); trialBtn.focus(); } });
   function buildTrialList() {
     trialList.textContent = '';
-    var cur = FindChord.levelNumber(ftcLv[state.mode].keys, ftcLv[state.mode].chords), bests = trialBests();
+    var cur = FindChord.levelNumber(state.mode, ftcPop(), ftcLv[state.mode].keys, ftcLv[state.mode].chords), bests = trialBests();
     for (var n = cur; n >= 1; n--) {
       var b = el('button', 'btn-reset trial-lvl'), best = bests[trialKey(n)];
       b.type = 'button'; b.setAttribute('data-level', n);
@@ -4801,7 +4838,7 @@ var KeyboardRender = (function () {
       stage.innerHTML = '<div class="trial-result"><div class="tr-icon"></div><h3 class="tr-title"></h3><div class="tr-time"></div><p class="tr-detail"></p><p class="tr-best"></p>' +
         '<div class="tr-actions"><button type="button" class="btn-reset tr-again">Try Again</button><button type="button" class="btn-reset tr-back">Back to Study</button></div></div>';
       var q = function (c) { return stage.querySelector(c); };
-      q('.tr-icon').textContent = isBest ? '\u{1F389}' : t.wrongs >= 3 ? '\u{1F61E}' : '\u{1F610}';      // party / sad (three or more wrong) / shrug
+      q('.tr-icon').textContent = isBest ? '\u{1F389}' : '\u{1F615}';
       q('.tr-title').textContent = isBest ? 'New best time for level ' + t.level + '!' : 'Level ' + t.level + ' time trial complete';
       q('.tr-time').textContent = fmtTime(total);
       q('.tr-detail').textContent = t.wrongs + ' wrong' + (t.wrongs ? ' (+' + (t.wrongs * TRIAL_PENALTY / 1000) + 's)' : '');
@@ -4940,7 +4977,7 @@ var KeyboardRender = (function () {
     chordsPanel.classList.toggle('quizzing', on);
     if (!on || !ftcQ) return;
     var l = ftcLevels(), maxC = FindChord.maxChords(state.mode, ftcPop());
-    document.getElementById('ftc-level').textContent = (ftcTrial ? 'Trial \u00b7 level ' : 'Level ') + FindChord.levelNumber(l.keys, l.chords);
+    document.getElementById('ftc-level').textContent = (ftcTrial ? 'Trial \u00b7 level ' : 'Level ') + FindChord.levelNumber(state.mode, ftcPop(), l.keys, l.chords);
     document.getElementById('ftc-streak').textContent = '';
     showStreak();
   }
@@ -4955,14 +4992,11 @@ var KeyboardRender = (function () {
       ftcLv[state.mode] = { keys: up.keys, chords: up.chords }; ftcNext = up.next;
       ftcRaised(up.keys > l.keys ? 'keys' : 'chords');
     } else {
-      var first = FindChord.lastDial(state.mode, ftcPop(), l.keys, l.chords) || 'chords';          // the dial raised last goes down first
-      var order = first === 'keys' ? ['keys', 'chords'] : ['chords', 'keys'], done = false;
-      order.forEach(function (d) {
-        if (done || l[d] <= 1) return;
-        var nl = { keys: l.keys, chords: l.chords }; nl[d]--;
-        ftcLv[state.mode] = nl; ftcNext = d; done = true;
-      });
-      if (!done) return;
+      var cur = FindChord.levelNumber(state.mode, ftcPop(), l.keys, l.chords);
+      if (cur <= 1) return;
+      var prev = FindChord.levelAt(state.mode, ftcPop(), cur - 1);
+      ftcLv[state.mode] = { keys: prev.keys, chords: prev.chords };
+      ftcNext = FindChord.planDial(state.mode, ftcPop(), prev.keys, prev.chords) || 'chords';
       ftcRaised(null);
     }
     ftcStreak = 0; ftcTried = 0; ftcRight = 0; ftcBub = null; bubFull = false;
@@ -5074,7 +5108,7 @@ var KeyboardRender = (function () {
     scoreBox.classList.toggle('quiz', quizOn());
     showStreak();
     badEl.textContent = score.bad;
-    scoreBox.hidden = !state.flash || (quizOn() && score.ok + score.bad === 0 && !isPhoneLayout() && !ftcTrial);
+    scoreBox.hidden = !state.flash || (quizOn() && score.ok + score.bad === 0);
     if (!(quizOn() && score.ok + score.bad > 0) && scoreBox.parentNode !== scoreHome) scoreHome.appendChild(scoreBox);
     flashModeGroup.hidden = !state.flash;
     kindGroup.hidden = state.flash || level === 'pop';
@@ -5722,16 +5756,27 @@ var KeyboardRender = (function () {
 
   resetBtn.addEventListener('click', reset);
 
-  // Turning the phone changes the width of the stage: put the card (or the opened staff) back in the middle of what is visible.
-  var recentreTimer = null;
-  function recentre() {
-    clearTimeout(recentreTimer);
-    recentreTimer = setTimeout(function () {
-      if (quizOn() && !(ftcTrial && (ftcTrial.counting || ftcTrial.done))) centreQuizStage(state.answered ? 'open' : 'card');
-    }, 200);
+  // Phones: Find the chord wants the phone upright, every other view wants it on its side. A web page cannot force that
+  // (iOS ignores the orientation lock), so a notice covers the app until the phone is turned the right way.
+  var rotateHint = document.getElementById('rotate-hint'), rotateText = document.getElementById('rotate-text'), lockedFor = null;
+  function isPhone() {
+    return !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches && Math.min(window.screen.width, window.screen.height) <= 500);
   }
-  window.addEventListener('resize', recentre);
-  window.addEventListener('orientationchange', recentre);
+  function syncOrientation() {
+    if (!isPhone()) { rotateHint.hidden = true; return; }
+    var wantPortrait = quizOn(), portrait = window.matchMedia('(orientation: portrait)').matches;
+    rotateHint.hidden = wantPortrait === portrait;
+    rotateText.textContent = wantPortrait ? 'Hold your phone upright for Find the chord' : 'Turn your phone sideways for this view';
+    if (lockedFor !== wantPortrait) {                     // (works where the browser allows it, e.g. an installed Android app)
+      lockedFor = wantPortrait;
+      try {
+        var lock = window.screen.orientation && window.screen.orientation.lock && window.screen.orientation.lock(wantPortrait ? 'portrait' : 'landscape');
+        if (lock && lock.catch) lock.catch(function () { /* not allowed here */ });
+      } catch (e) { /* unsupported */ }
+    }
+  }
+  window.addEventListener('resize', syncOrientation);
+  window.addEventListener('orientationchange', syncOrientation);
 
   restoreState();
   syncStudyOptions();

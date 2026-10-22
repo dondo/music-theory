@@ -148,9 +148,6 @@
     if (wasFresh) t.fresh++;
     if (t.asked >= FRESH_WINDOW) { t.asked = 0; t.fresh = 0; }
   }
-  function levelNumber(keysLevel, chordsLevel) { return keysLevel + chordsLevel - 1; }
-  function levelCount(mode, pop) { return levelNumber(maxKeys(), maxChords(mode, pop)); }
-
   // Which inversion to show: always root position in Pop; in Jazz root position about 40% of the time,
   // the rest shared out equally among the inversions (0 = root position). `notes` = notes in the chord.
   function pickInversion(notes, jazz, rng) {
@@ -162,38 +159,69 @@
   // Levelling up by itself: after STREAK first-try answers in a row the next dial goes up one, keys and
   // chords taking turns (keys first). Returns the new { keys, chords, next } or null when nothing can rise.
   var STREAK = 10;                      // (the app drops this to 5 in the local copy, for testing)
-  // The order the levels come in: which dial goes up at each step (step 0 takes level 1 to level 2).
+  // The order the new things are introduced in: which dial gets something new at each event.
   // Four more keys (C already; D G A F), then the vi ii chords, then three more keys (D♭ B♭ E♭), then the sevenths,
   // then two keys (E A♭), then iii and vii°, then two keys (B F♯/G♭), then their sevenths; after that only chords are left.
   var PLAN = ['keys', 'keys', 'keys', 'keys', 'chords', 'keys', 'keys', 'keys', 'chords', 'keys', 'keys', 'chords', 'keys', 'keys', 'chords'];
-  // the dial the next level raises (or null at the top); a dial that is already full gives way to the other
-  function planDial(mode, pop, keysLevel, chordsLevel) {
-    var d = PLAN[keysLevel + chordsLevel - 2] || 'chords';
-    var canKeys = keysLevel < maxKeys(), canChords = chordsLevel < maxChords(mode, pop);
-    if (d === 'keys' && !canKeys) d = 'chords';
-    else if (d === 'chords' && !canChords) d = 'keys';
-    return (d === 'keys' ? canKeys : canChords) ? d : null;
+  // The ladder of levels, one { keys, chords } per level (level 1 first). A new thing doesn't just stack on the old:
+  //  - a NEW CHORD GROUP sends the keys back to C and D, which then come back one at a time up to the keys already known;
+  //  - a NEW KEY, once chords beyond I IV V are known (chords level 2+), sends the chords back to I IV V,
+  //    which then come back one group at a time up to the chords already known.
+  var ladders = {};
+  function ladder(mode, pop) {
+    mode = mode === 'minor' ? 'minor' : 'major';
+    var id = mode + (pop ? '|pop' : '|jazz');
+    if (ladders[id]) return ladders[id];
+    var maxC = maxChords(mode, pop), kHi = 1, cHi = 1, out = [{ keys: 1, chords: 1 }];
+    for (var ev = 0; ; ev++) {
+      var d = PLAN[ev] || 'chords';
+      if (d === 'keys' && kHi >= maxKeys()) d = 'chords';
+      else if (d === 'chords' && cHi >= maxC) d = 'keys';
+      if (d === 'keys' ? kHi >= maxKeys() : cHi >= maxC) break;
+      var i;
+      if (d === 'keys') {
+        kHi++;
+        if (cHi >= 2) for (i = 1; i <= cHi; i++) out.push({ keys: kHi, chords: i });
+        else out.push({ keys: kHi, chords: cHi });
+      } else {
+        cHi++;
+        for (i = Math.min(2, kHi); i <= kHi; i++) out.push({ keys: i, chords: cHi });
+      }
+    }
+    return (ladders[id] = out);
   }
-  // the dial whose raising led to this level (null at level 1)
-  function lastDial(mode, pop, keysLevel, chordsLevel) {
-    if (keysLevel + chordsLevel <= 2) return null;
-    var d = PLAN[keysLevel + chordsLevel - 3] || 'chords';
-    if (d === 'keys' && keysLevel <= 1) d = 'chords';
-    else if (d === 'chords' && chordsLevel <= 1) d = 'keys';
-    return d;
+  // where (keys, chords) sits on the ladder (the nearest step when it is not on it, e.g. a level saved by an older version)
+  function indexOf(mode, pop, k, c) {
+    var L = ladder(mode, pop), best = 0, bd = Infinity;
+    for (var i = 0; i < L.length; i++) {
+      var dist = Math.abs(L[i].keys - k) + Math.abs(L[i].chords - c);
+      if (dist < bd) { bd = dist; best = i; if (!dist) break; }
+    }
+    return best;
   }
-  function levelUp(mode, pop, keysLevel, chordsLevel) {
-    var d = planDial(mode, pop, keysLevel, chordsLevel);
-    if (!d) return null;
-    var k = keysLevel + (d === 'keys' ? 1 : 0), ch = chordsLevel + (d === 'chords' ? 1 : 0);
-    return { keys: k, chords: ch, next: planDial(mode, pop, k, ch) || d };
-  }
-
+  // which dial a step moved: 'keys' when the keys went up, else 'chords'
+  function stepDial(L, i) { return L[i].keys > L[i - 1].keys ? 'keys' : 'chords'; }
+  function levelNumber(mode, pop, keysLevel, chordsLevel) { return indexOf(mode, pop, keysLevel, chordsLevel) + 1; }
+  function levelCount(mode, pop) { return ladder(mode, pop).length; }
   // the keys and chords levels that make up overall level n (1 = one key, the first chord group)
   function levelAt(mode, pop, n) {
-    var k = 1, c = 1;
-    for (var i = 1; i < n; i++) { var up = levelUp(mode, pop, k, c); if (!up) break; k = up.keys; c = up.chords; }
-    return { keys: k, chords: c };
+    var L = ladder(mode, pop), l = L[clamp(n, 1, L.length) - 1];
+    return { keys: l.keys, chords: l.chords };
+  }
+  // the dial the next level moves (or null at the top)
+  function planDial(mode, pop, keysLevel, chordsLevel) {
+    var L = ladder(mode, pop), i = indexOf(mode, pop, keysLevel, chordsLevel);
+    return i + 1 < L.length ? stepDial(L, i + 1) : null;
+  }
+  // the dial whose move led to this level (null at level 1)
+  function lastDial(mode, pop, keysLevel, chordsLevel) {
+    var L = ladder(mode, pop), i = indexOf(mode, pop, keysLevel, chordsLevel);
+    return i > 0 ? stepDial(L, i) : null;
+  }
+  function levelUp(mode, pop, keysLevel, chordsLevel) {
+    var L = ladder(mode, pop), i = indexOf(mode, pop, keysLevel, chordsLevel);
+    if (i + 1 >= L.length) return null;
+    return { keys: L[i + 1].keys, chords: L[i + 1].chords, next: i + 2 < L.length ? stepDial(L, i + 2) : stepDial(L, i + 1) };
   }
 
   // "Find a chord": which of the key's chords is exactly the notes picked on the keyboard?
