@@ -163,6 +163,8 @@
   var chordTypes = document.getElementById('chord-types');
   var chordInfo = document.getElementById('chord-info');
   var autoRow = document.getElementById('ftc-autorow');
+  var phoneMq = window.matchMedia ? window.matchMedia('(max-width: 600px), (max-height: 500px) and (pointer: coarse)') : null;
+  function isPhoneLayout() { return !!(phoneMq && phoneMq.matches); }
   var levelTag = document.getElementById('ftc-level');
   var quizHead = el('div', 'ftc-head');                         // Find the chord: "Level n" then the score, top left of the grey box
   var legendChord = document.querySelectorAll('.legend-chord');
@@ -364,7 +366,8 @@
     chordInfo.classList.toggle('quiz', quizOn());
     chordInfo.textContent = '';
     var scoreHere = quizOn() && (score.ok + score.bad > 0 || !!ftcTrial);       // Find the chord: after the first guess the score replaces the instruction
-    if (quizOn() && scoreHere) {
+    var showHead = quizOn() && (scoreHere || isPhoneLayout());       // (on a phone the level and the bubbles show from the start)
+    if (showHead) {
       quizHead.appendChild(levelTag);
       quizHead.appendChild(scoreBox); scoreBox.hidden = false;
       quizHead.appendChild(trialBox);
@@ -373,7 +376,7 @@
       chordInfo.appendChild(quizHead);
     } else if (scoreBox.parentNode !== scoreHome) scoreHome.appendChild(scoreBox);
     if (quizOn()) {                                              // Find the chord: no chord description; the level controls sit below the score
-      if (!scoreHere) {                                          // before the first guess: just the instruction
+      if (!scoreHere) {                                          // before the first guess: the instruction
         chordInfo.appendChild(el('p', 'chord-hint', 'Choose a type and a degree, in either order. The second one you choose is your answer.'));
         return;
       }
@@ -2008,7 +2011,7 @@
     scoreBox.classList.toggle('quiz', quizOn());
     showStreak();
     badEl.textContent = score.bad;
-    scoreBox.hidden = !state.flash || (quizOn() && score.ok + score.bad === 0);
+    scoreBox.hidden = !state.flash || (quizOn() && score.ok + score.bad === 0 && !isPhoneLayout() && !ftcTrial);
     if (!(quizOn() && score.ok + score.bad > 0) && scoreBox.parentNode !== scoreHome) scoreHome.appendChild(scoreBox);
     flashModeGroup.hidden = !state.flash;
     kindGroup.hidden = state.flash || level === 'pop';
