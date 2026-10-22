@@ -4808,7 +4808,7 @@ var KeyboardRender = (function () {
       stage.innerHTML = '<div class="trial-result"><div class="tr-icon"></div><h3 class="tr-title"></h3><div class="tr-time"></div><p class="tr-detail"></p><p class="tr-best"></p>' +
         '<div class="tr-actions"><button type="button" class="btn-reset tr-again">Try Again</button><button type="button" class="btn-reset tr-back">Back to Study</button></div></div>';
       var q = function (c) { return stage.querySelector(c); };
-      q('.tr-icon').textContent = isBest ? '\u{1F389}' : '\u{1F615}';
+      q('.tr-icon').textContent = isBest ? '\u{1F389}' : t.wrongs >= 3 ? '\u{1F61E}' : '\u{1F610}';      // party / sad (three or more wrong) / shrug
       q('.tr-title').textContent = isBest ? 'New best time for level ' + t.level + '!' : 'Level ' + t.level + ' time trial complete';
       q('.tr-time').textContent = fmtTime(total);
       q('.tr-detail').textContent = t.wrongs + ' wrong' + (t.wrongs ? ' (+' + (t.wrongs * TRIAL_PENALTY / 1000) + 's)' : '');
