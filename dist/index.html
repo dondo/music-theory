@@ -623,11 +623,6 @@ html.is-local .ftc-local { display: inline-flex; }
 /* Find the chord score: shown where the instruction was, once a guess has been made */
 .ftc-head { display: flex; align-items: center; gap: 16px; margin: 0 0 8px; }
 .chord-info .score { display: flex; flex-basis: auto; margin: 0; }
-/* phones: a view asks for one orientation; the app says so when the phone is held the other way */
-.rotate-hint { position: fixed; inset: 0; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 8px; background: var(--bg, #f5f6fa); color: var(--ink, #1c2330); text-align: center; padding: 24px; font-size: 1.1rem; font-weight: 600; }
-.rotate-hint[hidden] { display: none; }
-.rotate-icon { font-size: 3rem; transform: rotate(90deg); }
 
 .ftc-levels[hidden] { display: none; }
 
@@ -701,10 +696,6 @@ html.is-local .ftc-local { display: inline-flex; }
 </style>
 </head>
 <body>
-  <div id="rotate-hint" class="rotate-hint" role="alert" hidden>
-    <div class="rotate-icon" aria-hidden="true">&#128241;</div>
-    <p id="rotate-text">Turn your phone sideways</p>
-  </div>
   <main class="page">
     <header class="intro">
       <h1><svg class="app-icon" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#2563eb"/><rect x="8" y="34" width="48" height="22" rx="3" fill="#fff"/><path d="M20 34v22M32 34v22M44 34v22" stroke="#94a3b8" stroke-width="1.5"/><rect x="17" y="34" width="6" height="13" rx="1" fill="#1c1c1c"/><rect x="29" y="34" width="6" height="13" rx="1" fill="#1c1c1c"/><rect x="41" y="34" width="6" height="13" rx="1" fill="#1c1c1c"/><ellipse cx="34" cy="27" rx="6.5" ry="4.5" transform="rotate(-20 34 27)" fill="#fff"/><rect x="38.6" y="8" width="2.8" height="19" fill="#fff"/><path d="M41 8C41 15 53 15 50 25C49 19 44 18 41 16Z" fill="#fff"/></svg><span>Music Theory (Piano)</span><span class="local-badge" id="local-badge" hidden title="This is your local copy (local.js is present)">LOCAL</span></h1>
@@ -4340,7 +4331,6 @@ var KeyboardRender = (function () {
       if (k) k.focus({ preventScroll: true });
     }
     saveState();
-    syncOrientation();
     syncNext();
   }
 
@@ -5729,27 +5719,16 @@ var KeyboardRender = (function () {
 
   resetBtn.addEventListener('click', reset);
 
-  // Phones: Find the chord wants the phone upright, every other view wants it on its side. A web page cannot force that
-  // (iOS ignores the orientation lock), so a notice covers the app until the phone is turned the right way.
-  var rotateHint = document.getElementById('rotate-hint'), rotateText = document.getElementById('rotate-text'), lockedFor = null;
-  function isPhone() {
-    return !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches && Math.min(window.screen.width, window.screen.height) <= 500);
+  // Turning the phone changes the width of the stage: put the card (or the opened staff) back in the middle of what is visible.
+  var recentreTimer = null;
+  function recentre() {
+    clearTimeout(recentreTimer);
+    recentreTimer = setTimeout(function () {
+      if (quizOn() && !(ftcTrial && (ftcTrial.counting || ftcTrial.done))) centreQuizStage(state.answered ? 'open' : 'card');
+    }, 200);
   }
-  function syncOrientation() {
-    if (!isPhone()) { rotateHint.hidden = true; return; }
-    var wantPortrait = quizOn(), portrait = window.matchMedia('(orientation: portrait)').matches;
-    rotateHint.hidden = wantPortrait === portrait;
-    rotateText.textContent = wantPortrait ? 'Hold your phone upright for Find the chord' : 'Turn your phone sideways for this view';
-    if (lockedFor !== wantPortrait) {                     // (works where the browser allows it, e.g. an installed Android app)
-      lockedFor = wantPortrait;
-      try {
-        var lock = window.screen.orientation && window.screen.orientation.lock && window.screen.orientation.lock(wantPortrait ? 'portrait' : 'landscape');
-        if (lock && lock.catch) lock.catch(function () { /* not allowed here */ });
-      } catch (e) { /* unsupported */ }
-    }
-  }
-  window.addEventListener('resize', syncOrientation);
-  window.addEventListener('orientationchange', syncOrientation);
+  window.addEventListener('resize', recentre);
+  window.addEventListener('orientationchange', recentre);
 
   restoreState();
   syncStudyOptions();

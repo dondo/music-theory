@@ -606,11 +606,6 @@ html.is-local .ftc-local { display: inline-flex; }
 /* Find the chord score: shown where the instruction was, once a guess has been made */
 .ftc-head { display: flex; align-items: center; gap: 16px; margin: 0 0 8px; }
 .chord-info .score { display: flex; flex-basis: auto; margin: 0; }
-/* phones: a view asks for one orientation; the app says so when the phone is held the other way */
-.rotate-hint { position: fixed; inset: 0; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 8px; background: var(--bg, #f5f6fa); color: var(--ink, #1c2330); text-align: center; padding: 24px; font-size: 1.1rem; font-weight: 600; }
-.rotate-hint[hidden] { display: none; }
-.rotate-icon { font-size: 3rem; transform: rotate(90deg); }
 
 .ftc-levels[hidden] { display: none; }
 

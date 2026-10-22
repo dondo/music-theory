@@ -1268,7 +1268,6 @@
       if (k) k.focus({ preventScroll: true });
     }
     saveState();
-    syncOrientation();
     syncNext();
   }
 
@@ -2657,27 +2656,16 @@
 
   resetBtn.addEventListener('click', reset);
 
-  // Phones: Find the chord wants the phone upright, every other view wants it on its side. A web page cannot force that
-  // (iOS ignores the orientation lock), so a notice covers the app until the phone is turned the right way.
-  var rotateHint = document.getElementById('rotate-hint'), rotateText = document.getElementById('rotate-text'), lockedFor = null;
-  function isPhone() {
-    return !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches && Math.min(window.screen.width, window.screen.height) <= 500);
+  // Turning the phone changes the width of the stage: put the card (or the opened staff) back in the middle of what is visible.
+  var recentreTimer = null;
+  function recentre() {
+    clearTimeout(recentreTimer);
+    recentreTimer = setTimeout(function () {
+      if (quizOn() && !(ftcTrial && (ftcTrial.counting || ftcTrial.done))) centreQuizStage(state.answered ? 'open' : 'card');
+    }, 200);
   }
-  function syncOrientation() {
-    if (!isPhone()) { rotateHint.hidden = true; return; }
-    var wantPortrait = quizOn(), portrait = window.matchMedia('(orientation: portrait)').matches;
-    rotateHint.hidden = wantPortrait === portrait;
-    rotateText.textContent = wantPortrait ? 'Hold your phone upright for Find the chord' : 'Turn your phone sideways for this view';
-    if (lockedFor !== wantPortrait) {                     // (works where the browser allows it, e.g. an installed Android app)
-      lockedFor = wantPortrait;
-      try {
-        var lock = window.screen.orientation && window.screen.orientation.lock && window.screen.orientation.lock(wantPortrait ? 'portrait' : 'landscape');
-        if (lock && lock.catch) lock.catch(function () { /* not allowed here */ });
-      } catch (e) { /* unsupported */ }
-    }
-  }
-  window.addEventListener('resize', syncOrientation);
-  window.addEventListener('orientationchange', syncOrientation);
+  window.addEventListener('resize', recentre);
+  window.addEventListener('orientationchange', recentre);
 
   restoreState();
   syncStudyOptions();
