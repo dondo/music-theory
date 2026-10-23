@@ -1476,7 +1476,8 @@
     var mode = state.mode, pop = ftcPop(), it = FindChord.stageIntro(mode, pop, stage), count = it.kind === 'K' ? it.keys.length : it.chords.length;
     var many = count === 1 ? (it.kind === 'K' ? 'a new key' : 'a new chord') : (count === 2 ? 'two' : count) + (it.kind === 'K' ? ' new keys' : ' new chords');
     var names = it.kind === 'K' ? ftcNames(it.keys, true) : ftcNames(it.chords, false);
-    return 'Stage ' + stage + ' introduces ' + many + (it.kind === 'K' ? ': ' : ' to find: ') + (it.kind === 'C' ? ftcBlockLabel(it.chords) : '') + ftcJoin(names.map(function (x) { return '<strong>' + x + '</strong>'; })) + '.';
+    var first = it.kind === 'K' ? ftcNames(it.keys.slice(0, 1), true)[0] : ftcNames(it.chords.slice(0, 1), false)[0];
+    return 'Stage ' + stage + ' introduces ' + many + (it.kind === 'K' ? ': ' : ' to find: ') + (it.kind === 'C' ? ftcBlockLabel(it.chords) : '') + ftcJoin(names.map(function (x) { return '<strong>' + x + '</strong>'; })) + (count === 2 ? ', starting with <strong>' + first + '</strong>!' : '.');
   }
   var bannerHold = false;                                       // a trial result stays up until the next pick
   function showBanner(title, text, withConfetti, icon) {
@@ -1497,6 +1498,9 @@
       title = 'Congratulations!';
       html = 'You have completed Stage ' + doneStage + '. You can now play ' + (p < 1 ? 'a few' : 'about ' + p + '% of all') + ' ' + (pop ? 'pop' : 'jazz') + ' songs!<span class="levelup-line2">' + stageNote(FindChord.levelInfo(state.mode, pop, n).stage) + '</span>';
     } else html = stepNote(n);
+    var allTriads = function (k) { return FindChord.chords(state.mode, pop, FindChord.levelAt(state.mode, pop, k).chords).every(function (c) { return c.type === 'triad'; }); };
+    if (n > 1 && allTriads(n - 1) && !allTriads(n))                  // the TYPE chips have just appeared
+      html += '<span class="levelup-line2">Since we now have both triads and seventh chords, you\u2019ll have to select the \u2018type\u2019 as well as the degree. Ready?</span>';
     var home = newStage ? document.querySelector('.stage-card') : ftcSection;           // a finished stage's banner sits over the clef; a step's stays under the keyboard
     if (levelBanner.parentNode !== home) home.insertBefore(levelBanner, newStage ? home.firstChild : null);
     document.getElementById('ftc-levelup-icon').textContent = '\u{1F389}';
