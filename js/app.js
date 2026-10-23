@@ -163,6 +163,8 @@
   var chordTypes = document.getElementById('chord-types');
   var chordInfo = document.getElementById('chord-info');
   var autoRow = document.getElementById('ftc-autorow');
+  var phoneMq = window.matchMedia ? window.matchMedia('(max-width: 600px), (max-height: 500px) and (pointer: coarse)') : null;
+  function isPhoneLayout() { return !!(phoneMq && phoneMq.matches); }
   var levelTag = document.getElementById('ftc-level');
   var quizHead = el('div', 'ftc-head');                         // Find the chord: "Level n" then the score, top left of the grey box
   var legendChord = document.querySelectorAll('.legend-chord');
@@ -184,7 +186,7 @@
     caption.textContent = '';
     if (quizOn() && state.card) {
       caption.appendChild(el('p', 'cap-hint', 'Study: find the chord shown on the staff, in the key of ' + Theory.keyTitle(currentSpec(), state.mode) +
-        '. Choose a type and a degree in the Chords section; the second one you choose is your answer.'));
+        (ftcTypesHidden() ? '. Choose the chord\u2019s degree in the Chords section.' : '. Choose a type and a degree in the Chords section; the second one you choose is your answer.')));
       return;
     }
     if (state.flash && state.card) {
@@ -326,6 +328,8 @@
       chordDegrees.appendChild(b);
     }
     chordTypes.textContent = '';
+    var typeRow = chordTypes.closest ? chordTypes.closest('.chord-row') : null;
+    if (typeRow) typeRow.hidden = !alt && ftcTypesHidden();               // Find the chord: no TYPE row until a chord that is not a triad is in play
     var types = alt ? Chords.ALT_TYPES.filter(function (t) {
       for (var i = 0; i < sc.offsets.length; i++) if (Chords.chordInScale(sc, i, t.id)) return true;
       return false;
@@ -364,7 +368,8 @@
     chordInfo.classList.toggle('quiz', quizOn());
     chordInfo.textContent = '';
     var scoreHere = quizOn() && (score.ok + score.bad > 0 || !!ftcTrial);       // Find the chord: after the first guess the score replaces the instruction
-    if (quizOn() && scoreHere) {
+    var showHead = quizOn() && (scoreHere || isPhoneLayout());       // (on a phone the level and the bubbles show from the start)
+    if (showHead) {
       quizHead.appendChild(levelTag);
       quizHead.appendChild(scoreBox); scoreBox.hidden = false;
       quizHead.appendChild(trialBox);
@@ -373,14 +378,14 @@
       chordInfo.appendChild(quizHead);
     } else if (scoreBox.parentNode !== scoreHome) scoreHome.appendChild(scoreBox);
     if (quizOn()) {                                              // Find the chord: no chord description; the level controls sit below the score
-      if (!scoreHere) {                                          // before the first guess: just the instruction
-        chordInfo.appendChild(el('p', 'chord-hint', 'Choose a type and a degree, in either order. The second one you choose is your answer.'));
+      if (!scoreHere) {                                          // before the first guess: the instruction
+        chordInfo.appendChild(el('p', 'chord-hint', ftcTypesHidden() ? 'Choose the chord\u2019s degree.' : 'Choose a type and a degree, in either order. The second one you choose is your answer.'));
         return;
       }
       return;
     }
     if (!state.chord) {
-      chordInfo.appendChild(el('p', 'chord-hint', findOn ? findHint() : quizOn() ? 'Choose a type and a degree, in either order. The second one you choose is your answer.' : alt
+      chordInfo.appendChild(el('p', 'chord-hint', findOn ? findHint() : quizOn() ? (ftcTypesHidden() ? 'Choose the chord\u2019s degree.' : 'Choose a type and a degree, in either order. The second one you choose is your answer.') : alt
         ? 'Pick a note to light up the chord built on it, then try the other types. Only chords whose notes all belong to this scale are offered.'
         : 'Pick a type and a degree to light up the chord on the keyboard. ' +
           'Each chip shows the roman numeral and chord name for the chosen type.'));
@@ -1268,7 +1273,6 @@
       if (k) k.focus({ preventScroll: true });
     }
     saveState();
-    syncOrientation();
     syncNext();
   }
 
@@ -1307,8 +1311,11 @@
   // run of first-try answers unless that is switched off, and can always be moved by hand.
   var FTC_KEY = 'music-theory-ftc-v1';
   var FM_IDS = { key: 'fm-key', sig: 'fm-sig', chord: 'fm-chord' };
-  var ftcLv = { major: { keys: 1, chords: 1 }, minor: { keys: 1, chords: 1 } };
-  var ftcAuto = true, ftcNext = 'keys', ftcStreak = 0, ftcTried = 0, ftcRight = 0;     // (ftcTried: questions answered since the last level change)
+  var ftcLv = {};                                                  // the level number for each of 'major|pop', 'major|jazz', 'minor|pop', 'minor|jazz'
+  function ftcLvKey() { return state.mode + (level === 'pop' ? '|pop' : '|jazz'); }
+  function ftcLevelNo() { return ftcTrial ? ftcTrial.level : FindChord.clamp(ftcLv[ftcLvKey()] || 1, 1, FindChord.levelCount(state.mode, level === 'pop')); }
+  function ftcSetLevel(n) { ftcLv[ftcLvKey()] = FindChord.clamp(n, 1, FindChord.levelCount(state.mode, level === 'pop')); }
+  var ftcAuto = true, ftcStreak = 0, ftcTried = 0, ftcRight = 0;     // (ftcTried: questions answered since the last level change)
   function streakNeed() { return window.MUSIC_THEORY_LOCAL ? 5 : FindChord.STREAK; }      // (the local copy levels up faster, to test)
   // The last few first-try answers as bubbles, newest on the left: green when right, a red X when wrong. A full green row is a level-up.
   var TRIAL_LEN = 10, TRIAL_PENALTY = 10000;                   // a time trial: ten questions, ten seconds for each wrong answer
@@ -1354,10 +1361,14 @@
     st.setAttribute('role', 'img');
     st.setAttribute('aria-label', 'Last answers: ' + right + ' right out of ' + b.filter(Boolean).length);
   }
-  var ftcLast = { major: null, minor: null };        // per mode: the dial raised most recently = where the new challenge is
   var ftcFresh = { asked: 0, fresh: 0 };              // questions about the new challenge in the current run of five
   var ftcHomeNext = false;                                        // a key was just added: its home triad is the first question in it
-  function ftcRaised(dial) { ftcLast[state.mode] = dial; ftcFresh = { asked: 0, fresh: 0 }; ftcHomeNext = dial === 'keys'; if (dial) { trialUnlocked = false; if (typeof syncTrialBox === 'function') syncTrialBox(); } }   // (a level-up locks Time Trial again)
+  function ftcRaised(up) {                                        // the level just went up (true) or down (false)
+    var info = FindChord.levelInfo(state.mode, ftcPop(), ftcLevelNo());
+    ftcFresh = { asked: 0, fresh: 0 };
+    ftcHomeNext = !!up && info.kind === 'K' && info.step === 1;
+    if (up) { trialUnlocked = false; if (typeof syncTrialBox === 'function') syncTrialBox(); }       // (a level-up locks Time Trial again)
+  }
   var centerStage = false, stageAnswered = false;
   // Narrow screens scroll the stage sideways. 'card': centre the question's card with its "I give up" button;
   // 'open': the staff of inversions has opened, so show its clef through to the highlighted chord (centred if both fit)
@@ -1401,15 +1412,8 @@
     try {
       var o = JSON.parse(window.localStorage.getItem(FTC_KEY));
       if (!o || typeof o !== 'object') return;
-      ['major', 'minor'].forEach(function (m) {
-        if (o.levels && o.levels[m]) {
-          ftcLv[m].keys = FindChord.clamp(o.levels[m].keys, 1, FindChord.maxKeys());
-          ftcLv[m].chords = FindChord.clamp(o.levels[m].chords, 1, FindChord.maxChords(m, false));
-        }
-      });
+      if (o.lvl && typeof o.lvl === 'object') Object.keys(o.lvl).forEach(function (k) { if (/^(major|minor)\|(pop|jazz)$/.test(k) && Number.isInteger(o.lvl[k]) && o.lvl[k] >= 1) ftcLv[k] = o.lvl[k]; });
       ftcAuto = o.auto !== false;
-      ftcNext = o.next === 'chords' ? 'chords' : 'keys';
-      ['major', 'minor'].forEach(function (m) { if (o.last && (o.last[m] === 'keys' || o.last[m] === 'chords')) ftcLast[m] = o.last[m]; });
       if (o.fresh && Number.isInteger(o.fresh.asked) && Number.isInteger(o.fresh.fresh) && o.fresh.asked >= 0 && o.fresh.asked < 5 && o.fresh.fresh >= 0) ftcFresh = { asked: o.fresh.asked, fresh: o.fresh.fresh };
       ftcStreak = Number.isInteger(o.streak) ? Math.max(0, Math.min(streakNeed() - 1, o.streak)) : 0;
       ftcTried = ftcRight = ftcStreak;
@@ -1422,40 +1426,41 @@
   }
   function saveFtc() {
     if (ftcTrial) return;                                        // (a trial is never saved: the normal state stays as it was)
-    try { window.localStorage.setItem(FTC_KEY, JSON.stringify({ levels: ftcLv, auto: ftcAuto, next: ftcNext, streak: ftcStreak, bub: bubbles(), trial: trialUnlocked, last: ftcLast, fresh: ftcFresh })); } catch (e) { /* storage unavailable */ }
+    try { window.localStorage.setItem(FTC_KEY, JSON.stringify({ lvl: ftcLv, auto: ftcAuto, streak: ftcStreak, bub: bubbles(), trial: trialUnlocked, fresh: ftcFresh })); } catch (e) { /* storage unavailable */ }
   }
   function resetFtc() {
     abortTrial();
-    ftcLv = { major: { keys: 1, chords: 1 }, minor: { keys: 1, chords: 1 } };
-    trialUnlocked = false; ftcAuto = true; ftcNext = 'keys'; ftcStreak = 0; ftcTried = 0; ftcRight = 0; ftcBub = null; bubFull = false; ftcLast = { major: null, minor: null }; ftcFresh = { asked: 0, fresh: 0 };
+    ftcLv = {};
+    trialUnlocked = false; ftcAuto = true; ftcStreak = 0; ftcTried = 0; ftcRight = 0; ftcBub = null; bubFull = false; ftcFresh = { asked: 0, fresh: 0 };
     ftcAutoBox.checked = true;
     try { window.localStorage.removeItem(FTC_KEY); window.localStorage.removeItem(TRIALS_KEY); } catch (e) { /* storage unavailable */ }   // (the time trial bests go too)
   }
   // the levels in force: the chord dial is capped by what this level (Pop / Jazz) offers
-  function ftcLevels() {
-    var l = ftcTrial ? { keys: ftcTrial.keys, chords: ftcTrial.chords } : ftcLv[state.mode];
-    return { keys: FindChord.clamp(l.keys, 1, FindChord.maxKeys()), chords: FindChord.clamp(l.chords, 1, FindChord.maxChords(state.mode, ftcPop())) };
-  }
+  function ftcLevels() { return ftcTrial ? { keys: ftcTrial.keys, chords: ftcTrial.chords } : FindChord.levelAt(state.mode, ftcPop(), ftcLevelNo()); }
+  // true while only triads are in play: the TYPE row is hidden and a degree alone is the answer
+  function ftcTypesHidden() { return quizOn() && FindChord.chords(state.mode, ftcPop(), ftcLevels().chords).every(function (c) { return c.type === 'triad'; }); }
   function ftcSpec() { return Theory.specsFor(state.mode, ftcQ.pc)[ftcQ.spell]; }
   function ftcChord() { return Chords.chordInKey(ftcSpec().name, state.mode, ftcQ.deg, ftcQ.type); }
   // ---- level-up: what was added, and a confetti burst ----
   var levelBanner = document.getElementById('ftc-levelup');
   var levelText = document.getElementById('ftc-levelup-text');
-  function levelUpText(was, up) {
-    var mode = state.mode, pop = ftcPop();
-    if (up.keys > was.keys) {
-      var pc = FindChord.keys(mode, up.keys).slice(-1)[0];
-      var reset = up.chords < was.chords;                       // (a new key after the extra chords: they start over from I, IV and V)
-      return (reset ? 'A new key joins the questions: ' : 'Next key: ') + Theory.keyTitle(Theory.specsFor(mode, pc)[0], mode) + '.' + (reset ? ' The chords start over from I, IV and V.' : '');
+  function levelUpText(n) {
+    var mode = state.mode, pop = ftcPop(), info = FindChord.levelInfo(mode, pop, n), where = 'Stage ' + info.stage + ', step ' + info.step + ' of ' + FindChord.stageSteps(mode, pop, n) + '. ';
+    if (info.kind === 'K') {
+      var nk = FindChord.keys(mode, pop, info.keys).slice(info.keys - info.added).map(function (pc) { return Theory.keyTitle(Theory.specsFor(mode, pc)[0], mode); });
+      if (info.step > 1) return where + 'The chords build back up with the new key' + (info.added > 1 ? 's' : '') + ': now ' + info.chords + ' chords.';
+      return where + (info.added > 1 ? 'New keys join the questions: ' : 'A new key joins the questions: ') + nk.join(' and ') + '.';
     }
-    var had = FindChord.chords(mode, pop, was.chords).map(function (c) { return c.deg + '|' + c.type; });
-    var fresh = FindChord.chords(mode, pop, up.chords).filter(function (c) { return had.indexOf(c.deg + '|' + c.type) < 0; });
+    var fresh = FindChord.chords(mode, pop, info.chords).slice(info.chords - info.added);
+    if (info.step > 1) return where + 'The keys build back up with the new chord' + (info.added > 1 ? 's' : '') + ': now ' + info.keys + ' keys.';
     var ref = Theory.specsFor(mode, mode === 'minor' ? 9 : 0)[0].name;
     var romans = fresh.map(function (c) { var cd = Chords.chordInKey(ref, mode, c.deg, c.type); return cd ? cd.roman : ''; }).filter(Boolean);
     var types = fresh.map(function (c) { return c.type; }).filter(function (t, i, a) { return a.indexOf(t) === i; });
-    var names = types.map(function (t) { var d = Chords.TYPES.filter(function (x) { return x.id === t; })[0]; return d ? d.label : t; });
-    if (!fresh.length) return 'The chords are back: ' + FindChord.chords(mode, pop, up.chords).length + ' to find.';
-    return 'New chords to find: ' + names.join(' and ') + ' chords on ' + romans.join(', ') + '.' + (up.keys < was.keys ? ' The keys start over from C and D.' : '');
+    if (fresh.length > 2 && types.length === 1 && types[0] !== 'triad') {
+      var d = Chords.TYPES.filter(function (x) { return x.id === types[0]; })[0];
+      return where + 'New chords to find: ' + (d ? d.label : types[0]) + ' chords on ' + romans.join(', ') + '.';
+    }
+    return where + 'New chord' + (fresh.length > 1 ? 's' : '') + ' to find: ' + romans.join(' and ') + '.';
   }
   var bannerHold = false;                                       // a trial result stays up until the next pick
   function showBanner(title, text, withConfetti, icon) {
@@ -1472,7 +1477,7 @@
   function celebrate(note) {
     document.getElementById('ftc-levelup-icon').textContent = '\u{1F389}';
     document.getElementById('ftc-levelup-title').textContent = 'Level up!';
-    levelText.textContent = 'You are on level ' + FindChord.levelNumber(state.mode, ftcPop(), ftcLevels().keys, ftcLevels().chords) + '. ' + note;
+    levelText.textContent = 'You are on level ' + ftcLevelNo() + '. ' + note;
     levelBanner.hidden = false;
     levelBanner.style.animation = 'none'; void levelBanner.offsetWidth; levelBanner.style.animation = '';
     if (reduceMotion) return;
@@ -1542,12 +1547,12 @@
   function ftcNewQuestion(animate) {
     if (bubFull) { ftcBub = null; bubFull = false; showStreak(); }                  // ("Next": the new level starts with empty bubbles)
     var l = ftcLevels();
-    var isFresh = FindChord.freshTest(state.mode, ftcPop(), l.keys, l.chords, ftcLast[state.mode]);
+    var isFresh = ftcTrial ? null : FindChord.freshTest(state.mode, ftcPop(), ftcLevelNo());
     var q = FindChord.pick(state.mode, ftcPop(), l.keys, l.chords, Math.random, ftcQ, function (c) { return FindChord.weightOf(ftcW, state.mode, c); },
                            isFresh, isFresh ? FindChord.freshPlan(ftcFresh) : null);
     q = { pc: q.pc, deg: q.deg, type: q.type };
     if (ftcHomeNext && !resumeQ) {                                  // the new key's first question is its home triad (I, or i in minor)
-      var newest = FindChord.keys(state.mode, l.keys).slice(-1)[0];
+      var newest = FindChord.keys(state.mode, ftcPop(), l.keys).slice(-1)[0];
       if (l.keys > 1 && newest !== undefined) q = { pc: newest, deg: 0, type: 'triad' };
     }
     ftcHomeNext = false;
@@ -1602,7 +1607,7 @@
 
   // ---- Time trial: ten questions at a chosen level, against the clock ----
   // The normal state (bubbles, streak) is kept aside and put back afterwards. A wrong answer costs ten seconds and the trial moves on.
-  var TRIALS_KEY = 'music-theory-trials-v1';
+  var TRIALS_KEY = 'music-theory-trials-v2';       // (v2: the levels were renumbered with the staged ladder)
   var trialBox = el('div', 'trial-box'), trialBtn = el('button', 'btn-reset trial-btn', 'Time Trial \u25be'), trialList = el('div', 'trial-list'),
       trialClock = el('div', 'trial-clock'), trialPen = el('span', 'trial-pen'), trialStop = el('button', 'btn-reset trial-stop', 'Stop');
   var trialListOpen = false, trialTick = null, trialCountdown = null;
@@ -1649,7 +1654,7 @@
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && trialListOpen) { closeTrialList(); trialBtn.focus(); } });
   function buildTrialList() {
     trialList.textContent = '';
-    var cur = FindChord.levelNumber(state.mode, ftcPop(), ftcLv[state.mode].keys, ftcLv[state.mode].chords), bests = trialBests();
+    var cur = ftcLevelNo(), bests = trialBests();
     for (var n = cur; n >= 1; n--) {
       var b = el('button', 'btn-reset trial-lvl'), best = bests[trialKey(n)];
       b.type = 'button'; b.setAttribute('data-level', n);
@@ -1675,10 +1680,10 @@
     var lv = FindChord.levelAt(state.mode, ftcPop(), n);
     trialListOpen = false;
     var snap = ftcTrial ? ftcTrial.snap                                   // ("Try again": the state from before the first trial is still the one to return to)
-      : { bub: ftcBub, bubFull: bubFull, streak: ftcStreak, tried: ftcTried, right: ftcRight, home: ftcHomeNext, last: ftcLast[state.mode] };
+      : { bub: ftcBub, bubFull: bubFull, streak: ftcStreak, tried: ftcTried, right: ftcRight, home: ftcHomeNext };
     clearInterval(trialTick); trialTick = null;
     ftcTrial = { level: n, keys: lv.keys, chords: lv.chords, n: 0, wrongs: 0, t0: 0, qStart: 0, penalty: 0, times: [], snap: snap, counting: true, done: false, view: null };
-    ftcBub = null; bubFull = false; ftcStreak = 0; ftcTried = 0; ftcRight = 0; ftcHomeNext = false; ftcLast[state.mode] = null;
+    ftcBub = null; bubFull = false; ftcStreak = 0; ftcTried = 0; ftcRight = 0; ftcHomeNext = false;
     bannerHold = false; levelBanner.hidden = true;
     syncTrialBox(); drawClock(); updateFtc(); updateScore(); updateChordPanel();
     chordsPanel.classList.add('counting');
@@ -1706,7 +1711,7 @@
     clearTimeout(trialCountdown); trialCountdown = null;
     chordsPanel.classList.remove('counting');
     var sn = ftcTrial.snap;
-    ftcBub = sn.bub; bubFull = sn.bubFull; ftcStreak = sn.streak; ftcTried = sn.tried; ftcRight = sn.right; ftcHomeNext = sn.home; ftcLast[state.mode] = sn.last;
+    ftcBub = sn.bub; bubFull = sn.bubFull; ftcStreak = sn.streak; ftcTried = sn.tried; ftcRight = sn.right; ftcHomeNext = sn.home;
     ftcTrial = null; trialListOpen = false;
     syncTrialBox();
   }
@@ -1738,7 +1743,7 @@
       stage.innerHTML = '<div class="trial-result"><div class="tr-icon"></div><h3 class="tr-title"></h3><div class="tr-time"></div><p class="tr-detail"></p><p class="tr-best"></p>' +
         '<div class="tr-actions"><button type="button" class="btn-reset tr-again">Try Again</button><button type="button" class="btn-reset tr-back">Back to Study</button></div></div>';
       var q = function (c) { return stage.querySelector(c); };
-      q('.tr-icon').textContent = isBest ? '\u{1F389}' : '\u{1F615}';
+      q('.tr-icon').textContent = isBest ? '\u{1F389}' : t.wrongs >= 3 ? '\u{1F61E}' : '\u{1F610}';      // party / sad (three or more wrong) / shrug
       q('.tr-title').textContent = isBest ? 'New best time for level ' + t.level + '!' : 'Level ' + t.level + ' time trial complete';
       q('.tr-time').textContent = fmtTime(total);
       q('.tr-detail').textContent = t.wrongs + ' wrong' + (t.wrongs ? ' (+' + (t.wrongs * TRIAL_PENALTY / 1000) + 's)' : '');
@@ -1789,6 +1794,7 @@
     if (bannerHold) { bannerHold = false; levelBanner.hidden = true; }
     if (ftcWrong) ftcClearPicks();                    // after a wrong guess the next click starts a new attempt
     ftcSel[kind] = value;
+    if (ftcTypesHidden()) ftcSel.type = 'triad';       // (only triads so far: the degree alone is the guess)
     typePicked = ftcSel.type !== null;
     chordTypes_.full = ftcSel.type || 'triad';
     if (ftcSel.deg === null || ftcSel.type === null) { draw(false, false); return; }
@@ -1808,13 +1814,11 @@
       else {
         ftcStreak++; ftcTried++; ftcRight++; pushBub('ok');
         if (ftcAuto && ftcStreak >= streakNeed()) {
-          var l = ftcLevels();
-          var up = FindChord.levelUp(state.mode, ftcPop(), l.keys, l.chords, ftcNext);
+          var n0 = ftcLevelNo(), up = n0 < FindChord.levelCount(state.mode, ftcPop());
           if (up) {
-            ftcLv[state.mode] = { keys: up.keys, chords: up.chords };
-            ftcNext = up.next;
-            ftcRaised(up.keys > l.keys ? 'keys' : 'chords');
-            levelUpNote = levelUpText(l, up);
+            ftcSetLevel(n0 + 1);
+            ftcRaised(true);
+            levelUpNote = levelUpText(n0 + 1);
             text += ' Level up! ' + levelUpNote;
           }
           ftcStreak = 0; ftcTried = 0; ftcRight = 0;
@@ -1850,34 +1854,21 @@
   function ftcRevalidate() {
     if (!quizOn() || !ftcQ || state.answered) return;
     var l = ftcLevels();
-    var okKey = FindChord.keys(state.mode, l.keys).indexOf(ftcQ.pc) >= 0;
+    var okKey = FindChord.keys(state.mode, ftcPop(), l.keys).indexOf(ftcQ.pc) >= 0;
     var okChord = FindChord.chords(state.mode, ftcPop(), l.chords).some(function (c) { return c.deg === ftcQ.deg && c.type === ftcQ.type; });
     if (okKey && okChord) return;
     var anim = ftcNewQuestion(true);
     updateScore();
     draw(anim, false);
   }
-  function ftcStep(dial, delta) {
-    var l = ftcLevels();
-    var max = dial === 'keys' ? FindChord.maxKeys() : FindChord.maxChords(state.mode, ftcPop());
-    var next = FindChord.clamp(l[dial] + delta, 1, max);
-    if (next === l[dial]) return;
-    ftcLv[state.mode] = { keys: dial === 'keys' ? next : l.keys, chords: dial === 'chords' ? next : l.chords };
-    ftcStreak = 0; ftcTried = 0; ftcRight = 0; ftcBub = null; bubFull = false;
-    ftcRaised(delta > 0 ? dial : null);
-    saveFtc();
-    updateFtc();
-    if (dial === 'chords') updateChordPanel();         // the chips offered follow the chords level
-    ftcRevalidate();
-  }
-
   function updateFtc() {
     var on = quizOn();
     ftcSection.hidden = !on;
     chordsPanel.classList.toggle('quizzing', on);
     if (!on || !ftcQ) return;
-    var l = ftcLevels(), maxC = FindChord.maxChords(state.mode, ftcPop());
-    document.getElementById('ftc-level').textContent = (ftcTrial ? 'Trial \u00b7 level ' : 'Level ') + FindChord.levelNumber(state.mode, ftcPop(), l.keys, l.chords);
+    var li = FindChord.levelInfo(state.mode, ftcPop(), ftcLevelNo());
+    document.getElementById('ftc-level').textContent = (ftcTrial ? 'Trial \u00b7 level ' : 'Level ') + ftcLevelNo();
+    document.getElementById('ftc-level').title = 'Stage ' + li.stage + ', step ' + li.step + ' of ' + FindChord.stageSteps(state.mode, ftcPop(), ftcLevelNo());
     document.getElementById('ftc-streak').textContent = '';
     showStreak();
   }
@@ -1885,20 +1876,10 @@
   // local testing: the same one-step-at-a-time moves the automatic level-up makes, up or back down
   function ftcDifficulty(dir) {
     if (ftcTrial) return;
-    var l = ftcLevels(), maxC = FindChord.maxChords(state.mode, ftcPop());
-    if (dir > 0) {
-      var up = FindChord.levelUp(state.mode, ftcPop(), l.keys, l.chords, ftcNext);
-      if (!up) return;
-      ftcLv[state.mode] = { keys: up.keys, chords: up.chords }; ftcNext = up.next;
-      ftcRaised(up.keys > l.keys ? 'keys' : 'chords');
-    } else {
-      var cur = FindChord.levelNumber(state.mode, ftcPop(), l.keys, l.chords);
-      if (cur <= 1) return;
-      var prev = FindChord.levelAt(state.mode, ftcPop(), cur - 1);
-      ftcLv[state.mode] = { keys: prev.keys, chords: prev.chords };
-      ftcNext = FindChord.planDial(state.mode, ftcPop(), prev.keys, prev.chords) || 'chords';
-      ftcRaised(null);
-    }
+    var n = ftcLevelNo(), to = n + dir;
+    if (to < 1 || to > FindChord.levelCount(state.mode, ftcPop())) return;
+    ftcSetLevel(to);
+    ftcRaised(dir > 0);
     ftcStreak = 0; ftcTried = 0; ftcRight = 0; ftcBub = null; bubFull = false;
     saveFtc(); updateFtc(); updateChordPanel();
     ftcRevalidate();
@@ -2008,7 +1989,7 @@
     scoreBox.classList.toggle('quiz', quizOn());
     showStreak();
     badEl.textContent = score.bad;
-    scoreBox.hidden = !state.flash || (quizOn() && score.ok + score.bad === 0);
+    scoreBox.hidden = !state.flash || (quizOn() && score.ok + score.bad === 0 && !isPhoneLayout() && !ftcTrial);
     if (!(quizOn() && score.ok + score.bad > 0) && scoreBox.parentNode !== scoreHome) scoreHome.appendChild(scoreBox);
     flashModeGroup.hidden = !state.flash;
     kindGroup.hidden = state.flash || level === 'pop';
@@ -2656,27 +2637,16 @@
 
   resetBtn.addEventListener('click', reset);
 
-  // Phones: Find the chord wants the phone upright, every other view wants it on its side. A web page cannot force that
-  // (iOS ignores the orientation lock), so a notice covers the app until the phone is turned the right way.
-  var rotateHint = document.getElementById('rotate-hint'), rotateText = document.getElementById('rotate-text'), lockedFor = null;
-  function isPhone() {
-    return !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches && Math.min(window.screen.width, window.screen.height) <= 500);
+  // Turning the phone changes the width of the stage: put the card (or the opened staff) back in the middle of what is visible.
+  var recentreTimer = null;
+  function recentre() {
+    clearTimeout(recentreTimer);
+    recentreTimer = setTimeout(function () {
+      if (quizOn() && !(ftcTrial && (ftcTrial.counting || ftcTrial.done))) centreQuizStage(state.answered ? 'open' : 'card');
+    }, 200);
   }
-  function syncOrientation() {
-    if (!isPhone()) { rotateHint.hidden = true; return; }
-    var wantPortrait = quizOn(), portrait = window.matchMedia('(orientation: portrait)').matches;
-    rotateHint.hidden = wantPortrait === portrait;
-    rotateText.textContent = wantPortrait ? 'Hold your phone upright for Find the chord' : 'Turn your phone sideways for this view';
-    if (lockedFor !== wantPortrait) {                     // (works where the browser allows it, e.g. an installed Android app)
-      lockedFor = wantPortrait;
-      try {
-        var lock = window.screen.orientation && window.screen.orientation.lock && window.screen.orientation.lock(wantPortrait ? 'portrait' : 'landscape');
-        if (lock && lock.catch) lock.catch(function () { /* not allowed here */ });
-      } catch (e) { /* unsupported */ }
-    }
-  }
-  window.addEventListener('resize', syncOrientation);
-  window.addEventListener('orientationchange', syncOrientation);
+  window.addEventListener('resize', recentre);
+  window.addEventListener('orientationchange', recentre);
 
   restoreState();
   syncStudyOptions();

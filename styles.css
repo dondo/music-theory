@@ -676,3 +676,4 @@ html.is-local .ftc-local { display: inline-flex; }
   #chords.trialing .chip-type[data-key]::after { bottom: 2px; }
   #chords.trialing .chip[data-key]::after { display: block; content: attr(data-key); position: absolute; top: auto; right: auto; left: 50%; transform: translateX(-50%); bottom: 3px; font-size: 0.62rem; font-weight: 600; line-height: 1; color: var(--muted); opacity: 0.75; }
 }
+.chord-row[hidden] { display: none; }

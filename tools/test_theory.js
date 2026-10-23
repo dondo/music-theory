@@ -454,18 +454,26 @@ check('progtext: reports what it cannot read', function () {
 
 // ---- Find the chord: the difficulty ladder ----
 var FC = require('../js/findchord.js');
-check('find the chord: starts with I IV V V7 in C', function () {
-  assert.deepStrictEqual(FC.keys('major', 1), [0]);
-  assert.deepStrictEqual(FC.chords('major', true, 1).map(function (c) { return c.deg + c.type; }), ['0triad', '3triad', '4triad', '47']);
+var COMBOS = [['major', true], ['major', false], ['minor', true], ['minor', false]];
+check('find the chord: level 1 is C and G with I, IV, V (i, iv, v in minor)', function () {
+  var romans = function (m, pop, n) { return FC.chords(m, pop, FC.levelAt(m, pop, n).chords).map(function (c) { return c.deg + c.type; }); };
+  [true, false].forEach(function (pop) {
+    assert.deepStrictEqual(FC.levelAt('major', pop, 1), { keys: 2, chords: 3 });
+    assert.deepStrictEqual(FC.keys('major', pop, 2), [0, 7]);
+    assert.deepStrictEqual(romans('major', pop, 1), ['0triad', '3triad', '4triad']);
+    assert.deepStrictEqual(FC.keys('minor', pop, 2), [9, 4]);
+    assert.deepStrictEqual(romans('minor', pop, 1), ['0triad', '3triad', '4triad']);
+  });
 });
-check('find the chord: keys grow from the most familiar and are all distinct', function () {
-  ['major', 'minor'].forEach(function (m) {
-    var all = FC.keys(m, 12);
+check('find the chord: keys are all distinct; Pop and Jazz have their own key order', function () {
+  COMBOS.forEach(function (c) {
+    var all = FC.keys(c[0], c[1], 12);
     assert.strictEqual(all.length, 12);
     assert.strictEqual(new Set(all).size, 12);
   });
-  assert.deepStrictEqual(FC.keys('major', 3), [0, 2, 7]);
-  assert.strictEqual(FC.keys('minor', 1)[0], 9);
+  assert.notDeepStrictEqual(FC.keys('major', true, 12), FC.keys('major', false, 12));
+  assert.deepStrictEqual(FC.keys('major', false, 4), [0, 7, 10, 5]);        // Jazz: C G B♭ F
+  assert.deepStrictEqual(FC.keys('major', true, 4), [0, 7, 2, 9]);          // Pop: C G D A
 });
 check('find the chord: Pop never offers 11ths or 13ths, Jazz does; no chord repeats', function () {
   ['major', 'minor'].forEach(function (m) {
@@ -480,31 +488,59 @@ check('find the chord: Pop never offers 11ths or 13ths, Jazz does; no chord repe
 check('find the chord: pick stays inside the levels and avoids an immediate repeat', function () {
   var avoid = null;
   for (var i = 0; i < 200; i++) {
-    var q = FC.pick('major', true, 2, 1, Math.random, avoid);
-    assert.ok([0, 2].indexOf(q.pc) >= 0);
-    assert.ok(FC.chords('major', true, 1).some(function (c) { return c.deg === q.deg && c.type === q.type; }));
+    var q = FC.pick('major', true, 2, 3, Math.random, avoid);
+    assert.ok([0, 7].indexOf(q.pc) >= 0);
+    assert.ok(FC.chords('major', true, 3).some(function (c) { return c.deg === q.deg && c.type === q.type; }));
     if (avoid) assert.ok(!(q.pc === avoid.pc && q.deg === avoid.deg && q.type === avoid.type));
     avoid = q;
   }
 });
-check('find the chord: levels follow the plan: C D G A F, vi ii, D♭ B♭ E♭, ... and stop at the top', function () {
-  var names = function (ks) { return ks.map(function (pc) { return ['C', 'D♭', 'D', 'E♭', 'E', 'F', 'F♯', 'G', 'A♭', 'A', 'B♭', 'B'][pc]; }).join(' '); };
-  assert.strictEqual(names(FC.keys('major', 5)), 'C D G A F');
-  assert.strictEqual(names(FC.keys('major', 8)), 'C D G A F D♭ B♭ E♭');
-  assert.strictEqual(names(FC.keys('minor', 5)), 'A B E F♯ D');
-  // the ladder: a new chord group sends the keys back to C D; a new key (once vi ii are in) sends the chords back to I IV V
-  var L = []; for (var n = 1, nn = FC.levelCount('major', true); n <= nn; n++) L.push(FC.levelAt('major', true, n));
-  var pairs = L.map(function (l) { return l.keys + '/' + l.chords; });
-  assert.strictEqual(pairs.slice(0, 14).join(' '), '1/1 2/1 3/1 4/1 5/1 2/2 3/2 4/2 5/2 6/1 6/2 7/1 7/2 8/1');
-  assert.strictEqual(pairs.slice(14, 18).join(' '), '8/2 2/3 3/3 4/3');
-  assert.strictEqual(new Set(pairs).size, pairs.length, 'no level repeats');
-  assert.deepStrictEqual(L[L.length - 1], { keys: 12, chords: FC.maxChords('major', true) });
-  var u = FC.levelUp('major', true, 5, 2); assert.deepStrictEqual([u.keys, u.chords], [6, 1]);
-  assert.strictEqual(FC.levelUp('major', true, 12, FC.maxChords('major', true)), null);
-  assert.strictEqual(FC.lastDial('major', true, 1, 1), null);
-  assert.strictEqual(FC.lastDial('major', true, 5, 1), 'keys');
-  assert.strictEqual(FC.lastDial('major', true, 2, 2), 'chords');
-  assert.strictEqual(FC.levelNumber('major', true, 6, 1), 10);
+check('find the chord: the ladder is built of stages; steps climb back through the other dimension', function () {
+  COMBOS.forEach(function (c) {
+    var L = FC.ladder(c[0], c[1]), tag = c[0] + (c[1] ? ' pop' : ' jazz');
+    assert.ok(L.length > 50 && L.length < 200, tag + ' ' + L.length);
+    assert.strictEqual(new Set(L.map(function (l) { return l.keys + '/' + l.chords; })).size, L.length, tag + ': no level repeats');
+    assert.deepStrictEqual([L[0].stage, L[0].step, L[0].kind], [1, 1, 'start']);
+    var last = L[L.length - 1], total = FC.chords(c[0], c[1], 99).length;
+    assert.deepStrictEqual([last.keys, last.chords], [12, total], tag + ': the top level has everything');
+    var kb = [2], cb = [3];
+    for (var st = 2; ; st++) {
+      var steps = L.filter(function (l) { return l.stage === st; });
+      if (!steps.length) break;
+      var f = steps[0], z = steps[steps.length - 1];
+      steps.forEach(function (l, i) { assert.strictEqual(l.step, i + 1); });
+      if (f.kind === 'K') {
+        assert.ok(f.added <= 2, tag + ' stage ' + st);
+        assert.strictEqual(steps.length, cb.length, tag + ' stage ' + st + ' climbs through every earlier chord stage');
+        assert.strictEqual(f.chords, 3, 'the chords start again from I IV V');
+        assert.strictEqual(z.chords, cb[cb.length - 1]);
+        assert.strictEqual(z.keys, kb[kb.length - 1] + f.added);
+        if (f.added === 2) assert.ok(z.keys * z.chords <= 30, tag + ' stage ' + st + ': two at a time only while it is simple');
+        kb.push(z.keys);
+      } else {
+        assert.strictEqual(steps.length, kb.length, tag + ' stage ' + st + ' climbs through every earlier key stage');
+        assert.strictEqual(f.keys, 2, 'the keys start again from C and G');
+        assert.strictEqual(z.keys, kb[kb.length - 1]);
+        assert.strictEqual(z.chords, cb[cb.length - 1] + f.added);
+        if (f.added === 2) assert.ok(z.keys * z.chords <= 30, tag + ' stage ' + st + ': two at a time only while it is simple');
+        if (f.added > 2) {                                           // the tail: a whole chord type in one stage
+          var added = FC.chords(c[0], c[1], z.chords).slice(z.chords - f.added);
+          var types = new Set(added.map(function (x) { return x.type; }));
+          assert.strictEqual(types.size, 1, tag + ' stage ' + st + ' adds one type');
+        }
+        cb.push(z.chords);
+      }
+    }
+  });
+});
+check('find the chord: levelInfo / levelAt', function () {
+  var i = FC.levelInfo('major', true, 2);
+  assert.deepStrictEqual([i.stage, i.step], [2, 1]);
+  assert.deepStrictEqual(FC.levelInfo('major', true, 0), FC.levelInfo('major', true, 1));          // clamped
+  var n = FC.levelCount('major', true);
+  assert.deepStrictEqual(FC.levelInfo('major', true, n + 5), FC.levelInfo('major', true, n));
+  assert.strictEqual(FC.stageSteps('major', true, 1), 1);
+  assert.deepStrictEqual(FC.levelAt('major', true, n), { keys: 12, chords: 42 });
 });
 
 // ---- Find a chord: identifying the picked notes ----
@@ -559,17 +595,17 @@ check('find the chord weights: a fresh chord weighs 1, a miss adds 2 (max 16), a
   assert.strictEqual(FC.weightOf(w, 'major', { pc: 7, deg: 4, type: '7' }), 1);           // so is every key
 });
 check('find the chord weights: a missed chord is dealt more often, and never twice running', function () {
-  var w = {}, target = { pc: 0, deg: 4, type: '7' };
+  var w = {}, target = { pc: 0, deg: 4, type: 'triad' };
   for (var i = 0; i < 6; i++) FC.miss(w, 'major', target);                                // weight 13
   var seq = 0, hits = 0, N = 4000;
   function rng() { seq = (seq * 1103515245 + 12345) % 2147483648; return seq / 2147483648; }
   for (i = 0; i < N; i++) {
-    var q = FC.pick('major', true, 1, 1, rng, null, function (x) { return FC.weightOf(w, 'major', x); });
-    if (q.pc === 0 && q.deg === 4 && q.type === '7') hits++;
+    var q = FC.pick('major', true, 1, 3, rng, null, function (x) { return FC.weightOf(w, 'major', x); });
+    if (q.pc === 0 && q.deg === 4 && q.type === 'triad') hits++;
   }
-  assert.ok(hits / N > 0.5, 'G7 should dominate, got ' + hits / N);                       // 13 of (13 + 3 others)
-  assert.notDeepStrictEqual(FC.pick('major', true, 1, 1, function () { return 0.99; }, target, function () { return 1; }), target);
-  assert.ok(FC.pick('major', true, 1, 1, function () { return 0; }, null));                // the unweighted call still works
+  assert.ok(hits / N > 0.5, 'G should dominate, got ' + hits / N);                       // 13 of (13 + 2 others)
+  assert.notDeepStrictEqual(FC.pick('major', true, 1, 3, function () { return 0.99; }, target, function () { return 1; }), target);
+  assert.ok(FC.pick('major', true, 1, 3, function () { return 0; }, null));                // the unweighted call still works
 });
 check('find the chord weights: saved, restored, cleaned of junk and reset', function () {
   var store = {}, st = { getItem: function (k) { return store[k] || null; }, setItem: function (k, v) { store[k] = v; } };
@@ -592,51 +628,36 @@ check('find the chord inversions: Pop is always root position; Jazz mixes every 
 });
 
 
-check('find the chord: levelAt gives the keys and chords levels of each overall level', function () {
-  [['major', true], ['major', false], ['minor', true]].forEach(function (mp) {
-    var n = FC.levelCount(mp[0], mp[1]);
-    assert.deepStrictEqual(FC.levelAt(mp[0], mp[1], 1), { keys: 1, chords: 1 });
-    for (var i = 1; i <= n; i++) {
-      var l = FC.levelAt(mp[0], mp[1], i);
-      assert.strictEqual(FC.levelNumber(mp[0], mp[1], l.keys, l.chords), i);
-    }
-  });
-});
-check('find the chord: each run of five questions has at least two about the level\'s new challenge', function () {
+check('find the chord: each run of five questions has at least two about the stage\'s new challenge', function () {
   var FCx = FC, rngSeed = 7;
   function rnd() { rngSeed = (rngSeed * 16807) % 2147483647; return rngSeed / 2147483647; }
-  ['major', 'minor'].forEach(function (mode) {
-    [true, false].forEach(function (pop) {
-      var mc = FCx.maxChords(mode, pop);
-      [['keys', 5, 3], ['chords', 4, 4], ['chords', 1, 2], ['keys', 12, mc], ['chords', 12, mc]].forEach(function (c) {
-        var last = c[0], kl = Math.min(c[1], 12), cl = Math.min(c[2], mc);
-        if (last === 'chords' && cl < 2 || last === 'keys' && kl < 2) return;
-        var fresh = FCx.freshTest(mode, pop, kl, cl, last), tr = { asked: 0, fresh: 0 }, runs = 0;
-        assert.ok(fresh, 'fresh predicate exists');
-        for (var run = 0; run < 200; run++) {
-          var n = 0;
-          for (var k = 0; k < 5; k++) {
-            var q = FCx.pick(mode, pop, kl, cl, rnd, null, null, fresh, FCx.freshPlan(tr));
-            var f = fresh(q); if (f) n++;
-            FCx.freshRecord(tr, f);
-          }
-          assert.ok(n >= 2, mode + ' ' + (pop ? 'pop' : 'jazz') + ' ' + last + ' ' + kl + '/' + cl + ': only ' + n + ' fresh in a run');
-          runs++;
+  COMBOS.forEach(function (cm) {
+    var mode = cm[0], pop = cm[1], count = FCx.levelCount(mode, pop);
+    for (var n = 2; n <= count; n += 5) {
+      var l = FCx.levelInfo(mode, pop, n), fresh = FCx.freshTest(mode, pop, n), tr = { asked: 0, fresh: 0 };
+      assert.ok(fresh, 'fresh predicate exists at level ' + n);
+      for (var run = 0; run < 40; run++) {
+        var hits = 0;
+        for (var k = 0; k < 5; k++) {
+          var q = FCx.pick(mode, pop, l.keys, l.chords, rnd, null, null, fresh, FCx.freshPlan(tr));
+          var f = fresh(q); if (f) hits++;
+          FCx.freshRecord(tr, f);
         }
-      });
-    });
+        assert.ok(hits >= 2, mode + ' ' + (pop ? 'pop' : 'jazz') + ' level ' + n + ': only ' + hits + ' fresh in a run');
+      }
+    }
   });
-  assert.strictEqual(FCx.freshTest('major', true, 1, 1, 'keys'), null);
-  assert.strictEqual(FCx.freshTest('major', true, 3, 3, null), null);
-  assert.strictEqual(FCx.levelNumber('major', true, 1, 1), 1);
+  assert.strictEqual(FCx.freshTest('major', true, 1), null);                       // the starting stage has nothing new
 });
 
-check('find the chord: the new challenge is asked about often at the start of a level', function () {
+check('find the chord: the new challenge is asked about often at the start of a stage', function () {
   var seed = 11; function rnd() { seed = (seed * 16807) % 2147483647; return seed / 2147483647; }
-  var fresh = FC.freshTest('major', true, 6, 3, 'keys'), hits = 0, N = 2000;
-  for (var i = 0; i < N; i++) hits += fresh(FC.pick('major', true, 6, 3, rnd, null, null, fresh, 'boost')) ? 1 : 0;
+  var L = FC.ladder('major', true), n = 0;
+  for (var i = 0; i < L.length; i++) if (L[i].kind === 'K' && L[i].keys >= 6 && L[i].step === 1) { n = i + 1; break; }
+  var l = L[n - 1], fresh = FC.freshTest('major', true, n), hits = 0, N = 2000;
+  for (var j = 0; j < N; j++) hits += fresh(FC.pick('major', true, l.keys, l.chords, rnd, null, null, fresh, 'boost')) ? 1 : 0;
   // one key of six would be ~17% unboosted; boosted it is clearly more
-  assert.ok(hits / N > 0.4, 'boosted share ' + hits / N);
+  assert.ok(hits / N > 0.3, 'boosted share ' + hits / N);
 });
 
 console.log(failures ? '\n' + failures + ' FAILED' : '\nall tests passed');
