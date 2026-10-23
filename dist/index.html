@@ -4973,7 +4973,8 @@ var KeyboardRender = (function () {
     ftcRaised(dir > 0);
     ftcStreak = 0; ftcTried = 0; ftcRight = 0; ftcBub = null; bubFull = false;
     saveFtc(); updateFtc(); updateChordPanel();
-    ftcRevalidate();
+    if (dir > 0 && quizOn() && ftcQ && !state.answered) { var anim = ftcNewQuestion(true); updateScore(); draw(anim, false); }      // (a harder step opens with a question about what it adds)
+    else ftcRevalidate();
   }
   document.getElementById('ftc-harder').addEventListener('click', function () { ftcDifficulty(1); });
   document.getElementById('ftc-easier').addEventListener('click', function () { ftcDifficulty(-1); });
