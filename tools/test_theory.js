@@ -664,5 +664,47 @@ check('find the chord: the new challenge is asked about often at the start of a 
   assert.ok(hits / N > 0.3, 'boosted share ' + hits / N);
 });
 
+check('memory model: recall decays by half-life, misses shrink it, speed grades the gain', function () {
+  var m = FC.newMem(), q = { pc: 0, deg: 0, type: 'triad' }, t0 = 1e12;
+  assert.strictEqual(FC.pairRecall(m, 'major', q, t0), 0);                          // never seen: nothing remembered
+  assert.ok(FC.memWeight(m, 'major', q, t0) > 1);
+  var a = FC.memAnswer(m, 'major', q, true, 1500, 0, t0);
+  assert.strictEqual(a.R, null);
+  var h1 = m.p['major|0|0|triad'].h;
+  assert.ok(h1 > 3 * 60000);
+  assert.ok(Math.abs(FC.pairRecall(m, 'major', q, t0 + h1) - 0.5) < 1e-9);          // one half-life later: 50%
+  assert.ok(FC.memWeight(m, 'major', q, t0 + 1000) < 0.1);                           // just answered: rarely asked
+  var b = FC.memAnswer(m, 'major', q, false, null, 0, t0 + 1000);
+  assert.ok(m.p['major|0|0|triad'].h < h1);
+  assert.ok(FC.memWeight(m, 'major', q, t0 + 2000) > 0.7);                          // relearning window
+  var fast = FC.newMem(), slow = FC.newMem();
+  FC.memAnswer(fast, 'major', q, true, 1200, 0, t0); FC.memAnswer(slow, 'major', q, true, 9000, 0, t0);
+  assert.ok(fast.p['major|0|0|triad'].h > slow.p['major|0|0|triad'].h);
+  assert.ok(FC.grade(1000, 3000) === 1 && FC.grade(60000, 3000) === 0.5);
+});
+
+check('memory model: persists, and rejects junk', function () {
+  var store = {}, st = { getItem: function (k) { return store[k] == null ? null : store[k]; }, setItem: function (k, v) { store[k] = v; } };
+  var m = FC.newMem(); FC.memAnswer(m, 'major', { pc: 7, deg: 4, type: '7' }, true, 2000, 0, 5e11);
+  FC.saveMem(m, st);
+  assert.deepStrictEqual(FC.loadMem(st), m);
+  store['music-theory-ftc-mem-v1'] = '{"p":{"x":{"h":-1,"t":1}},"seq":"a"}';
+  assert.deepStrictEqual(FC.loadMem(st), FC.newMem());
+  FC.saveLog([[1, 2]], st); assert.deepStrictEqual(FC.loadLog(st), [[1, 2]]);
+});
+
+check('floors: 2 in 5 about the new challenge and 1 in 5 about faded older material', function () {
+  var t = { asked: 0, fresh: 0 }, order = [];
+  for (var i = 0; i < 5; i++) {
+    var p = FC.floorPlan(t, true, true); order.push(p);
+    FC.freshRecord(t, p === 'fresh', p === 'old');
+  }
+  var f = order.filter(function (x) { return x === 'fresh'; }).length, o = order.filter(function (x) { return x === 'old'; }).length;
+  assert.ok(f >= 2 && o >= 1, order.join());
+  assert.strictEqual(FC.floorPlan({ asked: 3, fresh: 0, old: 0 }, true, false), 'fresh');   // no older material to ask about: only the fresh floor
+  assert.strictEqual(FC.floorPlan({ asked: 0, fresh: 0, old: 0 }, true, true), null);       // plenty of room: free draw
+  assert.strictEqual(FC.floorPlan({ asked: 4, fresh: 2, old: 0 }, true, true), 'old');
+});
+
 console.log(failures ? '\n' + failures + ' FAILED' : '\nall tests passed');
 process.exit(failures ? 1 : 0);

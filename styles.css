@@ -694,3 +694,6 @@ html.is-local .ftc-local { display: inline-flex; }
 .tr-menu { position: relative; display: inline-block; }
 .tr-menu .trial-list { z-index: 30; }
 .tr-menu .trial-list { top: auto; bottom: calc(100% + 6px); max-height: 13rem; }   /* (opens upward: the card below the results button is clipped) */
+
+.log-note { margin: 0 0 .75rem; padding: .6rem .9rem; border-radius: .6rem; background: var(--card, #f3efe6); border: 1px solid currentColor; font-size: .95rem; display: flex; flex-wrap: wrap; gap: .5rem .9rem; align-items: center; }
+.log-note[hidden] { display: none; }

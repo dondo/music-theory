@@ -85,6 +85,82 @@
   }
 
 
+
+  // ---- the memory model: one half-life per key/chord pair (the recall of a pair halves every `h` ms) ----
+  // R = 2^(-elapsed / h) is the chance you still remember it; a pair is drawn in proportion to EPS + (1 - R)^GAMMA, so time since you last saw it
+  // is built into the odds. A first-try answer is graded by correctness and speed (q, 0..1) and moves h; a miss shrinks it.
+  var MEM_KEY = 'music-theory-ftc-mem-v1';
+  var H0 = 3 * 60000, H_MIN = 2 * 60000, H_MAX = 60 * 86400000, EPS = 0.05, GAMMA = 1.5;
+  var RELEARN = 6, RELEARN_U = 0.8;                  // after a miss a pair counts as at least 80% forgotten for the next 6 answers
+  var TREF_DEFAULT = 3000, TREF_MIN = 1200, TREF_N = 100, TREF_NEED = 8, TIME_MAX = 20000, Q_NO_TIME = 0.7, OLD_R = 0.6, OLD_MIN = 1;
+  function newMem() { return { p: {}, seq: 0, tm: {} }; }       // p: pair -> { h, t, n, l, rs }; tm: speed class -> the last correct first-try times
+  function pairKey(mode, q) { return mode + '|' + q.pc + '|' + q.deg + '|' + q.type; }
+  function recallOf(m, now) { return m ? Math.pow(2, -Math.max(0, now - m.t) / m.h) : 0; }       // a pair never seen: 0
+  function pairRecall(mem, mode, q, now) { return recallOf(mem.p[pairKey(mode, q)], now); }
+  function memWeight(mem, mode, q, now) {
+    var m = mem.p[pairKey(mode, q)], u = 1 - recallOf(m, now);
+    if (m && mem.seq - m.rs <= RELEARN) u = Math.max(u, RELEARN_U);
+    return EPS + Math.pow(u, GAMMA);
+  }
+  function timeClass(type, inv) { return (type === 'triad' ? 'triad' : type === '7' ? '7th' : 'ext') + (inv > 0 ? '/inv' : ''); }
+  function tRef(mem, cls) {                                      // the bar for "fast": your 20th-percentile correct time in this class
+    var a = mem.tm[cls];
+    if (!a || a.length < TREF_NEED) return TREF_DEFAULT;
+    var b = a.slice().sort(function (x, y) { return x - y; });
+    return Math.max(TREF_MIN, b[Math.floor(0.2 * (b.length - 1))]);
+  }
+  function grade(t, ref) { var r = t / ref; return 1 - 0.5 * Math.max(0, Math.min(1, Math.log(r / 0.8) / Math.log(3.125))); }
+  // a first-try answer; returns what was predicted and what changed, for the log
+  function memAnswer(mem, mode, q, correct, tMs, inv, now) {
+    var key = pairKey(mode, q), m = mem.p[key], cls = timeClass(q.type, inv);
+    var out = { R: m ? recallOf(m, now) : null, hBefore: m ? m.h : null, dt: m ? now - m.t : null, q: 0, cls: cls };
+    var timed = correct && tMs != null && tMs >= 0 && tMs <= TIME_MAX;
+    if (!m) m = { h: H0, t: now, n: 0, l: 0, rs: -99 };
+    if (!correct) { m.h = Math.max(H_MIN, 0.35 * m.h); m.l++; m.rs = mem.seq; out.q = 0; }
+    else {
+      out.q = timed ? grade(tMs, tRef(mem, cls)) : Q_NO_TIME;
+      var R = out.R == null ? 0 : out.R, dt = out.dt == null ? 0 : out.dt;
+      m.h = Math.min(H_MAX, Math.max(m.h * (1 + 1.5 * out.q * (1.5 - R)), 0.8 * out.q * dt));
+    }
+    if (timed) { var a = mem.tm[cls] || (mem.tm[cls] = []); a.push(tMs); if (a.length > TREF_N) a.shift(); }
+    m.n++; m.t = now; mem.p[key] = m; mem.seq++;
+    out.hAfter = m.h;
+    return out;
+  }
+  function loadMem(st) {
+    st = st === undefined ? storage() : st;
+    var mem = newMem();
+    try {
+      var o = JSON.parse(st && st.getItem(MEM_KEY));
+      if (o && typeof o === 'object') {
+        if (Number.isInteger(o.seq) && o.seq >= 0) mem.seq = o.seq;
+        Object.keys(o.p || {}).forEach(function (k) {
+          var m = o.p[k];
+          if (m && isFinite(m.h) && isFinite(m.t) && m.h >= H_MIN && m.h <= H_MAX) mem.p[k] = { h: m.h, t: m.t, n: m.n | 0, l: m.l | 0, rs: Number.isInteger(m.rs) ? m.rs : -99 };
+        });
+        Object.keys(o.tm || {}).forEach(function (c) { if (Array.isArray(o.tm[c])) mem.tm[c] = o.tm[c].filter(function (x) { return isFinite(x) && x > 0 && x <= TIME_MAX; }).slice(-TREF_N); });
+      }
+    } catch (e) { /* defaults */ }
+    return mem;
+  }
+  function saveMem(mem, st) { st = st === undefined ? storage() : st; try { if (st) st.setItem(MEM_KEY, JSON.stringify(mem)); } catch (e) { /* not persisted */ } }
+  function resetMem(mem) { mem.p = {}; mem.seq = 0; mem.tm = {}; }
+  // does any pair in play (other than `avoid`) satisfy pred?
+  function anyPair(mode, pop, keysLevel, chordsLevel, pred) {
+    var ks = keys(mode, pop, keysLevel), cs = chords(mode, pop, chordsLevel);
+    for (var i = 0; i < ks.length; i++) for (var j = 0; j < cs.length; j++) if (pred({ pc: ks[i], deg: cs[j].deg, type: cs[j].type })) return true;
+    return false;
+  }
+  // the answer log: every answer, kept for fitting the constants above to you (capped; oldest dropped first)
+  var LOG_KEY = 'music-theory-ftc-log-v1', LOG_CAP = 10000;
+  var LOG_COLUMNS = ['t', 'mode', 'pop', 'pc', 'deg', 'type', 'inv', 'correct', 'ms', 'since_ms', 'R_pred', 'h_before', 'h_after', 'grade', 'stage', 'step', 'draw', 'gave_up', 'trial'];
+  function loadLog(st) {
+    st = st === undefined ? storage() : st;
+    try { var a = JSON.parse(st && st.getItem(LOG_KEY)); if (Array.isArray(a)) return a.filter(Array.isArray).slice(-LOG_CAP); } catch (e) { /* none */ }
+    return [];
+  }
+  function saveLog(a, st) { st = st === undefined ? storage() : st; try { if (st) st.setItem(LOG_KEY, JSON.stringify(a.slice(-LOG_CAP))); } catch (e) { /* not persisted */ } }
+
   // ---- the newest challenge of a stage (new keys, or new chords) ----
   // It is asked about often at first, and in every run of FRESH_WINDOW questions at least FRESH_MIN are about it.
   var FRESH_WINDOW = 5, FRESH_MIN = 2, FRESH_BOOST = 4;
@@ -93,10 +169,18 @@
     var remaining = FRESH_WINDOW - t.asked, need = FRESH_MIN - t.fresh;
     return need > 0 && remaining <= need ? 'only' : 'boost';
   }
-  function freshRecord(t, wasFresh) {
+  function freshRecord(t, wasFresh, wasOld) {
     t.asked++;
     if (wasFresh) t.fresh++;
-    if (t.asked >= FRESH_WINDOW) { t.asked = 0; t.fresh = 0; }
+    else if (wasOld) t.old = (t.old || 0) + 1;
+    if (t.asked >= FRESH_WINDOW) { t.asked = 0; t.fresh = 0; t.old = 0; }
+  }
+  // In every run of FRESH_WINDOW questions: at least FRESH_MIN about the stage's new challenge and OLD_MIN about older material that has faded (R < OLD_R).
+  // Returns 'fresh' or 'old' when the questions left are needed for a floor, else null (draw freely, by memory weight).
+  function floorPlan(t, canFresh, canOld) {
+    var rem = FRESH_WINDOW - t.asked, nf = canFresh ? Math.max(0, FRESH_MIN - t.fresh) : 0, no = canOld ? Math.max(0, OLD_MIN - (t.old || 0)) : 0;
+    if (!(nf + no) || nf + no < rem) return null;
+    return nf >= no ? 'fresh' : 'old';
   }
   // Which inversion to show: always root position in Pop; in Jazz root position about 40% of the time,
   // the rest shared out equally among the inversions (0 = root position). `notes` = notes in the chord.
@@ -231,6 +315,8 @@
   return { STREAK: STREAK, DATA: DATA, maxKeys: maxKeys, clamp: clamp, keys: keys, chords: chords, pick: pick,
            ladder: ladder, levelCount: levelCount, levelInfo: levelInfo, levelAt: levelAt, stageSteps: stageSteps, stageIntro: stageIntro, mayInvert: mayInvert, stepAdds: stepAdds, stageCoverage: stageCoverage, freshTest: freshTest,
            identify: identify, weightKey: weightKey, weightOf: weightOf, miss: miss, hit: hit, loadWeights: loadWeights, saveWeights: saveWeights, resetWeights: resetWeights,
-           pickInversion: pickInversion, freshPlan: freshPlan, freshRecord: freshRecord,
+           pickInversion: pickInversion, freshPlan: freshPlan, freshRecord: freshRecord, floorPlan: floorPlan,
+           newMem: newMem, loadMem: loadMem, saveMem: saveMem, resetMem: resetMem, memWeight: memWeight, memAnswer: memAnswer, pairRecall: pairRecall, grade: grade, tRef: tRef, timeClass: timeClass, anyPair: anyPair,
+           loadLog: loadLog, saveLog: saveLog, LOG_COLUMNS: LOG_COLUMNS, LOG_CAP: LOG_CAP, OLD_R: OLD_R,
            FRESH_WINDOW: FRESH_WINDOW, FRESH_MIN: FRESH_MIN };
 });

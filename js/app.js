@@ -1399,7 +1399,10 @@
     stage.scrollLeft = span <= view ? left - (view - span) / 2 : left;
   }
   var ftcQ = null;                                    // { pc, spell, deg, type, inv }  (inv: the inversion shown, 0 = root position)
-  var ftcW = FindChord.loadWeights();                 // chords you have missed turn up more often (persisted)
+  var ftcMem = FindChord.loadMem();                    // the memory model: when each key/chord pair was last answered and how fast it fades (persisted)
+  var ftcLog = FindChord.loadLog(), ftcLogTimer = null;   // every first-try answer, for tuning the model to you (persisted, capped)
+  var ftcT0 = null, ftcDraw = 'w';                    // when the question appeared; how it was drawn (w weighted, f new-challenge floor, o older-material floor, h step opener)
+  var LOG_NOTE_KEY = 'music-theory-ftc-log-notice', LOG_NOTE_AT = 2000, LOG_NOTE_SNOOZE = 1000;
   var ftcMissed = false;                              // a wrong Check on this question: no streak credit
   var ftcPrevChordsOpen = null;                       // the chord selector's state before the quiz opened it
   var ftcSection = document.getElementById('ftc');
@@ -1559,10 +1562,50 @@
   }
 
   // closed-position voicing of the question's chord, centred on the treble staff
-  function ftcNoteMiss() {                              // this chord (in this key) will turn up more often
-    FindChord.miss(ftcW, state.mode, ftcQ);
-    FindChord.saveWeights(ftcW);
+  function saveLogSoon() {
+    if (ftcLogTimer) return;
+    ftcLogTimer = setTimeout(function () { ftcLogTimer = null; FindChord.saveLog(ftcLog); }, 1000);
   }
+  window.addEventListener('pagehide', function () { FindChord.saveLog(ftcLog); FindChord.saveMem(ftcMem); });
+  // one first-try answer (or give-up): updates the memory model and adds a row to the log
+  function ftcRecord(correct, ms, gaveUp, trial) {
+    if (!ftcQ) return;
+    var now = Date.now(), info = FindChord.levelInfo(state.mode, ftcPop(), ftcLevelNo()), r = null;
+    if (!trial) { r = FindChord.memAnswer(ftcMem, state.mode, ftcQ, correct, ms, ftcQ.inv || 0, now); FindChord.saveMem(ftcMem); }
+    var rd = function (x, d) { return x == null ? '' : Math.round(x * d) / d; };
+    ftcLog.push([now, state.mode, ftcPop() ? 1 : 0, ftcQ.pc, ftcQ.deg, ftcQ.type, ftcQ.inv || 0, correct ? 1 : 0, ms == null ? '' : Math.round(ms),
+                 r ? rd(r.dt, 1) : '', r ? rd(r.R, 1000) : '', r ? rd(r.hBefore, 1) : '', r ? rd(r.hAfter, 1) : '', r ? rd(r.q, 1000) : '',
+                 info.stage, info.step, trial ? '' : ftcDraw, gaveUp ? 1 : 0, trial ? 1 : 0]);
+    if (ftcLog.length > FindChord.LOG_CAP) ftcLog.splice(0, ftcLog.length - FindChord.LOG_CAP);
+    saveLogSoon();
+    syncLogNote();
+  }
+  function ftcNoteMiss(gaveUp) { ftcRecord(false, null, !!gaveUp, false); }       // this pair will come back sooner
+  function logCsv() {
+    var cols = FindChord.LOG_COLUMNS;
+    return [cols.join(',')].concat(ftcLog.map(function (r) { return r.join(','); })).join('\n') + '\n';
+  }
+  function downloadLog() {
+    FindChord.saveLog(ftcLog);
+    var blob = new Blob([logCsv()], { type: 'text/csv' }), a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = 'music-ftc-log-' + new Date().toISOString().slice(0, 10) + '.csv';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 2000);
+  }
+  var logNote = document.getElementById('log-note'), logLink = document.getElementById('log-link');
+  function logNextAt() { try { var n = parseInt(window.localStorage.getItem(LOG_NOTE_KEY), 10); return n > 0 ? n : LOG_NOTE_AT; } catch (e) { return LOG_NOTE_AT; } }
+  function syncLogNote() {
+    if (logLink) logLink.textContent = 'Practice log: ' + ftcLog.length + ' answers (download)';
+    if (logNote) logNote.hidden = ftcLog.length < logNextAt();
+  }
+  if (logLink) logLink.addEventListener('click', downloadLog);
+  if (logNote) logNote.addEventListener('click', function (e) {
+    var b = e.target.closest('button'); if (!b) return;
+    if (b.id === 'log-note-dl') { downloadLog(); return; }
+    try { window.localStorage.setItem(LOG_NOTE_KEY, String(ftcLog.length + LOG_NOTE_SNOOZE)); } catch (err) { /* storage unavailable */ }
+    syncLogNote();
+  });
+  syncLogNote();
   function ftcName(ch) {                                // the chord as shown: G7, or G7/B for an inversion
     return ftcQ.inv ? ch.symbol + '/' + ch.notes[ftcQ.inv % ch.notes.length] : ch.symbol;
   }
@@ -1584,11 +1627,16 @@
     if (bubFull) { ftcBub = null; bubFull = false; showStreak(); }                  // ("Next": the new level starts with empty bubbles)
     var l = ftcLevels();
     var isFresh = ftcTrial ? null : FindChord.freshTest(state.mode, ftcPop(), ftcLevelNo());
-    var q = FindChord.pick(state.mode, ftcPop(), l.keys, l.chords, Math.random, ftcQ, function (c) { return FindChord.weightOf(ftcW, state.mode, c); },
-                           isFresh, isFresh ? FindChord.freshPlan(ftcFresh) : null);
+    var nowMs = Date.now();
+    var isOld = isFresh ? function (c) { return !isFresh(c) && ftcMem.p[state.mode + '|' + c.pc + '|' + c.deg + '|' + c.type] && FindChord.pairRecall(ftcMem, state.mode, c, nowMs) < FindChord.OLD_R; } : null;
+    var plan = isFresh ? FindChord.floorPlan(ftcFresh, true, FindChord.anyPair(state.mode, ftcPop(), l.keys, l.chords, function (c) { return isOld(c) && !(ftcQ && c.pc === ftcQ.pc && c.deg === ftcQ.deg && c.type === ftcQ.type); })) : null;
+    ftcDraw = plan === 'fresh' ? 'f' : plan === 'old' ? 'o' : 'w';
+    var q = FindChord.pick(state.mode, ftcPop(), l.keys, l.chords, Math.random, ftcQ, function (c) { return FindChord.memWeight(ftcMem, state.mode, c, nowMs); },
+                           plan === 'old' ? isOld : isFresh, plan ? 'only' : null);
     q = { pc: q.pc, deg: q.deg, type: q.type };
     var forceInv = false;
-    if (ftcHomeNext && !resumeQ && !ftcTrial) {                     // the step's first question: the key it added (its home triad, I or i), or one of the chords it added
+    if (ftcHomeNext && !resumeQ && !ftcTrial) {
+      ftcDraw = 'h';                     // the step's first question: the key it added (its home triad, I or i), or one of the chords it added
       var add = FindChord.stepAdds(state.mode, ftcPop(), ftcLevelNo());
       if (add && add.dim === 'K' && add.keys.length) q = { pc: add.keys[add.keys.length - 1], deg: 0, type: 'triad' };
       else if (add && add.chords.length) {
@@ -1603,7 +1651,7 @@
     var resumed = resumeQ && resumeQ.cardMode === 'chord' ? resumeQ : null;
     resumeQ = null;
     if (resumed) q = { pc: resumed.pc, deg: resumed.deg, type: resumed.type, spell: resumed.spell };
-    else if (isFresh) { FindChord.freshRecord(ftcFresh, isFresh(q)); saveFtc(); }
+    else if (isFresh) { FindChord.freshRecord(ftcFresh, isFresh(q), !isFresh(q) && isOld(q)); saveFtc(); }
     var nNotes = Chords.chordInKey(Theory.specsFor(state.mode, q.pc)[q.spell].name, state.mode, q.deg, q.type).pcOffsets.length;
     var mayInv = FindChord.mayInvert(state.mode, ftcPop(), l, q.deg, q.type);
     q.inv = resumed ? resumed.inv : FindChord.pickInversion(nNotes, mayInv, Math.random);                // Jazz: inversions mixed in at every level; Pop: from the stage's inversions step on
@@ -1621,6 +1669,7 @@
     ftcMissed = resumed ? !!resumed.missed : false;
     state.card = { pc: q.pc, spell: q.spell, chord: { notes: ftcNotes() }, symbol: ftcChord().symbol, deg: q.deg, type: q.type, inv: q.inv, title: '', status: '', noGiveUp: !!ftcTrial };   // (symbol: for the tests and screen readers' sake, not drawn)
     ftcSay('', '');
+    ftcT0 = resumed ? null : performance.now();
     return oldKey ? { oldKeyS: parseInt(oldKey.getAttribute('data-s'), 10) } : (animate ? 'fade' : false);
   }
 
@@ -1791,6 +1840,7 @@
   }
   function trialAnswer(ok) {
     var now = performance.now(), t = ftcTrial;
+    ftcRecord(ok, ftcT0 == null ? null : now - ftcT0, false, true);
     t.times.push(now - t.qStart + (ok ? 0 : TRIAL_PENALTY));
     if (!ok) {
       t.penalty += TRIAL_PENALTY; t.wrongs++;
@@ -1848,7 +1898,7 @@
   function ftcGiveUp(viaKeyboard) {
     if (!quizOn() || state.answered || !ftcQ || ftcTrial) return;
     var want = ftcChord();
-    if (!ftcMissed) { score.bad++; ftcTried++; pushBub('bad'); ftcNoteMiss(); }
+    if (!ftcMissed) { score.bad++; ftcTried++; pushBub('bad'); ftcNoteMiss(true); }
     ftcMissed = true;
     ftcStreak = 0;
     ftcWrong = false;
@@ -1883,7 +1933,7 @@
     if (ftcTrial) { trialAnswer(got.deg === ftcQ.deg && got.type === ftcQ.type); return; }
     if (got.deg === ftcQ.deg && got.type === ftcQ.type) {
       score.ok++;
-      if (!ftcMissed) { FindChord.hit(ftcW, state.mode, ftcQ); FindChord.saveWeights(ftcW); }   // known: ease off
+      if (!ftcMissed) ftcRecord(true, ftcT0 == null ? null : performance.now() - ftcT0, false, false);   // known: it fades more slowly now
       state.answered = true;
       state.card.title = ftcName(want) + ' is ' + want.roman + ' in ' + where;
       state.card.modeLine = ftcPop() ? '' : 'Mode: ' + want.mode;
@@ -2671,8 +2721,8 @@
     if (state.flash) setView(false);
     Weights.reset(weights);
     Weights.save(weights);
-    FindChord.resetWeights(ftcW);
-    FindChord.saveWeights(ftcW);
+    FindChord.resetMem(ftcMem);                       // (the practice log is kept)
+    FindChord.saveMem(ftcMem);
     prog = [];
     progIndex = -1;
     progRevealed = false;
