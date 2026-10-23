@@ -4803,6 +4803,11 @@ var KeyboardRender = (function () {
     if (h) {                                                         // a stage opens or closes; the list stays up
       var body = h.nextElementSibling, open = body.hidden;
       body.hidden = !open; h.setAttribute('aria-expanded', open ? 'true' : 'false');
+      if (open) {                                                  // scroll so the steps show (or as many as fit), keeping the stage's own row in view
+        var lr = trialList.getBoundingClientRect(), br = body.getBoundingClientRect(), hr = h.getBoundingClientRect();
+        var over = br.bottom - lr.bottom + 6;
+        if (over > 0) trialList.scrollTop += Math.min(over, Math.max(0, hr.top - lr.top - 4));
+      }
       return;
     }
     var b = e.target.closest ? e.target.closest('.trial-lvl') : null;
