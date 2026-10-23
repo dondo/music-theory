@@ -1366,7 +1366,7 @@
   function ftcRaised(up) {                                        // the level just went up (true) or down (false)
     var info = FindChord.levelInfo(state.mode, ftcPop(), ftcLevelNo());
     ftcFresh = { asked: 0, fresh: 0 };
-    ftcHomeNext = !!up && !!info.add && info.add.dim === 'K' && !info.add.back;
+    ftcHomeNext = !!up && !!info.add;                              // the first question of a new step is about what the step just put in play
     if (up) { trialUnlocked = false; if (typeof syncTrialBox === 'function') syncTrialBox(); }       // (a level-up locks Time Trial again)
   }
   var centerStage = false, stageAnswered = false;
@@ -1575,9 +1575,14 @@
     var q = FindChord.pick(state.mode, ftcPop(), l.keys, l.chords, Math.random, ftcQ, function (c) { return FindChord.weightOf(ftcW, state.mode, c); },
                            isFresh, isFresh ? FindChord.freshPlan(ftcFresh) : null);
     q = { pc: q.pc, deg: q.deg, type: q.type };
-    if (ftcHomeNext && !resumeQ) {                                  // the new key's first question is its home triad (I, or i in minor)
-      var newest = FindChord.keys(state.mode, ftcPop(), l.keys).slice(-1)[0];
-      if (l.keys > 1 && newest !== undefined) q = { pc: newest, deg: 0, type: 'triad' };
+    if (ftcHomeNext && !resumeQ && !ftcTrial) {                     // the step's first question: the key it added (its home triad, I or i), or one of the chords it added
+      var add = FindChord.stepAdds(state.mode, ftcPop(), ftcLevelNo());
+      if (add && add.dim === 'K' && add.keys.length) q = { pc: add.keys[add.keys.length - 1], deg: 0, type: 'triad' };
+      else if (add && add.chords.length) {
+        var inKeys = FindChord.keys(state.mode, ftcPop(), l.keys).filter(function (pc) { return !ftcQ || pc !== ftcQ.pc || l.keys < 2; });
+        var ch = add.chords[Math.floor(Math.random() * add.chords.length)];
+        q = { pc: inKeys[Math.floor(Math.random() * inKeys.length)], deg: ch.deg, type: ch.type };
+      }
     }
     ftcHomeNext = false;
     q.spell = Math.floor(Math.random() * Theory.specsFor(state.mode, q.pc).length);
