@@ -1452,7 +1452,7 @@
       return where + (info.added > 1 ? 'New keys join the questions: ' : 'A new key joins the questions: ') + nk.join(' and ') + '.';
     }
     var fresh = FindChord.chords(mode, pop, info.chords).slice(info.chords - info.added);
-    if (info.step > 1) return where + 'The keys build back up with the new chord' + (info.added > 1 ? 's' : '') + ': now ' + info.keys + ' keys.';
+    if (info.step > 1 && info.kind !== 'start') return where + 'The keys build back up with the new chord' + (info.added > 1 ? 's' : '') + ': now ' + info.keys + ' keys.';
     var ref = Theory.specsFor(mode, mode === 'minor' ? 9 : 0)[0].name;
     var romans = fresh.map(function (c) { var cd = Chords.chordInKey(ref, mode, c.deg, c.type); return cd ? cd.roman : ''; }).filter(Boolean);
     var types = fresh.map(function (c) { return c.type; }).filter(function (t, i, a) { return a.indexOf(t) === i; });

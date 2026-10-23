@@ -503,7 +503,8 @@ check('find the chord: the ladder is built of stages; steps climb back through t
     assert.deepStrictEqual([L[0].stage, L[0].step, L[0].kind], [1, 1, 'start']);
     var last = L[L.length - 1], total = FC.chords(c[0], c[1], 99).length;
     assert.deepStrictEqual([last.keys, last.chords], [12, total], tag + ': the top level has everything');
-    var kb = [2], cb = [3];
+    var kb = [2], cb = [3, 5];
+    assert.deepStrictEqual(L.slice(0, 3).map(function (l) { return [l.stage, l.step, l.keys, l.chords]; }), [[1, 1, 2, 3], [1, 2, 2, 4], [1, 3, 2, 5]], tag + ': stage 1 adds its next two chords one at a time');
     for (var st = 2; ; st++) {
       var steps = L.filter(function (l) { return l.stage === st; });
       if (!steps.length) break;
@@ -534,12 +535,12 @@ check('find the chord: the ladder is built of stages; steps climb back through t
   });
 });
 check('find the chord: levelInfo / levelAt', function () {
-  var i = FC.levelInfo('major', true, 2);
+  var i = FC.levelInfo('major', true, 4);
   assert.deepStrictEqual([i.stage, i.step], [2, 1]);
   assert.deepStrictEqual(FC.levelInfo('major', true, 0), FC.levelInfo('major', true, 1));          // clamped
   var n = FC.levelCount('major', true);
   assert.deepStrictEqual(FC.levelInfo('major', true, n + 5), FC.levelInfo('major', true, n));
-  assert.strictEqual(FC.stageSteps('major', true, 1), 1);
+  assert.strictEqual(FC.stageSteps('major', true, 1), 3);
   assert.deepStrictEqual(FC.levelAt('major', true, n), { keys: 12, chords: 42 });
 });
 

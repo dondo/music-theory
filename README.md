@@ -187,7 +187,7 @@ The row shows "Stage s: Step t" (hover for "Step t of N"); the app never says "l
 
 ### The level order (Find the chord)
 The ladder is a list of **stages**; each stage adds keys only or chords only, and the levels inside a stage are its **steps**. (Say "plan step" for the older 15-step plan.) Every combination of Pop/Jazz and major/minor has its own key order and chord list, frozen as data in `js/findchord.js` (`DATA`):
-- It always starts with the keys C and G and the chords I, IV, V (i, iv, v in minor). The TYPE chips stay hidden until a chord that is not a triad is introduced.
+- It always starts with the keys C and G and the chords I, IV, V (i, iv, v in minor); stage 1 then adds its next two chords one at a time (Pop major: ii, then vi). The TYPE chips stay hidden until a chord that is not a triad is introduced.
 - Early stages add at most two keys or chords (while keys x chords <= 30); later ones add one at a time. The rare-chord tail adds one whole chord type per stage (Pop: sevenths, sus4, add9, sus2, 9ths; Jazz: 9ths, the remaining triads, sus4, add9, sus2, 11ths, 13ths).
 - A **new key stage** sends the chords back to I IV V, which then return one stage at a time; a **new chord stage** sends the keys back to C and G, which return one stage at a time. Only diatonic chords for now; borrowed chords would come after their source key.
 - Pop keys: C G D A F E B♭ E♭ A♭ D♭ B F♯. Jazz keys: C G B♭ F E♭ A♭ D D♭ A E B F♯. Minor uses the relative minors.
