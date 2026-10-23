@@ -664,6 +664,7 @@ html.is-local .ftc-local { display: inline-flex; }
 .tl-steps[hidden] { display: none; }
 .trial-lvl { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; padding: 7px 12px; border-radius: 8px; border: 0; background: transparent; cursor: pointer; text-align: left; }
 .trial-lvl:hover, .trial-lvl:focus-visible { background: #eff6ff; }
+.trial-lvl:disabled { opacity: 0.45; cursor: not-allowed; background: transparent; }
 .tl-n { font-weight: 700; }
 .tl-best { font-size: 0.85rem; color: var(--muted); font-variant-numeric: tabular-nums; }
 .ftc-side-row[hidden] { display: none; }
