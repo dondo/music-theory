@@ -1502,12 +1502,15 @@
   var levelBanner = document.getElementById('ftc-levelup');
   var levelText = document.getElementById('ftc-levelup-text');
   // the words for what is being put in play: keys by name, chords by numeral (in ascending order of degree)
-  function ftcNames(items, isKey) {
+  // (withEx: in Pop, where the answer is a chord name, a numeral is followed by an example in C major / A minor: "ii (Dm in C major)")
+  function ftcNames(items, isKey, withEx) {
     var mode = state.mode, ref = Theory.specsFor(mode, mode === 'minor' ? 9 : 0)[0].name;
     if (isKey) return items.map(function (pc) { return Theory.keyTitle(Theory.specsFor(mode, pc)[0], mode); });
+    var ex = withEx && ftcPop() && items.length <= 2;
     return items.map(function (c, i) { return { c: c, i: i }; }).sort(function (x, y) { return x.c.deg - y.c.deg || x.i - y.i; })
-      .map(function (x) { var cd = Chords.chordInKey(ref, mode, x.c.deg, x.c.type); return cd ? cd.roman : ''; }).filter(Boolean);
+      .map(function (x) { var cd = Chords.chordInKey(ref, mode, x.c.deg, x.c.type); return cd ? (ex ? { r: cd.roman, e: ' (' + cd.symbol + ' in ' + ref + ' ' + mode + ')' } : cd.roman) : ''; }).filter(Boolean);
   }
+  function ftcBold(names) { return names.map(function (x) { return typeof x === 'string' ? '<strong>' + x + '</strong>' : '<strong>' + x.r + '</strong>' + x.e; }); }
   function ftcJoin(list) { return list.length < 3 ? list.join(' and ') : list.slice(0, -1).join(', ') + ' and ' + list[list.length - 1]; }
   function ftcBlockLabel(chords) {                                // 'Sus4 chords on ' for a whole type, else ''
     var types = chords.map(function (c) { return c.type; }).filter(function (t, i, a) { return a.indexOf(t) === i; });
@@ -1524,18 +1527,18 @@
       names = ftcNames(add.keys, true); one = names.length === 1;
       return lead + verb + (one ? 'a ' + (add.back ? '' : 'new ') + 'key: ' : (add.back ? '' : 'new ') + 'keys: ') + '<strong>' + ftcJoin(names) + '</strong>!';
     }
-    if (add.dim === 'I') return lead + 'introducing inversions of <strong>' + ftcJoin(ftcNames(add.chords, false)) + '</strong>!';
-    names = ftcNames(add.chords, false); one = names.length === 1;
-    if (one) return lead + verb + 'a ' + (add.back ? '' : 'new ') + 'chord: Degree <strong>' + names[0] + '</strong>!';
-    return lead + verb + (add.back ? '' : 'new ') + 'chords: ' + ftcBlockLabel(add.chords) + '<strong>' + ftcJoin(names) + '</strong>!';
+    if (add.dim === 'I') return lead + 'introducing inversions of ' + ftcJoin(ftcBold(ftcNames(add.chords, false, true))) + '!';
+    names = ftcNames(add.chords, false, true); one = names.length === 1;
+    if (one) return lead + verb + 'a ' + (add.back ? '' : 'new ') + 'chord: ' + (pop ? '' : 'Degree ') + ftcBold(names)[0] + '!';
+    return lead + verb + (add.back ? '' : 'new ') + 'chords: ' + ftcBlockLabel(add.chords) + ftcJoin(ftcBold(names)) + '!';
   }
   // after a whole stage: what the next one introduces
   function stageNote(stage) {
     var mode = state.mode, pop = ftcPop(), it = FindChord.stageIntro(mode, pop, stage), count = it.kind === 'K' ? it.keys.length : it.chords.length;
     var many = count === 1 ? (it.kind === 'K' ? 'a new key' : 'a new chord') : (count === 2 ? 'two' : count) + (it.kind === 'K' ? ' new keys' : ' new chords');
-    var names = it.kind === 'K' ? ftcNames(it.keys, true) : ftcNames(it.chords, false);
+    var names = it.kind === 'K' ? ftcNames(it.keys, true) : ftcNames(it.chords, false, true);
     var first = it.kind === 'K' ? ftcNames(it.keys.slice(0, 1), true)[0] : ftcNames(it.chords.slice(0, 1), false)[0];
-    return 'Stage ' + stage + ' introduces ' + many + (it.kind === 'K' ? ': ' : ' to find: ') + (it.kind === 'C' ? ftcBlockLabel(it.chords) : '') + ftcJoin(names.map(function (x) { return '<strong>' + x + '</strong>'; })) + (count === 2 ? ', starting with <strong>' + first + '</strong>!' : '.');
+    return 'Stage ' + stage + ' introduces ' + many + (it.kind === 'K' ? ': ' : ' to find: ') + (it.kind === 'C' ? ftcBlockLabel(it.chords) : '') + ftcJoin(ftcBold(names)) + (count === 2 ? ', starting with <strong>' + first + '</strong>!' : '.');
   }
   var bannerHold = false;                                       // a trial result stays up until the next pick
   function showBanner(title, text, withConfetti, icon) {
@@ -1559,7 +1562,7 @@
     } else { html = stepNote(n); goRow = true; }
     var allTriads = function (k) { return FindChord.chords(state.mode, pop, FindChord.levelAt(state.mode, pop, k).chords).every(function (c) { return c.type === 'triad'; }); };
     if (n > 1 && allTriads(n - 1) && !allTriads(n))                  // the TYPE chips have just appeared
-      html += '<span class="levelup-line2">Since we now have both triads and seventh chords, you\u2019ll have to select the \u2018type\u2019 as well as the degree. Ready?</span>';
+      html += '<span class="levelup-line2">Since we now have both triads and seventh chords, you\u2019ll have to select the \u2018type\u2019 as well as the ' + (pop ? 'root and quality' : 'degree') + '. Ready?</span>';
     var home = newStage ? document.querySelector('.stage-card') : ftcSection;           // a finished stage's banner sits over the clef; a step's stays under the keyboard
     if (levelBanner.parentNode !== home) home.insertBefore(levelBanner, newStage ? home.firstChild : null);
     document.getElementById('ftc-levelup-icon').textContent = '\u{1F389}';
