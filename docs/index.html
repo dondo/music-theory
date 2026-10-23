@@ -593,6 +593,7 @@ html.is-local body { border-top: 6px solid #ea580c; }
 .levelup[hidden] { display: none; }
 .levelup-icon { font-size: 1.8rem; }
 .levelup strong { font-size: 1.05rem; }
+.levelup { line-height: 1.35; }
 @keyframes levelup-in { from { transform: scale(0.85); opacity: 0; } to { transform: none; opacity: 1; } }
 .confetti { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 50; }
 @media (prefers-reduced-motion: reduce) { .levelup { animation: none; } }
@@ -608,8 +609,8 @@ html.is-local .ftc-local { display: inline-flex; }
 .score-streak { color: #15803d; font-weight: 600; }
 .score-streak .none { color: var(--muted); }
 .score-streak .rest { color: var(--ink, #1c2330); font-weight: 400; }
-/* the card around the level-up banner has nothing else in it now: no banner, no card */
-.ftc:not(:has(> .levelup:not([hidden]))) { display: none; }
+/* the banner now sits above the clef, in the stage card; this card holds only controls that are moved elsewhere */
+.ftc { display: none; }
 
 /* iPhone-sized screens (portrait, or a phone turned sideways): no difficulty controls in Find the chord;
    the level-up banner stays, on its own, under the keyboard */
@@ -753,6 +754,10 @@ html.is-local .ftc-local { display: inline-flex; }
     </section>
 
     <section class="stage-card" aria-label="Keyboard">
+      <div id="ftc-levelup" class="levelup" role="status" hidden>
+        <span class="levelup-icon" id="ftc-levelup-icon" aria-hidden="true">&#127881;</span>
+        <div><strong id="ftc-levelup-title">Nice work!</strong> <span id="ftc-levelup-text"></span></div>
+      </div>
       <div class="stage-tools" id="layout-bar">
         <button type="button" class="dial" id="layout-dial" aria-pressed="false" aria-label="Signature layout: horizontal (switch to vertical)" title="Horizontal / vertical signatures">
           <svg viewBox="0 0 32 32" width="30" height="30" aria-hidden="true">
@@ -769,10 +774,6 @@ html.is-local .ftc-local { display: inline-flex; }
 
     <section id="ftc" class="ftc" aria-label="Find the chord" hidden>
       <p id="ftc-msg" class="sr-only" role="status" aria-live="polite"></p>
-      <div id="ftc-levelup" class="levelup" role="status" hidden>
-        <span class="levelup-icon" id="ftc-levelup-icon" aria-hidden="true">&#127881;</span>
-        <div><strong id="ftc-levelup-title">Nice work!</strong> <span id="ftc-levelup-text"></span></div>
-      </div>
       <span id="ftc-level" class="ftc-level">Stage 1: Step 1</span>
       <div class="ftc-side-row" id="ftc-autorow">
         <label class="ftc-auto"><input type="checkbox" id="ftc-auto" checked> Advance automatically <small id="ftc-streak"></small></label>
@@ -1557,8 +1558,8 @@ var Weights = (function () {
  * The ladder is a list of levels. Each level has a number of keys (the first k of a fixed order) and a number of
  * chords (the first c of a fixed list), so a level is { keys: k, chords: c }; Pop and Jazz, major and minor each have their own order.
  * The ladder is made of STAGES, each introducing a few new keys or a few new chords (never both): up to two early on, then one at a time,
- * and in the long tail of rare chords a whole chord type at once. The levels inside a stage are its STEPS: after new chords the keys climb back
- * from C and G through each earlier stage of keys; after new keys the chords climb back from I IV V through each earlier stage of chords.
+ * and in the long tail of rare chords a whole chord type at once. The levels inside a stage are its STEPS, each putting a single key or chord
+ * in play (a tail block counts as one): first the stage's new items, then the other dimension climbs back, from C and G (after new chords) or from I IV V (after new keys).
  * A chord is { deg: 0..6, type } exactly as the chord selector uses it.
  */
 (function (root, factory) {
@@ -1666,23 +1667,46 @@ var Weights = (function () {
   function ladder(mode, pop) {
     var id = (mode === 'minor' ? 'minor' : 'major') + (pop ? '|pop' : '|jazz');
     if (ladders[id]) return ladders[id];
-    var d = def(mode, pop), k = d.seed[0], c = d.seed[1], kb = [k], cb = [c], out = [{ keys: k, chords: c, stage: 1, step: 1, kind: 'start', added: 0 }];
-    for (var o = 1; o <= d.open; o++) out.push({ keys: k, chords: c + o, stage: 1, step: o + 1, kind: 'start', added: 1 });   // stage 1 also adds its next chords one at a time
-    c += d.open; cb = [cb[0], c];
+    var d = def(mode, pop), k0 = d.seed[0], c0 = d.seed[1], out = [];
+    // Every step introduces one key or one chord (a block of more than two, the rare-chord tail, goes in as one step).
+    // `add` says what the step puts in play: { dim: 'K' | 'C', from, to } (indices into the key order / chord list); `back` marks a step that
+    // only brings back something already learned. lo..hi is the stage's own new range in its dimension.
+    function push(keys, chords, stage, kind, lo, hi, add) {
+      var step = out.filter(function (l) { return l.stage === stage; }).length + 1;
+      out.push({ keys: keys, chords: chords, stage: stage, step: step, kind: kind, lo: lo, hi: hi, add: add });
+    }
+    function incs(from, n) {                       // the positions a dimension passes through when n items are added: one by one, or a block at once
+      var r = [], j;
+      if (n <= 2) for (j = 1; j <= n; j++) r.push(from + j); else r.push(from + n);
+      return r;
+    }
+    var Pk = [k0], Pc = [c0], k = k0, c = c0;
+    push(k, c, 1, 'start', c0, c0 + d.open, null);
+    for (var o = 1; o <= d.open; o++) push(k, c + o, 1, 'start', c0, c0 + d.open, { dim: 'C', from: c + o - 1, to: c + o });
+    incs(c, d.open).forEach(function (p) { Pc.push(p); });
+    c += d.open;
     d.stages.forEach(function (s, i) {
-      var stage = i + 2, j;
+      var stage = i + 2, n = s[1], steps = incs(k, n), prev;
       if (s[0] === 'K') {
-        k += s[1]; kb.push(k);
-        for (j = 0; j < cb.length; j++) out.push({ keys: k, chords: cb[j], stage: stage, step: j + 1, kind: 'K', added: s[1] });
+        prev = k;
+        steps.forEach(function (p) { push(p, c0, stage, 'K', k, k + n, { dim: 'K', from: prev, to: p }); prev = p; });
+        var kn = k + n;
+        for (var j = 1; j < Pc.length; j++) push(kn, Pc[j], stage, 'K', k, kn, { dim: 'C', from: Pc[j - 1], to: Pc[j], back: true });
+        steps.forEach(function (p) { Pk.push(p); });
+        k = kn;
       } else {
-        c += s[1]; cb.push(c);
-        for (j = 0; j < kb.length; j++) out.push({ keys: kb[j], chords: c, stage: stage, step: j + 1, kind: 'C', added: s[1] });
+        steps = incs(c, n); prev = c;
+        steps.forEach(function (p) { push(k0, p, stage, 'C', c, c + n, { dim: 'C', from: prev, to: p }); prev = p; });
+        var cn = c + n;
+        for (var m = 1; m < Pk.length; m++) push(Pk[m], cn, stage, 'C', c, cn, { dim: 'K', from: Pk[m - 1], to: Pk[m], back: true });
+        steps.forEach(function (p) { Pc.push(p); });
+        c = cn;
       }
     });
     return (ladders[id] = out);
   }
   function levelCount(mode, pop) { return ladder(mode, pop).length; }
-  // level n (1-based, clamped): { keys, chords, stage, step, kind: 'start' | 'K' | 'C', added }
+  // level n (1-based, clamped): { keys, chords, stage, step, kind: 'start' | 'K' | 'C', lo, hi, add }
   function levelInfo(mode, pop, n) { var L = ladder(mode, pop); return L[clamp(n, 1, L.length) - 1]; }
   function levelAt(mode, pop, n) { var l = levelInfo(mode, pop, n); return { keys: l.keys, chords: l.chords }; }
   // how many steps the stage of level n has
@@ -1692,22 +1716,27 @@ var Weights = (function () {
     var L = ladder(mode, pop), s = levelInfo(mode, pop, n).stage;
     return L.filter(function (l) { return l.stage === s; }).length;
   }
-  // a predicate for the new challenge of level n's stage (new keys or new chords), or null (the starting stage has none)
+  // a predicate for the stage's new challenge that is in play at level n (new keys or new chords), or null when none is yet
   function freshTest(mode, pop, n) {
     var l = levelInfo(mode, pop, n);
     if (l.kind === 'K') {
-      var fresh = keys(mode, pop, l.keys).slice(l.keys - l.added);
-      return function (q) { return fresh.indexOf(q.pc) >= 0; };
+      var fresh = keys(mode, pop, l.keys).slice(l.lo, l.hi);
+      return fresh.length ? function (q) { return fresh.indexOf(q.pc) >= 0; } : null;
     }
-    if (l.kind === 'C') {
-      var fc = chords(mode, pop, l.chords).slice(l.chords - l.added);
-      return function (q) { return fc.some(function (x) { return x.deg === q.deg && x.type === q.type; }); };
-    }
-    if (l.kind === 'start' && l.added) {
-      var one = chords(mode, pop, l.chords)[l.chords - 1];
-      return function (q) { return q.deg === one.deg && q.type === one.type; };
-    }
-    return null;
+    var fc = chords(mode, pop, l.chords).slice(l.lo, l.hi);
+    return fc.length ? function (q) { return fc.some(function (x) { return x.deg === q.deg && x.type === q.type; }); } : null;
+  }
+  // what a stage introduces: { kind: 'K', keys: [pc...] } or { kind: 'C', chords: [{deg, type}...] }
+  function stageIntro(mode, pop, stage) {
+    var L = ladder(mode, pop), f = L.filter(function (l) { return l.stage === stage; })[0];
+    if (!f) return null;
+    return f.kind === 'K' ? { kind: 'K', keys: keys(mode, pop, f.hi).slice(f.lo) } : { kind: 'C', chords: chords(mode, pop, f.hi).slice(f.lo) };
+  }
+  // what step n puts in play: { dim: 'K', keys: [pc...], back } or { dim: 'C', chords: [...], back }, or null (the very first step)
+  function stepAdds(mode, pop, n) {
+    var a = levelInfo(mode, pop, n).add;
+    if (!a) return null;
+    return a.dim === 'K' ? { dim: 'K', keys: keys(mode, pop, a.to).slice(a.from), back: !!a.back } : { dim: 'C', chords: chords(mode, pop, a.to).slice(a.from), back: !!a.back };
   }
 
   var STREAK = 10;                      // (the app drops this to 5 in the local copy, for testing)
@@ -1739,7 +1768,7 @@ var Weights = (function () {
   }
 
   return { STREAK: STREAK, DATA: DATA, maxKeys: maxKeys, clamp: clamp, keys: keys, chords: chords, pick: pick,
-           ladder: ladder, levelCount: levelCount, levelInfo: levelInfo, levelAt: levelAt, stageSteps: stageSteps, stageCoverage: stageCoverage, freshTest: freshTest,
+           ladder: ladder, levelCount: levelCount, levelInfo: levelInfo, levelAt: levelAt, stageSteps: stageSteps, stageIntro: stageIntro, stepAdds: stepAdds, stageCoverage: stageCoverage, freshTest: freshTest,
            identify: identify, weightKey: weightKey, weightOf: weightOf, miss: miss, hit: hit, loadWeights: loadWeights, saveWeights: saveWeights, resetWeights: resetWeights,
            pickInversion: pickInversion, freshPlan: freshPlan, freshRecord: freshRecord,
            FRESH_WINDOW: FRESH_WINDOW, FRESH_MIN: FRESH_MIN };
@@ -4392,7 +4421,7 @@ var KeyboardRender = (function () {
   function ftcRaised(up) {                                        // the level just went up (true) or down (false)
     var info = FindChord.levelInfo(state.mode, ftcPop(), ftcLevelNo());
     ftcFresh = { asked: 0, fresh: 0 };
-    ftcHomeNext = !!up && info.kind === 'K' && info.step === 1;
+    ftcHomeNext = !!up && !!info.add && info.add.dim === 'K' && !info.add.back;
     if (up) { trialUnlocked = false; if (typeof syncTrialBox === 'function') syncTrialBox(); }       // (a level-up locks Time Trial again)
   }
   var centerStage = false, stageAnswered = false;
@@ -4470,23 +4499,39 @@ var KeyboardRender = (function () {
   // ---- level-up: what was added, and a confetti burst ----
   var levelBanner = document.getElementById('ftc-levelup');
   var levelText = document.getElementById('ftc-levelup-text');
-  function levelUpText(n) {
-    var mode = state.mode, pop = ftcPop(), info = FindChord.levelInfo(mode, pop, n), where = 'Stage ' + info.stage + ': Step ' + info.step + ' of ' + FindChord.stageSteps(mode, pop, n) + '. ';
-    if (info.kind === 'K') {
-      var nk = FindChord.keys(mode, pop, info.keys).slice(info.keys - info.added).map(function (pc) { return Theory.keyTitle(Theory.specsFor(mode, pc)[0], mode); });
-      if (info.step > 1) return where + 'The chords build back up with the new key' + (info.added > 1 ? 's' : '') + ': now ' + info.chords + ' chords.';
-      return where + (info.added > 1 ? 'New keys join the questions: ' : 'A new key joins the questions: ') + nk.join(' and ') + '.';
+  // the words for what is being put in play: keys by name, chords by numeral (in ascending order of degree)
+  function ftcNames(items, isKey) {
+    var mode = state.mode, ref = Theory.specsFor(mode, mode === 'minor' ? 9 : 0)[0].name;
+    if (isKey) return items.map(function (pc) { return Theory.keyTitle(Theory.specsFor(mode, pc)[0], mode); });
+    return items.map(function (c, i) { return { c: c, i: i }; }).sort(function (x, y) { return x.c.deg - y.c.deg || x.i - y.i; })
+      .map(function (x) { var cd = Chords.chordInKey(ref, mode, x.c.deg, x.c.type); return cd ? cd.roman : ''; }).filter(Boolean);
+  }
+  function ftcJoin(list) { return list.length < 3 ? list.join(' and ') : list.slice(0, -1).join(', ') + ' and ' + list[list.length - 1]; }
+  function ftcBlockLabel(chords) {                                // 'Sus4 chords on ' for a whole type, else ''
+    var types = chords.map(function (c) { return c.type; }).filter(function (t, i, a) { return a.indexOf(t) === i; });
+    if (chords.length > 2 && types.length === 1 && types[0] !== 'triad') { var d = Chords.TYPES.filter(function (x) { return x.id === types[0]; })[0]; return (d ? d.label : types[0]) + ' chords on '; }
+    return '';
+  }
+  // between steps of a stage: what the next step puts in play (the chord numeral or key in bold)
+  function stepNote(n) {
+    var mode = state.mode, pop = ftcPop(), info = FindChord.levelInfo(mode, pop, n), add = FindChord.stepAdds(mode, pop, n);
+    var lead = 'You\u2019ve completed Step ' + (info.step - 1) + ', on to Step ' + info.step + ' of ' + FindChord.stageSteps(mode, pop, n) + '. ';
+    if (!add) return lead;
+    var verb = add.back ? 'Adding back ' : 'Introducing ', names, one;
+    if (add.dim === 'K') {
+      names = ftcNames(add.keys, true); one = names.length === 1;
+      return lead + verb + (one ? 'a ' + (add.back ? '' : 'new ') + 'key: ' : (add.back ? '' : 'new ') + 'keys: ') + '<strong>' + ftcJoin(names) + '</strong>!';
     }
-    var fresh = FindChord.chords(mode, pop, info.chords).slice(info.chords - info.added);
-    if (info.step > 1 && info.kind !== 'start') return where + 'The keys build back up with the new chord' + (info.added > 1 ? 's' : '') + ': now ' + info.keys + ' keys.';
-    var ref = Theory.specsFor(mode, mode === 'minor' ? 9 : 0)[0].name;
-    var romans = fresh.map(function (c) { var cd = Chords.chordInKey(ref, mode, c.deg, c.type); return cd ? cd.roman : ''; }).filter(Boolean);
-    var types = fresh.map(function (c) { return c.type; }).filter(function (t, i, a) { return a.indexOf(t) === i; });
-    if (fresh.length > 2 && types.length === 1 && types[0] !== 'triad') {
-      var d = Chords.TYPES.filter(function (x) { return x.id === types[0]; })[0];
-      return where + 'New chords to find: ' + (d ? d.label : types[0]) + ' chords on ' + romans.join(', ') + '.';
-    }
-    return where + 'New chord' + (fresh.length > 1 ? 's' : '') + ' to find: ' + romans.join(' and ') + '.';
+    names = ftcNames(add.chords, false); one = names.length === 1;
+    if (one) return lead + verb + 'a ' + (add.back ? '' : 'new ') + 'chord: Degree <strong>' + names[0] + '</strong>!';
+    return lead + verb + (add.back ? '' : 'new ') + 'chords: ' + ftcBlockLabel(add.chords) + '<strong>' + ftcJoin(names) + '</strong>!';
+  }
+  // after a whole stage: what the next one introduces
+  function stageNote(stage) {
+    var mode = state.mode, pop = ftcPop(), it = FindChord.stageIntro(mode, pop, stage), count = it.kind === 'K' ? it.keys.length : it.chords.length;
+    var many = count === 1 ? (it.kind === 'K' ? 'a new key' : 'a new chord') : (count === 2 ? 'two' : count) + (it.kind === 'K' ? ' new keys' : ' new chords');
+    var names = it.kind === 'K' ? ftcNames(it.keys, true) : ftcNames(it.chords, false);
+    return 'Stage ' + stage + ' introduces ' + many + (it.kind === 'K' ? ': ' : ' to find: ') + (it.kind === 'C' ? ftcBlockLabel(it.chords) : '') + ftcJoin(names) + '.';
   }
   var bannerHold = false;                                       // a trial result stays up until the next pick
   function showBanner(title, text, withConfetti, icon) {
@@ -4500,16 +4545,16 @@ var KeyboardRender = (function () {
       confetti(r.left + r.width / 2, Math.max(60, r.top + r.height / 2));
     }
   }
-  function celebrate(note, newStage, doneStage) {
-    var pop = ftcPop(), text = note, title = 'Nice work!';
+  function celebrate(n, newStage, doneStage) {                     // n: the level just reached
+    var pop = ftcPop(), html, title = 'Nice work!';
     if (newStage) {
       var p = FindChord.stageCoverage(state.mode, pop, doneStage);
       title = 'Congratulations!';
-      text = 'You have completed Stage ' + doneStage + '. You can now play ' + (p < 1 ? 'a few' : 'about ' + p + '% of all') + ' ' + (pop ? 'pop' : 'jazz') + ' songs! ' + note;
-    }
+      html = 'You have completed Stage ' + doneStage + '. You can now play ' + (p < 1 ? 'a few' : 'about ' + p + '% of all') + ' ' + (pop ? 'pop' : 'jazz') + ' songs!<br>' + stageNote(FindChord.levelInfo(state.mode, pop, n).stage);
+    } else html = stepNote(n);
     document.getElementById('ftc-levelup-icon').textContent = '\u{1F389}';
     document.getElementById('ftc-levelup-title').textContent = title;
-    levelText.textContent = text;
+    levelText.innerHTML = html;
     levelBanner.hidden = false;
     levelBanner.style.animation = 'none'; void levelBanner.offsetWidth; levelBanner.style.animation = '';
     if (reduceMotion) return;
@@ -4639,7 +4684,7 @@ var KeyboardRender = (function () {
 
   // ---- Time trial: ten questions at a chosen level, against the clock ----
   // The normal state (bubbles, streak) is kept aside and put back afterwards. A wrong answer costs ten seconds and the trial moves on.
-  var TRIALS_KEY = 'music-theory-trials-v2';       // (v2: the levels were renumbered with the staged ladder)
+  var TRIALS_KEY = 'music-theory-trials-v3';       // (v2: the levels were renumbered with the staged ladder)
   var trialBox = el('div', 'trial-box'), trialBtn = el('button', 'btn-reset trial-btn', 'Time Trial \u25be'), trialList = el('div', 'trial-list'),
       trialClock = el('div', 'trial-clock'), trialPen = el('span', 'trial-pen'), trialStop = el('button', 'btn-reset trial-stop', 'Stop');
   var trialListOpen = false, trialTick = null, trialCountdown = null;
@@ -4842,7 +4887,7 @@ var KeyboardRender = (function () {
       state.card.title = ftcName(want) + ' is ' + want.roman + ' in ' + where;
       state.card.modeLine = ftcPop() ? '' : 'Mode: ' + want.mode;
       state.card.status = '';
-      var text = 'Correct: ' + state.card.title + '.', levelUpNote = '', newStage = false, doneStage = 0;
+      var text = 'Correct: ' + state.card.title + '.', levelUpNote = 0, newStage = false, doneStage = 0;
       if (ftcMissed) ftcStreak = 0;
       else {
         ftcStreak++; ftcTried++; ftcRight++; pushBub('ok');
@@ -4853,7 +4898,7 @@ var KeyboardRender = (function () {
             ftcSetLevel(n0 + 1);
             ftcRaised(true);
             newStage = FindChord.levelInfo(state.mode, ftcPop(), n0 + 1).stage !== doneStage;
-            levelUpNote = levelUpText(n0 + 1);
+            levelUpNote = n0 + 1;
             text += newStage ? ' Stage ' + doneStage + ' complete!' : ' Next step!';
           }
           ftcStreak = 0; ftcTried = 0; ftcRight = 0;
@@ -5352,6 +5397,7 @@ var KeyboardRender = (function () {
     var nb = e.target.closest ? e.target.closest('.next-btn') : null;
     if (nb && (e.key === 'Enter' || e.key === ' ')) {
       e.preventDefault();
+      if (quizOn() && e.key === 'Enter' && !levelBanner.hidden) return;        // a banner is up: Enter doesn't skip it
       nextCard(true);
       return;
     }
@@ -5381,6 +5427,11 @@ var KeyboardRender = (function () {
   // Flashcards: once a card is solved, the right arrow deals the next one (same as the Next button).
   document.addEventListener('keydown', function (e) {
     if (e.key !== 'ArrowRight' || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+    if (quizOn() && state.answered && !levelBanner.hidden) {              // Find the chord: the right arrow goes on from a banner
+      e.preventDefault();
+      ftcNextQuestion(true);
+      return;
+    }
     if (!state.flash || !state.answered) return;
     var t = e.target;
     if (t && t.closest && t.closest('input, select, textarea')) return;      // radios etc. keep their arrow keys
@@ -5397,7 +5448,7 @@ var KeyboardRender = (function () {
       var qchip = t && t.closest && t.closest('button[data-deg], button[data-type]');
       if (qchip || !t || t === document.body || t === document.documentElement) {
         e.preventDefault();
-        if (state.answered) ftcNextQuestion(true);
+        if (state.answered && levelBanner.hidden) ftcNextQuestion(true);          // (with a banner up, only the right arrow goes on)
         return;
       }
     }

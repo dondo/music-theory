@@ -495,48 +495,46 @@ check('find the chord: pick stays inside the levels and avoids an immediate repe
     avoid = q;
   }
 });
-check('find the chord: the ladder is built of stages; steps climb back through the other dimension', function () {
+check('find the chord: the ladder is built of stages; every step puts a single key or chord in play', function () {
   COMBOS.forEach(function (c) {
     var L = FC.ladder(c[0], c[1]), tag = c[0] + (c[1] ? ' pop' : ' jazz');
-    assert.ok(L.length > 50 && L.length < 200, tag + ' ' + L.length);
+    assert.ok(L.length > 80 && L.length < 200, tag + ' ' + L.length);
     assert.strictEqual(new Set(L.map(function (l) { return l.keys + '/' + l.chords; })).size, L.length, tag + ': no level repeats');
     assert.deepStrictEqual([L[0].stage, L[0].step, L[0].kind], [1, 1, 'start']);
+    assert.deepStrictEqual(L.slice(0, 3).map(function (l) { return [l.stage, l.step, l.keys, l.chords]; }), [[1, 1, 2, 3], [1, 2, 2, 4], [1, 3, 2, 5]], tag + ': stage 1 adds its next two chords one at a time');
     var last = L[L.length - 1], total = FC.chords(c[0], c[1], 99).length;
     assert.deepStrictEqual([last.keys, last.chords], [12, total], tag + ': the top level has everything');
-    var kb = [2], cb = [3, 5];
-    assert.deepStrictEqual(L.slice(0, 3).map(function (l) { return [l.stage, l.step, l.keys, l.chords]; }), [[1, 1, 2, 3], [1, 2, 2, 4], [1, 3, 2, 5]], tag + ': stage 1 adds its next two chords one at a time');
     for (var st = 2; ; st++) {
       var steps = L.filter(function (l) { return l.stage === st; });
       if (!steps.length) break;
-      var f = steps[0], z = steps[steps.length - 1];
+      var f = steps[0], intro = FC.stageIntro(c[0], c[1], st), n = intro.kind === 'K' ? intro.keys.length : intro.chords.length;
       steps.forEach(function (l, i) { assert.strictEqual(l.step, i + 1); });
-      if (f.kind === 'K') {
-        assert.ok(f.added <= 2, tag + ' stage ' + st);
-        assert.strictEqual(steps.length, cb.length, tag + ' stage ' + st + ' climbs through every earlier chord stage');
-        assert.strictEqual(f.chords, 3, 'the chords start again from I IV V');
-        assert.strictEqual(z.chords, cb[cb.length - 1]);
-        assert.strictEqual(z.keys, kb[kb.length - 1] + f.added);
-        if (f.added === 2) assert.ok(z.keys * z.chords <= 30, tag + ' stage ' + st + ': two at a time only while it is simple');
-        kb.push(z.keys);
-      } else {
-        assert.strictEqual(steps.length, kb.length, tag + ' stage ' + st + ' climbs through every earlier key stage');
-        assert.strictEqual(f.keys, 2, 'the keys start again from C and G');
-        assert.strictEqual(z.keys, kb[kb.length - 1]);
-        assert.strictEqual(z.chords, cb[cb.length - 1] + f.added);
-        if (f.added === 2) assert.ok(z.keys * z.chords <= 30, tag + ' stage ' + st + ': two at a time only while it is simple');
-        if (f.added > 2) {                                           // the tail: a whole chord type in one stage
-          var added = FC.chords(c[0], c[1], z.chords).slice(z.chords - f.added);
-          var types = new Set(added.map(function (x) { return x.type; }));
-          assert.strictEqual(types.size, 1, tag + ' stage ' + st + ' adds one type');
-        }
-        cb.push(z.chords);
+      if (f.kind === 'K') assert.strictEqual(f.chords, 3, tag + ' stage ' + st + ': the chords start again from I IV V');
+      else assert.strictEqual(f.keys, 2, tag + ' stage ' + st + ': the keys start again from C and G');
+      if (n > 2) {                                                 // the tail: a whole chord type in one stage, in one step
+        assert.strictEqual(intro.kind, 'C');
+        assert.strictEqual(new Set(intro.chords.map(function (x) { return x.type; })).size, 1, tag + ' stage ' + st + ' adds one type');
+        assert.strictEqual(steps[0].add.to - steps[0].add.from, n);
       }
+      steps.forEach(function (l, i) {
+        var prev = i ? steps[i - 1] : null, dk = prev ? l.keys - prev.keys : 0, dc = prev ? l.chords - prev.chords : 0;
+        if (prev) assert.ok((dk === 0) !== (dc === 0), tag + ' stage ' + st + ' step ' + l.step + ': one thing changes at a time');
+        var big = Math.max(dk, dc);
+        if (big > 1) assert.ok(big > 2, tag + ' stage ' + st + ' step ' + l.step + ': a jump is only ever a whole block');
+        if (!l.add.back && n <= 2) assert.strictEqual(l.add.to - l.add.from, 1);
+      });
+      if (intro.kind === 'K') assert.strictEqual(steps.filter(function (l) { return !l.add.back; }).length, n, tag + ' stage ' + st + ': one step per new key');
     }
   });
+  var m = FC.ladder('major', true).filter(function (l) { return l.stage === 2; });
+  assert.deepStrictEqual(m.map(function (l) { return [l.keys, l.chords]; }), [[2, 6], [2, 7]], 'Pop major stage 2: V7, then iii');
+  assert.deepStrictEqual(FC.stepAdds('major', true, 4).chords, [{ deg: 4, type: '7' }]);
 });
+
 check('find the chord: levelInfo / levelAt', function () {
   var i = FC.levelInfo('major', true, 4);
   assert.deepStrictEqual([i.stage, i.step], [2, 1]);
+  assert.strictEqual(FC.stageSteps('major', true, 4), 2);
   assert.deepStrictEqual(FC.levelInfo('major', true, 0), FC.levelInfo('major', true, 1));          // clamped
   var n = FC.levelCount('major', true);
   assert.deepStrictEqual(FC.levelInfo('major', true, n + 5), FC.levelInfo('major', true, n));

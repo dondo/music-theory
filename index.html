@@ -73,6 +73,10 @@
     </section>
 
     <section class="stage-card" aria-label="Keyboard">
+      <div id="ftc-levelup" class="levelup" role="status" hidden>
+        <span class="levelup-icon" id="ftc-levelup-icon" aria-hidden="true">&#127881;</span>
+        <div><strong id="ftc-levelup-title">Nice work!</strong> <span id="ftc-levelup-text"></span></div>
+      </div>
       <div class="stage-tools" id="layout-bar">
         <button type="button" class="dial" id="layout-dial" aria-pressed="false" aria-label="Signature layout: horizontal (switch to vertical)" title="Horizontal / vertical signatures">
           <svg viewBox="0 0 32 32" width="30" height="30" aria-hidden="true">
@@ -89,13 +93,9 @@
 
     <section id="ftc" class="ftc" aria-label="Find the chord" hidden>
       <p id="ftc-msg" class="sr-only" role="status" aria-live="polite"></p>
-      <div id="ftc-levelup" class="levelup" role="status" hidden>
-        <span class="levelup-icon" id="ftc-levelup-icon" aria-hidden="true">&#127881;</span>
-        <div><strong id="ftc-levelup-title">Level up!</strong> <span id="ftc-levelup-text"></span></div>
-      </div>
-      <span id="ftc-level" class="ftc-level">Level 1</span>
+      <span id="ftc-level" class="ftc-level">Stage 1: Step 1</span>
       <div class="ftc-side-row" id="ftc-autorow">
-        <label class="ftc-auto"><input type="checkbox" id="ftc-auto" checked> Level up automatically <small id="ftc-streak"></small></label>
+        <label class="ftc-auto"><input type="checkbox" id="ftc-auto" checked> Advance automatically <small id="ftc-streak"></small></label>
         <span class="ftc-local" aria-label="Test controls (local only)">
           <button type="button" id="ftc-harder" class="btn-reset ftc-btn" aria-label="Harder (local test)" title="Harder (local test)">&#9650;</button>
           <button type="button" id="ftc-easier" class="btn-reset ftc-btn" aria-label="Easier (local test)" title="Easier (local test)">&#9660;</button>

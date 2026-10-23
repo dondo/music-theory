@@ -3,8 +3,8 @@
  * The ladder is a list of levels. Each level has a number of keys (the first k of a fixed order) and a number of
  * chords (the first c of a fixed list), so a level is { keys: k, chords: c }; Pop and Jazz, major and minor each have their own order.
  * The ladder is made of STAGES, each introducing a few new keys or a few new chords (never both): up to two early on, then one at a time,
- * and in the long tail of rare chords a whole chord type at once. The levels inside a stage are its STEPS: after new chords the keys climb back
- * from C and G through each earlier stage of keys; after new keys the chords climb back from I IV V through each earlier stage of chords.
+ * and in the long tail of rare chords a whole chord type at once. The levels inside a stage are its STEPS, each putting a single key or chord
+ * in play (a tail block counts as one): first the stage's new items, then the other dimension climbs back, from C and G (after new chords) or from I IV V (after new keys).
  * A chord is { deg: 0..6, type } exactly as the chord selector uses it.
  */
 (function (root, factory) {
@@ -112,23 +112,46 @@
   function ladder(mode, pop) {
     var id = (mode === 'minor' ? 'minor' : 'major') + (pop ? '|pop' : '|jazz');
     if (ladders[id]) return ladders[id];
-    var d = def(mode, pop), k = d.seed[0], c = d.seed[1], kb = [k], cb = [c], out = [{ keys: k, chords: c, stage: 1, step: 1, kind: 'start', added: 0 }];
-    for (var o = 1; o <= d.open; o++) out.push({ keys: k, chords: c + o, stage: 1, step: o + 1, kind: 'start', added: 1 });   // stage 1 also adds its next chords one at a time
-    c += d.open; cb = [cb[0], c];
+    var d = def(mode, pop), k0 = d.seed[0], c0 = d.seed[1], out = [];
+    // Every step introduces one key or one chord (a block of more than two, the rare-chord tail, goes in as one step).
+    // `add` says what the step puts in play: { dim: 'K' | 'C', from, to } (indices into the key order / chord list); `back` marks a step that
+    // only brings back something already learned. lo..hi is the stage's own new range in its dimension.
+    function push(keys, chords, stage, kind, lo, hi, add) {
+      var step = out.filter(function (l) { return l.stage === stage; }).length + 1;
+      out.push({ keys: keys, chords: chords, stage: stage, step: step, kind: kind, lo: lo, hi: hi, add: add });
+    }
+    function incs(from, n) {                       // the positions a dimension passes through when n items are added: one by one, or a block at once
+      var r = [], j;
+      if (n <= 2) for (j = 1; j <= n; j++) r.push(from + j); else r.push(from + n);
+      return r;
+    }
+    var Pk = [k0], Pc = [c0], k = k0, c = c0;
+    push(k, c, 1, 'start', c0, c0 + d.open, null);
+    for (var o = 1; o <= d.open; o++) push(k, c + o, 1, 'start', c0, c0 + d.open, { dim: 'C', from: c + o - 1, to: c + o });
+    incs(c, d.open).forEach(function (p) { Pc.push(p); });
+    c += d.open;
     d.stages.forEach(function (s, i) {
-      var stage = i + 2, j;
+      var stage = i + 2, n = s[1], steps = incs(k, n), prev;
       if (s[0] === 'K') {
-        k += s[1]; kb.push(k);
-        for (j = 0; j < cb.length; j++) out.push({ keys: k, chords: cb[j], stage: stage, step: j + 1, kind: 'K', added: s[1] });
+        prev = k;
+        steps.forEach(function (p) { push(p, c0, stage, 'K', k, k + n, { dim: 'K', from: prev, to: p }); prev = p; });
+        var kn = k + n;
+        for (var j = 1; j < Pc.length; j++) push(kn, Pc[j], stage, 'K', k, kn, { dim: 'C', from: Pc[j - 1], to: Pc[j], back: true });
+        steps.forEach(function (p) { Pk.push(p); });
+        k = kn;
       } else {
-        c += s[1]; cb.push(c);
-        for (j = 0; j < kb.length; j++) out.push({ keys: kb[j], chords: c, stage: stage, step: j + 1, kind: 'C', added: s[1] });
+        steps = incs(c, n); prev = c;
+        steps.forEach(function (p) { push(k0, p, stage, 'C', c, c + n, { dim: 'C', from: prev, to: p }); prev = p; });
+        var cn = c + n;
+        for (var m = 1; m < Pk.length; m++) push(Pk[m], cn, stage, 'C', c, cn, { dim: 'K', from: Pk[m - 1], to: Pk[m], back: true });
+        steps.forEach(function (p) { Pc.push(p); });
+        c = cn;
       }
     });
     return (ladders[id] = out);
   }
   function levelCount(mode, pop) { return ladder(mode, pop).length; }
-  // level n (1-based, clamped): { keys, chords, stage, step, kind: 'start' | 'K' | 'C', added }
+  // level n (1-based, clamped): { keys, chords, stage, step, kind: 'start' | 'K' | 'C', lo, hi, add }
   function levelInfo(mode, pop, n) { var L = ladder(mode, pop); return L[clamp(n, 1, L.length) - 1]; }
   function levelAt(mode, pop, n) { var l = levelInfo(mode, pop, n); return { keys: l.keys, chords: l.chords }; }
   // how many steps the stage of level n has
@@ -138,22 +161,27 @@
     var L = ladder(mode, pop), s = levelInfo(mode, pop, n).stage;
     return L.filter(function (l) { return l.stage === s; }).length;
   }
-  // a predicate for the new challenge of level n's stage (new keys or new chords), or null (the starting stage has none)
+  // a predicate for the stage's new challenge that is in play at level n (new keys or new chords), or null when none is yet
   function freshTest(mode, pop, n) {
     var l = levelInfo(mode, pop, n);
     if (l.kind === 'K') {
-      var fresh = keys(mode, pop, l.keys).slice(l.keys - l.added);
-      return function (q) { return fresh.indexOf(q.pc) >= 0; };
+      var fresh = keys(mode, pop, l.keys).slice(l.lo, l.hi);
+      return fresh.length ? function (q) { return fresh.indexOf(q.pc) >= 0; } : null;
     }
-    if (l.kind === 'C') {
-      var fc = chords(mode, pop, l.chords).slice(l.chords - l.added);
-      return function (q) { return fc.some(function (x) { return x.deg === q.deg && x.type === q.type; }); };
-    }
-    if (l.kind === 'start' && l.added) {
-      var one = chords(mode, pop, l.chords)[l.chords - 1];
-      return function (q) { return q.deg === one.deg && q.type === one.type; };
-    }
-    return null;
+    var fc = chords(mode, pop, l.chords).slice(l.lo, l.hi);
+    return fc.length ? function (q) { return fc.some(function (x) { return x.deg === q.deg && x.type === q.type; }); } : null;
+  }
+  // what a stage introduces: { kind: 'K', keys: [pc...] } or { kind: 'C', chords: [{deg, type}...] }
+  function stageIntro(mode, pop, stage) {
+    var L = ladder(mode, pop), f = L.filter(function (l) { return l.stage === stage; })[0];
+    if (!f) return null;
+    return f.kind === 'K' ? { kind: 'K', keys: keys(mode, pop, f.hi).slice(f.lo) } : { kind: 'C', chords: chords(mode, pop, f.hi).slice(f.lo) };
+  }
+  // what step n puts in play: { dim: 'K', keys: [pc...], back } or { dim: 'C', chords: [...], back }, or null (the very first step)
+  function stepAdds(mode, pop, n) {
+    var a = levelInfo(mode, pop, n).add;
+    if (!a) return null;
+    return a.dim === 'K' ? { dim: 'K', keys: keys(mode, pop, a.to).slice(a.from), back: !!a.back } : { dim: 'C', chords: chords(mode, pop, a.to).slice(a.from), back: !!a.back };
   }
 
   var STREAK = 10;                      // (the app drops this to 5 in the local copy, for testing)
@@ -185,7 +213,7 @@
   }
 
   return { STREAK: STREAK, DATA: DATA, maxKeys: maxKeys, clamp: clamp, keys: keys, chords: chords, pick: pick,
-           ladder: ladder, levelCount: levelCount, levelInfo: levelInfo, levelAt: levelAt, stageSteps: stageSteps, stageCoverage: stageCoverage, freshTest: freshTest,
+           ladder: ladder, levelCount: levelCount, levelInfo: levelInfo, levelAt: levelAt, stageSteps: stageSteps, stageIntro: stageIntro, stepAdds: stepAdds, stageCoverage: stageCoverage, freshTest: freshTest,
            identify: identify, weightKey: weightKey, weightOf: weightOf, miss: miss, hit: hit, loadWeights: loadWeights, saveWeights: saveWeights, resetWeights: resetWeights,
            pickInversion: pickInversion, freshPlan: freshPlan, freshRecord: freshRecord,
            FRESH_WINDOW: FRESH_WINDOW, FRESH_MIN: FRESH_MIN };
