@@ -1687,16 +1687,17 @@
     trialStop.hidden = !!(ftcTrial && ftcTrial.done);
     chordsPanel.classList.toggle('trialing', !!ftcTrial);              // (keyboard hints on the chips, where there is a keyboard)
     trialBtn.setAttribute('aria-expanded', trialListOpen ? 'true' : 'false');
-    trialList.hidden = !trialListOpen || !!ftcTrial;
+    if (!(ftcTrial && ftcTrial.done) && trialList.parentNode !== trialBox) trialBox.appendChild(trialList);      // (the results borrow the list for their own menu button)
+    trialList.hidden = !trialListOpen || !!(ftcTrial && !ftcTrial.done);
   }
   function closeTrialList() { if (trialListOpen) { trialListOpen = false; syncTrialBox(); } }
-  document.addEventListener('click', function (e) { if (trialListOpen && !trialBox.contains(e.target)) closeTrialList(); });
+  document.addEventListener('click', function (e) { if (trialListOpen && !trialBox.contains(e.target) && !(e.target.closest && e.target.closest('.tr-menu'))) closeTrialList(); });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && trialListOpen) { closeTrialList(); trialBtn.focus(); } });
   function stageLabel(n) { var i = FindChord.levelInfo(state.mode, ftcPop(), n); return 'Stage ' + i.stage + ': Step ' + i.step; }
   // two levels: the stages (newest first; only the current one open to start with), and under each the steps reached so far
   function buildTrialList() {
     trialList.textContent = '';
-    var cur = ftcLevelNo(), bests = trialBests(), curStage = FindChord.levelInfo(state.mode, ftcPop(), cur).stage, groups = {}, order = [];
+    var cur = FindChord.clamp(ftcLv[ftcLvKey()] || 1, 1, FindChord.levelCount(state.mode, ftcPop())), bests = trialBests(), curStage = FindChord.levelInfo(state.mode, ftcPop(), cur).stage, groups = {}, order = [];
     for (var n = cur; n >= 1; n--) {
       var st = FindChord.levelInfo(state.mode, ftcPop(), n).stage;
       if (!groups[st]) { groups[st] = []; order.push(st); }
@@ -1788,10 +1789,10 @@
     }
     pushBub(ok ? 'ok' : 'bad');
     t.n++;
-    feedback(ok ? 'yes' : 'nope');
     if (t.n >= TRIAL_LEN) { finishTrial(now); return; }
     t.qStart = now;
     ftcNewQuestionDraw();
+    feedback(ok ? 'yes' : 'nope');                                      // (shown in the clef area of the next card, while the clock runs on)
   }
   // the results take the place of the staff: time, wrong answers, and two ways on
   function finishTrial(now) {
@@ -1804,7 +1805,7 @@
     chordsPanel.classList.add('counting');
     t.view = function () {
       stage.innerHTML = '<div class="trial-result"><div class="tr-icon"></div><h3 class="tr-title"></h3><div class="tr-time"></div><p class="tr-detail"></p><p class="tr-best"></p>' +
-        '<div class="tr-actions"><button type="button" class="btn-reset tr-again">Try Again</button><button type="button" class="btn-reset tr-back">Back to Study</button></div></div>';
+        '<div class="tr-actions"><button type="button" class="btn-reset tr-again">Try Again</button><span class="tr-menu"><button type="button" class="btn-reset tr-trials" aria-haspopup="true">Time Trial \u25be</button></span><button type="button" class="btn-reset tr-back">Back to Study</button></div></div>';
       var q = function (c) { return stage.querySelector(c); };
       q('.tr-icon').textContent = isBest ? '\u{1F389}' : t.wrongs >= 3 ? '\u{1F61E}' : '\u{1F610}';      // party / sad (three or more wrong) / shrug
       q('.tr-title').textContent = isBest ? 'New best time for ' + stageLabel(t.level) + '!' : stageLabel(t.level) + ' time trial complete';
@@ -1813,6 +1814,11 @@
       q('.tr-best').textContent = isBest ? (best ? 'Previous best: ' + fmtTime(best.ms) + ' · ' + best.wrong + ' wrong' : 'First time at this step') :
         'Best: ' + fmtTime(best.ms) + (best.wrong == null ? '' : ' · ' + best.wrong + ' wrong');
       q('.tr-again').addEventListener('click', function () { startTrial(t.level); });
+      q('.tr-trials').addEventListener('click', function () {
+        trialListOpen = !trialListOpen;
+        if (trialListOpen) { buildTrialList(); q('.tr-menu').appendChild(trialList); }
+        syncTrialBox();
+      });
       q('.tr-back').addEventListener('click', function () { abortTrial(); ftcNewQuestionDraw(); });
     };
     syncTrialBox(); drawClock(); updateFtc(); updateScore(); updateChordPanel();
