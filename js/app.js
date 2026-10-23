@@ -1336,11 +1336,12 @@
     if (typeof updateFtc === 'function' && quizOn()) { updateFtc(); updateChordPanel(); }
   };
   // the Time Trial button appears once 7 of the last 10 answers were right (3 of 5 in the local copy), and stays
-  var trialUnlocked = false;
+  var trialUnlocked = false;                                     // the current step may be trialled
+  var trialEver = false;                                         // the button has appeared once: from then on it always shows
   function checkTrialUnlock() {
     if (trialUnlocked || ftcTrial) return;
     var b = bubbles(), right = b.filter(function (r) { return r === 'ok'; }).length;
-    if (right >= (window.MUSIC_THEORY_LOCAL ? 3 : Math.ceil(0.7 * b.length))) { trialUnlocked = true; if (typeof syncTrialBox === 'function') syncTrialBox(); }
+    if (right >= (window.MUSIC_THEORY_LOCAL ? 3 : Math.ceil(0.7 * b.length))) { trialUnlocked = trialEver = true; if (typeof syncTrialBox === 'function') syncTrialBox(); }
   }
   function pushBub(result) {
     if (bubFull) { ftcBub = null; bubFull = false; }          // (the full green row stayed up for the celebration)
@@ -1420,18 +1421,19 @@
       ftcBub = Array.isArray(o.bub) ? o.bub.slice(0, 40) : null;
       bubFull = bubblesFull();
       trialUnlocked = o.trial === true;
+      trialEver = o.ever === true || trialUnlocked;
       checkTrialUnlock();
       syncTrialBox();
     } catch (e) { /* defaults */ }
   }
   function saveFtc() {
     if (ftcTrial) return;                                        // (a trial is never saved: the normal state stays as it was)
-    try { window.localStorage.setItem(FTC_KEY, JSON.stringify({ lvl: ftcLv, auto: ftcAuto, streak: ftcStreak, bub: bubbles(), trial: trialUnlocked, fresh: ftcFresh })); } catch (e) { /* storage unavailable */ }
+    try { window.localStorage.setItem(FTC_KEY, JSON.stringify({ lvl: ftcLv, auto: ftcAuto, streak: ftcStreak, bub: bubbles(), trial: trialUnlocked, ever: trialEver, fresh: ftcFresh })); } catch (e) { /* storage unavailable */ }
   }
   function resetFtc() {
     abortTrial();
     ftcLv = {};
-    trialUnlocked = false; ftcAuto = true; ftcStreak = 0; ftcTried = 0; ftcRight = 0; ftcBub = null; bubFull = false; ftcFresh = { asked: 0, fresh: 0 };
+    trialUnlocked = trialEver = false; ftcAuto = true; ftcStreak = 0; ftcTried = 0; ftcRight = 0; ftcBub = null; bubFull = false; ftcFresh = { asked: 0, fresh: 0 };
     ftcAutoBox.checked = true;
     try { window.localStorage.removeItem(FTC_KEY); window.localStorage.removeItem(TRIALS_KEY); } catch (e) { /* storage unavailable */ }   // (the time trial bests go too)
   }
@@ -1657,7 +1659,7 @@
     '<path class="tc-fill" d="M20 20"/><line class="tc-hand" x1="20" y1="20" x2="20" y2="3"/></svg>';
   trialClock.appendChild(trialPen); trialClock.appendChild(trialStop);
   trialClock.hidden = true;
-  trialBtn.hidden = !trialUnlocked;
+  trialBtn.hidden = !trialEver;
   trialBox.appendChild(trialBtn); trialBox.appendChild(trialClock); trialBox.appendChild(trialList);
   function trialKey(n) { return state.mode + ':' + (ftcPop() ? 'pop' : 'jazz') + ':' + n; }
   // best per level: { ms, wrong } (older saves held just the time)
@@ -1680,7 +1682,7 @@
       'M20 20 L20 ' + (CY - CR) + ' A' + CR + ' ' + CR + ' 0 ' + (frac > 0.5 ? 1 : 0) + ' 1 ' + x.toFixed(2) + ' ' + y.toFixed(2) + ' Z');   // swept from 12 o'clock to the hand
   }
   function syncTrialBox() {
-    trialBtn.hidden = !!ftcTrial || !trialUnlocked;
+    trialBtn.hidden = !!ftcTrial || !trialEver;
     trialClock.hidden = !ftcTrial;
     trialStop.hidden = !!(ftcTrial && ftcTrial.done);
     chordsPanel.classList.toggle('trialing', !!ftcTrial);              // (keyboard hints on the chips, where there is a keyboard)
@@ -1710,8 +1712,10 @@
       groups[st].forEach(function (n) {
         var b = el('button', 'btn-reset trial-lvl'), best = bests[trialKey(n)];
         b.type = 'button'; b.setAttribute('data-level', n); b.setAttribute('role', 'menuitem');
+        var locked = n === cur && !trialUnlocked;                    // the step in progress opens for a trial once it has been played well enough
+        if (locked) { b.disabled = true; b.classList.add('locked'); b.title = 'Answer ' + (window.MUSIC_THEORY_LOCAL ? '3 of the last 5' : '7 of the last 10') + ' right to unlock'; }
         b.appendChild(el('span', 'tl-n', 'Step ' + FindChord.levelInfo(state.mode, ftcPop(), n).step));
-        b.appendChild(el('span', 'tl-best', best ? fmtTime(best.ms) + (best.wrong == null ? '' : ' \u00b7 ' + best.wrong + ' wrong') : 'no time yet'));
+        b.appendChild(el('span', 'tl-best', locked ? 'play it first' : best ? fmtTime(best.ms) + (best.wrong == null ? '' : ' \u00b7 ' + best.wrong + ' wrong') : 'no time yet'));
         body.appendChild(b);
       });
       g.appendChild(h); g.appendChild(body); trialList.appendChild(g);
