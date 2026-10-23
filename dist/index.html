@@ -4734,7 +4734,7 @@ var KeyboardRender = (function () {
     return ftcTypesHidden() ? 'Choose the chord\u2019s degree.' : 'Choose a type and a degree, in either order. The second one you choose is your answer.';
   }
   function ftcHintTail() { return '. ' + (popAns() ? (ftcTypesHidden() ? 'Choose the root and quality in the Chords section.' : 'Choose the type, root and quality in the Chords section.') : (ftcTypesHidden() ? 'Choose the chord\u2019s degree in the Chords section.' : 'Choose a type and a degree in the Chords section; the second one you choose is your answer.')); }
-  function ftcTypesHidden() { return quizOn() && !ftcPop() && FindChord.chords(state.mode, ftcPop(), ftcLevels().chords).every(function (c) { return c.type === 'triad'; }); }
+  function ftcTypesHidden() { return quizOn() && FindChord.chords(state.mode, ftcPop(), ftcLevels().chords).every(function (c) { return c.type === 'triad'; }); }
   function ftcSpec() { return Theory.specsFor(state.mode, ftcQ.pc)[ftcQ.spell]; }
   function ftcChord() { return Chords.chordInKey(ftcSpec().name, state.mode, ftcQ.deg, ftcQ.type); }
   // ---- level-up: what was added, and a confetti burst ----
