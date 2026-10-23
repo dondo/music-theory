@@ -592,8 +592,7 @@ html.is-local .ftc-local { display: inline-flex; }
 .score-streak { color: #15803d; font-weight: 600; }
 .score-streak .none { color: var(--muted); }
 .score-streak .rest { color: var(--ink, #1c2330); font-weight: 400; }
-/* the banner now sits above the clef, in the stage card; this card holds only controls that are moved elsewhere */
-.ftc { display: none; }
+.ftc:not(:has(> .levelup:not([hidden]))) { display: none; }   /* (the card shows only while a step banner is up; a stage banner sits in the stage card, over the clef) */
 
 /* iPhone-sized screens (portrait, or a phone turned sideways): no difficulty controls in Find the chord;
    the level-up banner stays, on its own, under the keyboard */

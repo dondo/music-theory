@@ -1460,9 +1460,9 @@
   // between steps of a stage: what the next step puts in play (the chord numeral or key in bold)
   function stepNote(n) {
     var mode = state.mode, pop = ftcPop(), info = FindChord.levelInfo(mode, pop, n), add = FindChord.stepAdds(mode, pop, n);
-    var lead = 'You\u2019ve completed Step ' + (info.step - 1) + ', on to Step ' + info.step + ' of ' + FindChord.stageSteps(mode, pop, n) + '. ';
-    if (!add) return lead;
-    var verb = add.back ? 'Adding back ' : 'Introducing ', names, one;
+    var lead = 'You\u2019ve completed Step ' + (info.step - 1) + '. On to Step ' + info.step + ' of ' + FindChord.stageSteps(mode, pop, n) + ', ';
+    if (!add) return lead.replace(/, $/, '.');
+    var verb = add.back ? 'adding back ' : 'introducing ', names, one;
     if (add.dim === 'K') {
       names = ftcNames(add.keys, true); one = names.length === 1;
       return lead + verb + (one ? 'a ' + (add.back ? '' : 'new ') + 'key: ' : (add.back ? '' : 'new ') + 'keys: ') + '<strong>' + ftcJoin(names) + '</strong>!';
@@ -1497,6 +1497,8 @@
       title = 'Congratulations!';
       html = 'You have completed Stage ' + doneStage + '. You can now play ' + (p < 1 ? 'a few' : 'about ' + p + '% of all') + ' ' + (pop ? 'pop' : 'jazz') + ' songs!<br>' + stageNote(FindChord.levelInfo(state.mode, pop, n).stage);
     } else html = stepNote(n);
+    var home = newStage ? document.querySelector('.stage-card') : ftcSection;           // a finished stage's banner sits over the clef; a step's stays under the keyboard
+    if (levelBanner.parentNode !== home) home.insertBefore(levelBanner, newStage ? home.firstChild : null);
     document.getElementById('ftc-levelup-icon').textContent = '\u{1F389}';
     document.getElementById('ftc-levelup-title').textContent = title;
     levelText.innerHTML = html;
