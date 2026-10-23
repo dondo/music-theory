@@ -116,9 +116,16 @@
     // Every step introduces one key or one chord (a block of more than two, the rare-chord tail, goes in as one step).
     // `add` says what the step puts in play: { dim: 'K' | 'C', from, to } (indices into the key order / chord list); `back` marks a step that
     // only brings back something already learned. lo..hi is the stage's own new range in its dimension.
+    // Pop: a chord comes inverted only after its stage's own inversions step; `iv` counts the chords (a prefix of the list) that may be inverted.
+    // Jazz mixes inversions into everything from the start.
+    var iv = pop ? 0 : 999;
     function push(keys, chords, stage, kind, lo, hi, add) {
       var step = out.filter(function (l) { return l.stage === stage; }).length + 1;
-      out.push({ keys: keys, chords: chords, stage: stage, step: step, kind: kind, lo: lo, hi: hi, add: add });
+      out.push({ keys: keys, chords: chords, stage: stage, step: step, kind: kind, lo: lo, hi: hi, add: add, inv: iv });
+    }
+    function invStep(keys, stage, kind, lo, hi, from, to) {            // the stage's chords turn upside down: a step of its own
+      if (!pop) return;
+      iv = to; push(keys, to, stage, kind, lo, hi, { dim: 'I', from: from, to: to });
     }
     function incs(from, n) {                       // the positions a dimension passes through when n items are added: one by one, or a block at once
       var r = [], j;
@@ -128,6 +135,7 @@
     var Pk = [k0], Pc = [c0], k = k0, c = c0;
     push(k, c, 1, 'start', c0, c0 + d.open, null);
     for (var o = 1; o <= d.open; o++) push(k, c + o, 1, 'start', c0, c0 + d.open, { dim: 'C', from: c + o - 1, to: c + o });
+    invStep(k, 1, 'start', c0, c0 + d.open, 0, c0 + d.open);
     incs(c, d.open).forEach(function (p) { Pc.push(p); });
     c += d.open;
     d.stages.forEach(function (s, i) {
@@ -143,6 +151,7 @@
         steps = incs(c, n); prev = c;
         steps.forEach(function (p) { push(k0, p, stage, 'C', c, c + n, { dim: 'C', from: prev, to: p }); prev = p; });
         var cn = c + n;
+        invStep(k0, stage, 'C', c, cn, c, cn);
         for (var m = 1; m < Pk.length; m++) push(Pk[m], cn, stage, 'C', c, cn, { dim: 'K', from: Pk[m - 1], to: Pk[m], back: true });
         steps.forEach(function (p) { Pc.push(p); });
         c = cn;
@@ -153,7 +162,7 @@
   function levelCount(mode, pop) { return ladder(mode, pop).length; }
   // level n (1-based, clamped): { keys, chords, stage, step, kind: 'start' | 'K' | 'C', lo, hi, add }
   function levelInfo(mode, pop, n) { var L = ladder(mode, pop); return L[clamp(n, 1, L.length) - 1]; }
-  function levelAt(mode, pop, n) { var l = levelInfo(mode, pop, n); return { keys: l.keys, chords: l.chords }; }
+  function levelAt(mode, pop, n) { var l = levelInfo(mode, pop, n); return { keys: l.keys, chords: l.chords, inv: l.inv }; }
   // how many steps the stage of level n has
   // percent of all songs (rough model) playable once the stage is complete
   function stageCoverage(mode, pop, stage) { var c = def(mode, pop).cov; return c[clamp(stage, 1, c.length) - 1]; }
@@ -171,6 +180,12 @@
     var fc = chords(mode, pop, l.chords).slice(l.lo, l.hi);
     return fc.length ? function (q) { return fc.some(function (x) { return x.deg === q.deg && x.type === q.type; }); } : null;
   }
+  // may the chord (deg, type) come inverted at level `lv` ({ chords, inv })?
+  function mayInvert(mode, pop, lv, deg, type) {
+    var list = chords(mode, pop, lv.chords);
+    for (var i = 0; i < list.length; i++) if (list[i].deg === deg && list[i].type === type) return i < lv.inv;
+    return false;
+  }
   // what a stage introduces: { kind: 'K', keys: [pc...] } or { kind: 'C', chords: [{deg, type}...] }
   function stageIntro(mode, pop, stage) {
     var L = ladder(mode, pop), f = L.filter(function (l) { return l.stage === stage; })[0];
@@ -181,6 +196,7 @@
   function stepAdds(mode, pop, n) {
     var a = levelInfo(mode, pop, n).add;
     if (!a) return null;
+    if (a.dim === 'I') return { dim: 'I', chords: chords(mode, pop, a.to).slice(a.from), back: false };
     return a.dim === 'K' ? { dim: 'K', keys: keys(mode, pop, a.to).slice(a.from), back: !!a.back } : { dim: 'C', chords: chords(mode, pop, a.to).slice(a.from), back: !!a.back };
   }
 
@@ -213,7 +229,7 @@
   }
 
   return { STREAK: STREAK, DATA: DATA, maxKeys: maxKeys, clamp: clamp, keys: keys, chords: chords, pick: pick,
-           ladder: ladder, levelCount: levelCount, levelInfo: levelInfo, levelAt: levelAt, stageSteps: stageSteps, stageIntro: stageIntro, stepAdds: stepAdds, stageCoverage: stageCoverage, freshTest: freshTest,
+           ladder: ladder, levelCount: levelCount, levelInfo: levelInfo, levelAt: levelAt, stageSteps: stageSteps, stageIntro: stageIntro, mayInvert: mayInvert, stepAdds: stepAdds, stageCoverage: stageCoverage, freshTest: freshTest,
            identify: identify, weightKey: weightKey, weightOf: weightOf, miss: miss, hit: hit, loadWeights: loadWeights, saveWeights: saveWeights, resetWeights: resetWeights,
            pickInversion: pickInversion, freshPlan: freshPlan, freshRecord: freshRecord,
            FRESH_WINDOW: FRESH_WINDOW, FRESH_MIN: FRESH_MIN };

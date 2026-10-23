@@ -1438,7 +1438,7 @@
     try { window.localStorage.removeItem(FTC_KEY); window.localStorage.removeItem(TRIALS_KEY); } catch (e) { /* storage unavailable */ }   // (the time trial bests go too)
   }
   // the levels in force: the chord dial is capped by what this level (Pop / Jazz) offers
-  function ftcLevels() { return ftcTrial ? { keys: ftcTrial.keys, chords: ftcTrial.chords } : FindChord.levelAt(state.mode, ftcPop(), ftcLevelNo()); }
+  function ftcLevels() { return ftcTrial ? { keys: ftcTrial.keys, chords: ftcTrial.chords, inv: ftcTrial.inv } : FindChord.levelAt(state.mode, ftcPop(), ftcLevelNo()); }
   // true while only triads are in play: the TYPE row is hidden and a degree alone is the answer
   function ftcTypesHidden() { return quizOn() && FindChord.chords(state.mode, ftcPop(), ftcLevels().chords).every(function (c) { return c.type === 'triad'; }); }
   function ftcSpec() { return Theory.specsFor(state.mode, ftcQ.pc)[ftcQ.spell]; }
@@ -1469,6 +1469,7 @@
       names = ftcNames(add.keys, true); one = names.length === 1;
       return lead + verb + (one ? 'a ' + (add.back ? '' : 'new ') + 'key: ' : (add.back ? '' : 'new ') + 'keys: ') + '<strong>' + ftcJoin(names) + '</strong>!';
     }
+    if (add.dim === 'I') return lead + 'introducing inversions of <strong>' + ftcJoin(ftcNames(add.chords, false)) + '</strong>!';
     names = ftcNames(add.chords, false); one = names.length === 1;
     if (one) return lead + verb + 'a ' + (add.back ? '' : 'new ') + 'chord: Degree <strong>' + names[0] + '</strong>!';
     return lead + verb + (add.back ? '' : 'new ') + 'chords: ' + ftcBlockLabel(add.chords) + '<strong>' + ftcJoin(names) + '</strong>!';
@@ -1586,10 +1587,12 @@
     var q = FindChord.pick(state.mode, ftcPop(), l.keys, l.chords, Math.random, ftcQ, function (c) { return FindChord.weightOf(ftcW, state.mode, c); },
                            isFresh, isFresh ? FindChord.freshPlan(ftcFresh) : null);
     q = { pc: q.pc, deg: q.deg, type: q.type };
+    var forceInv = false;
     if (ftcHomeNext && !resumeQ && !ftcTrial) {                     // the step's first question: the key it added (its home triad, I or i), or one of the chords it added
       var add = FindChord.stepAdds(state.mode, ftcPop(), ftcLevelNo());
       if (add && add.dim === 'K' && add.keys.length) q = { pc: add.keys[add.keys.length - 1], deg: 0, type: 'triad' };
       else if (add && add.chords.length) {
+        forceInv = add.dim === 'I';
         var inKeys = FindChord.keys(state.mode, ftcPop(), l.keys).filter(function (pc) { return !ftcQ || pc !== ftcQ.pc || l.keys < 2; });
         var ch = add.chords[Math.floor(Math.random() * add.chords.length)];
         q = { pc: inKeys[Math.floor(Math.random() * inKeys.length)], deg: ch.deg, type: ch.type };
@@ -1602,7 +1605,9 @@
     if (resumed) q = { pc: resumed.pc, deg: resumed.deg, type: resumed.type, spell: resumed.spell };
     else if (isFresh) { FindChord.freshRecord(ftcFresh, isFresh(q)); saveFtc(); }
     var nNotes = Chords.chordInKey(Theory.specsFor(state.mode, q.pc)[q.spell].name, state.mode, q.deg, q.type).pcOffsets.length;
-    q.inv = resumed ? resumed.inv : FindChord.pickInversion(nNotes, !ftcPop(), Math.random);              // Jazz: inversions mixed in at every level
+    var mayInv = FindChord.mayInvert(state.mode, ftcPop(), l, q.deg, q.type);
+    q.inv = resumed ? resumed.inv : FindChord.pickInversion(nNotes, mayInv, Math.random);                // Jazz: inversions mixed in at every level; Pop: from the stage's inversions step on
+    if (forceInv && !resumed && mayInv && nNotes > 1) q.inv = 1 + Math.floor(Math.random() * (nNotes - 1));       // (an inversions step opens with an inverted chord)
     var oldSvg = stage.firstElementChild;
     var oldKey = animate && oldSvg ? oldSvg.querySelector('.key[data-pc="' + q.pc + '"]') : null;
     ftcQ = q;
@@ -1751,7 +1756,7 @@
     var snap = ftcTrial ? ftcTrial.snap                                   // ("Try again": the state from before the first trial is still the one to return to)
       : { bub: ftcBub, bubFull: bubFull, streak: ftcStreak, tried: ftcTried, right: ftcRight, home: ftcHomeNext };
     clearInterval(trialTick); trialTick = null;
-    ftcTrial = { level: n, keys: lv.keys, chords: lv.chords, n: 0, wrongs: 0, t0: 0, qStart: 0, penalty: 0, times: [], snap: snap, counting: true, done: false, view: null };
+    ftcTrial = { level: n, keys: lv.keys, chords: lv.chords, inv: lv.inv, n: 0, wrongs: 0, t0: 0, qStart: 0, penalty: 0, times: [], snap: snap, counting: true, done: false, view: null };
     ftcBub = null; bubFull = false; ftcStreak = 0; ftcTried = 0; ftcRight = 0; ftcHomeNext = false;
     bannerHold = false; levelBanner.hidden = true;
     syncTrialBox(); drawClock(); updateFtc(); updateScore(); updateChordPanel();

@@ -458,7 +458,7 @@ var COMBOS = [['major', true], ['major', false], ['minor', true], ['minor', fals
 check('find the chord: level 1 is C and G with I, IV, V (i, iv, v in minor)', function () {
   var romans = function (m, pop, n) { return FC.chords(m, pop, FC.levelAt(m, pop, n).chords).map(function (c) { return c.deg + c.type; }); };
   [true, false].forEach(function (pop) {
-    assert.deepStrictEqual(FC.levelAt('major', pop, 1), { keys: 2, chords: 3 });
+    assert.deepStrictEqual(FC.levelAt('major', pop, 1), { keys: 2, chords: 3, inv: pop ? 0 : 999 });
     assert.deepStrictEqual(FC.keys('major', pop, 2), [0, 7]);
     assert.deepStrictEqual(romans('major', pop, 1), ['0triad', '3triad', '4triad']);
     assert.deepStrictEqual(FC.keys('minor', pop, 2), [9, 4]);
@@ -499,9 +499,11 @@ check('find the chord: the ladder is built of stages; every step puts a single k
   COMBOS.forEach(function (c) {
     var L = FC.ladder(c[0], c[1]), tag = c[0] + (c[1] ? ' pop' : ' jazz');
     assert.ok(L.length > 80 && L.length < 200, tag + ' ' + L.length);
-    assert.strictEqual(new Set(L.map(function (l) { return l.keys + '/' + l.chords; })).size, L.length, tag + ': no level repeats');
+    assert.strictEqual(new Set(L.map(function (l) { return l.keys + '/' + l.chords + '/' + l.inv; })).size, L.length, tag + ': no level repeats');
     assert.deepStrictEqual([L[0].stage, L[0].step, L[0].kind], [1, 1, 'start']);
     assert.deepStrictEqual(L.slice(0, 3).map(function (l) { return [l.stage, l.step, l.keys, l.chords]; }), [[1, 1, 2, 3], [1, 2, 2, 4], [1, 3, 2, 5]], tag + ': stage 1 adds its next two chords one at a time');
+    if (c[1]) assert.deepStrictEqual([L[3].add.dim, L[3].inv, L[2].inv], ['I', 5, 0], tag + ': Pop turns the first chords upside down in a step of its own');
+    else assert.ok(L.every(function (l) { return l.add == null || l.add.dim !== 'I'; }), tag + ': Jazz has no inversions steps (inversions are in from the start)');
     var last = L[L.length - 1], total = FC.chords(c[0], c[1], 99).length;
     assert.deepStrictEqual([last.keys, last.chords], [12, total], tag + ': the top level has everything');
     for (var st = 2; ; st++) {
@@ -518,6 +520,7 @@ check('find the chord: the ladder is built of stages; every step puts a single k
       }
       steps.forEach(function (l, i) {
         var prev = i ? steps[i - 1] : null, dk = prev ? l.keys - prev.keys : 0, dc = prev ? l.chords - prev.chords : 0;
+        if (l.add.dim === 'I') { assert.ok(prev && dk === 0 && dc === 0 && l.inv === l.chords, tag + ' stage ' + st + ': an inversions step changes only the inversions'); return; }
         if (prev) assert.ok((dk === 0) !== (dc === 0), tag + ' stage ' + st + ' step ' + l.step + ': one thing changes at a time');
         var big = Math.max(dk, dc);
         if (big > 1) assert.ok(big > 2, tag + ' stage ' + st + ' step ' + l.step + ': a jump is only ever a whole block');
@@ -527,19 +530,21 @@ check('find the chord: the ladder is built of stages; every step puts a single k
     }
   });
   var m = FC.ladder('major', true).filter(function (l) { return l.stage === 2; });
-  assert.deepStrictEqual(m.map(function (l) { return [l.keys, l.chords]; }), [[2, 6], [2, 7]], 'Pop major stage 2: V7, then iii');
-  assert.deepStrictEqual(FC.stepAdds('major', true, 4).chords, [{ deg: 4, type: '7' }]);
+  assert.deepStrictEqual(m.map(function (l) { return [l.keys, l.chords, l.inv]; }), [[2, 6, 5], [2, 7, 5], [2, 7, 7]], 'Pop major stage 2: V7, then iii, then both inverted');
+  assert.deepStrictEqual(FC.stepAdds('major', true, 5).chords, [{ deg: 4, type: '7' }]);
 });
 
 check('find the chord: levelInfo / levelAt', function () {
-  var i = FC.levelInfo('major', true, 4);
+  var i = FC.levelInfo('major', true, 5);
   assert.deepStrictEqual([i.stage, i.step], [2, 1]);
-  assert.strictEqual(FC.stageSteps('major', true, 4), 2);
+  assert.strictEqual(FC.stageSteps('major', true, 5), 3);
+  assert.strictEqual(FC.mayInvert('major', true, FC.levelAt('major', true, 3), 0, 'triad'), false);
+  assert.strictEqual(FC.mayInvert('major', true, FC.levelAt('major', true, 4), 0, 'triad'), true);
   assert.deepStrictEqual(FC.levelInfo('major', true, 0), FC.levelInfo('major', true, 1));          // clamped
   var n = FC.levelCount('major', true);
   assert.deepStrictEqual(FC.levelInfo('major', true, n + 5), FC.levelInfo('major', true, n));
-  assert.strictEqual(FC.stageSteps('major', true, 1), 3);
-  assert.deepStrictEqual(FC.levelAt('major', true, n), { keys: 12, chords: 42 });
+  assert.strictEqual(FC.stageSteps('major', true, 1), 4);
+  assert.deepStrictEqual(FC.levelAt('major', true, n), { keys: 12, chords: 42, inv: 42 });
 });
 
 // ---- Find a chord: identifying the picked notes ----
