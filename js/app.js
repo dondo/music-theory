@@ -1686,17 +1686,31 @@
   document.addEventListener('click', function (e) { if (trialListOpen && !trialBox.contains(e.target)) closeTrialList(); });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && trialListOpen) { closeTrialList(); trialBtn.focus(); } });
   function stageLabel(n) { var i = FindChord.levelInfo(state.mode, ftcPop(), n); return 'Stage ' + i.stage + ': Step ' + i.step; }
+  // two levels: the stages (newest first; only the current one open to start with), and under each the steps reached so far
   function buildTrialList() {
     trialList.textContent = '';
-    var cur = ftcLevelNo(), bests = trialBests();
+    var cur = ftcLevelNo(), bests = trialBests(), curStage = FindChord.levelInfo(state.mode, ftcPop(), cur).stage, groups = {}, order = [];
     for (var n = cur; n >= 1; n--) {
-      var b = el('button', 'btn-reset trial-lvl'), best = bests[trialKey(n)];
-      b.type = 'button'; b.setAttribute('data-level', n);
-      b.appendChild(el('span', 'tl-n', stageLabel(n)));
-      b.setAttribute('role', 'menuitem');
-      b.appendChild(el('span', 'tl-best', best ? fmtTime(best.ms) + (best.wrong == null ? '' : ' \u00b7 ' + best.wrong + ' wrong') : 'no time yet'));
-      trialList.appendChild(b);
+      var st = FindChord.levelInfo(state.mode, ftcPop(), n).stage;
+      if (!groups[st]) { groups[st] = []; order.push(st); }
+      groups[st].push(n);
     }
+    order.forEach(function (st) {
+      var open = st === curStage, g = el('div', 'tl-stage'), h = el('button', 'btn-reset tl-stage-head'), body = el('div', 'tl-steps');
+      h.type = 'button'; h.setAttribute('aria-expanded', open ? 'true' : 'false');
+      h.appendChild(el('span', 'tl-caret', '\u25b8'));
+      h.appendChild(el('span', 'tl-n', 'Stage ' + st));
+      h.appendChild(el('span', 'tl-best', groups[st].length + (groups[st].length === 1 ? ' step' : ' steps')));
+      body.hidden = !open;
+      groups[st].forEach(function (n) {
+        var b = el('button', 'btn-reset trial-lvl'), best = bests[trialKey(n)];
+        b.type = 'button'; b.setAttribute('data-level', n); b.setAttribute('role', 'menuitem');
+        b.appendChild(el('span', 'tl-n', 'Step ' + FindChord.levelInfo(state.mode, ftcPop(), n).step));
+        b.appendChild(el('span', 'tl-best', best ? fmtTime(best.ms) + (best.wrong == null ? '' : ' \u00b7 ' + best.wrong + ' wrong') : 'no time yet'));
+        body.appendChild(b);
+      });
+      g.appendChild(h); g.appendChild(body); trialList.appendChild(g);
+    });
   }
   trialBtn.addEventListener('click', function () {
     trialListOpen = !trialListOpen;
@@ -1704,6 +1718,12 @@
     syncTrialBox();
   });
   trialList.addEventListener('click', function (e) {
+    var h = e.target.closest ? e.target.closest('.tl-stage-head') : null;
+    if (h) {                                                         // a stage opens or closes; the list stays up
+      var body = h.nextElementSibling, open = body.hidden;
+      body.hidden = !open; h.setAttribute('aria-expanded', open ? 'true' : 'false');
+      return;
+    }
     var b = e.target.closest ? e.target.closest('.trial-lvl') : null;
     if (b) startTrial(parseInt(b.getAttribute('data-level'), 10));
   });
