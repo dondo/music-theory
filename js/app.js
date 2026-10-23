@@ -1402,7 +1402,7 @@
   var ftcMem = FindChord.loadMem();                    // the memory model: when each key/chord pair was last answered and how fast it fades (persisted)
   var ftcLog = FindChord.loadLog(), ftcLogTimer = null;   // every first-try answer, for tuning the model to you (persisted, capped)
   var ftcT0 = null, ftcDraw = 'w';                    // when the question appeared; how it was drawn (w weighted, f new-challenge floor, o older-material floor, h step opener)
-  var LOG_NOTE_KEY = 'music-theory-ftc-log-notice', LOG_NOTE_AT = 2000, LOG_NOTE_SNOOZE = 1000;
+  var LOG_NOTE_KEY = 'music-theory-ftc-log-notice', LOG_LINK_AT = 1000, LOG_NOTE_AT = 2000, LOG_NOTE_SNOOZE = 1000;
   var ftcMissed = false;                              // a wrong Check on this question: no streak credit
   var ftcPrevChordsOpen = null;                       // the chord selector's state before the quiz opened it
   var ftcSection = document.getElementById('ftc');
@@ -1595,7 +1595,7 @@
   var logNote = document.getElementById('log-note'), logLink = document.getElementById('log-link');
   function logNextAt() { try { var n = parseInt(window.localStorage.getItem(LOG_NOTE_KEY), 10); return n > 0 ? n : LOG_NOTE_AT; } catch (e) { return LOG_NOTE_AT; } }
   function syncLogNote() {
-    if (logLink) logLink.textContent = 'Practice log: ' + ftcLog.length + ' answers (download)';
+    if (logLink) { logLink.textContent = 'Practice log: ' + ftcLog.length + ' answers (download)'; logLink.hidden = ftcLog.length < LOG_LINK_AT; }
     if (logNote) logNote.hidden = ftcLog.length < logNextAt();
   }
   if (logLink) logLink.addEventListener('click', downloadLog);
