@@ -4648,10 +4648,12 @@ var KeyboardRender = (function () {
     st.setAttribute('aria-label', 'Last answers: ' + right + ' right out of ' + b.filter(Boolean).length);
   }
   var ftcFresh = { asked: 0, fresh: 0 };              // questions about the new challenge in the current run of five
+  var ftcOpen = null;                                             // the first question of the new stage, already shown under its banner
   var ftcHomeNext = false;                                        // a key was just added: its home triad is the first question in it
   function ftcRaised(up) {                                        // the level just went up (true) or down (false)
     var info = FindChord.levelInfo(state.mode, ftcPop(), ftcLevelNo());
     ftcFresh = { asked: 0, fresh: 0 };
+    ftcOpen = null;
     ftcHomeNext = !!up && !!info.add;                              // the first question of a new step is about what the step just put in play
     if (up) { trialUnlocked = false; if (typeof syncTrialBox === 'function') syncTrialBox(); }       // (a level-up locks Time Trial again)
   }
@@ -4811,6 +4813,7 @@ var KeyboardRender = (function () {
     levelText.innerHTML = html;
     levelBanner.hidden = false;
     levelBanner.style.animation = 'none'; void levelBanner.offsetWidth; levelBanner.style.animation = '';
+    if (newStage) previewOpener();
     if (reduceMotion) return;
     var r = levelBanner.getBoundingClientRect();
     confetti(r.left + r.width / 2, Math.max(60, r.top + r.height / 2));
@@ -4837,6 +4840,25 @@ var KeyboardRender = (function () {
     levelBanner.hidden = false;
     bannerHold = true;
     try { window.localStorage.setItem(WELCOME_KEY, '1'); } catch (e) { /* storage unavailable */ }
+  }
+  // under a stage banner the clef shows the chord (or key's home chord) the stage opens with, with its inversions: the next question will be about it
+  function previewOpener() {
+    var keepBub = ftcBub, keepFull = bubFull;                       // (the full green row stays up while the banner shows)
+    ftcHomeNext = true;
+    ftcOpen = null;
+    ftcNewQuestion(false);                                          // picks the opener (and counts it: undone below)
+    ftcBub = keepBub; bubFull = keepFull;
+    var q = ftcQ, want = ftcChord();
+    ftcOpen = { pc: q.pc, deg: q.deg, type: q.type, spell: q.spell };
+    ftcHomeNext = true;
+    ftcFresh = { asked: 0, fresh: 0 };
+    ftcQ.inv = 0; state.card.inv = 0; state.card.chord = { notes: ftcNotes() };
+    state.answered = true;
+    state.card.status = '';
+    state.card.title = want.symbol + ' is ' + want.roman + ' in ' + Theory.keyTitle(ftcSpec(), state.mode);
+    state.card.modeLine = ftcPop() ? '' : 'Mode: ' + want.mode;
+    saveFtc();
+    draw(false, false);
   }
   levelBanner.addEventListener('click', function (e) {
     if (levelBanner.hasAttribute('data-welcome') && e.target.closest && e.target.closest('.levelup-go')) { bannerHold = false; levelBanner.hidden = true; levelBanner.removeAttribute('data-welcome'); return; }
@@ -4957,7 +4979,8 @@ var KeyboardRender = (function () {
     if (ftcHomeNext && !resumeQ && !ftcTrial) {
       ftcDraw = 'h';                     // the step's first question: the key it added (its home triad, I or i), or one of the chords it added
       var add = FindChord.stepAdds(state.mode, ftcPop(), ftcLevelNo());
-      if (add && add.dim === 'K' && add.keys.length) q = { pc: add.keys[add.keys.length - 1], deg: 0, type: 'triad' };
+      if (ftcOpen) q = { pc: ftcOpen.pc, deg: ftcOpen.deg, type: ftcOpen.type };
+      else if (add && add.dim === 'K' && add.keys.length) q = { pc: add.keys[add.keys.length - 1], deg: 0, type: 'triad' };
       else if (add && add.chords.length) {
         forceInv = add.dim === 'I';
         var inKeys = FindChord.keys(state.mode, ftcPop(), l.keys).filter(function (pc) { return !ftcQ || pc !== ftcQ.pc || l.keys < 2; });
@@ -4965,8 +4988,10 @@ var KeyboardRender = (function () {
         q = { pc: inKeys[Math.floor(Math.random() * inKeys.length)], deg: ch.deg, type: ch.type };
       }
     }
+    var ftcHomeNextWas = ftcHomeNext && !resumeQ && !ftcTrial;
     ftcHomeNext = false;
-    q.spell = Math.floor(Math.random() * Theory.specsFor(state.mode, q.pc).length);
+    q.spell = ftcOpen && ftcHomeNextWas ? ftcOpen.spell : Math.floor(Math.random() * Theory.specsFor(state.mode, q.pc).length);
+    if (ftcHomeNextWas) ftcOpen = null;
     var resumed = resumeQ && resumeQ.cardMode === 'chord' ? resumeQ : null;
     resumeQ = null;
     if (resumed) q = { pc: resumed.pc, deg: resumed.deg, type: resumed.type, spell: resumed.spell };
