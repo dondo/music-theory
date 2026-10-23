@@ -609,8 +609,7 @@ html.is-local .ftc-local { display: inline-flex; }
 .score-streak { color: #15803d; font-weight: 600; }
 .score-streak .none { color: var(--muted); }
 .score-streak .rest { color: var(--ink, #1c2330); font-weight: 400; }
-/* the banner now sits above the clef, in the stage card; this card holds only controls that are moved elsewhere */
-.ftc { display: none; }
+.ftc:not(:has(> .levelup:not([hidden]))) { display: none; }   /* (the card shows only while a step banner is up; a stage banner sits in the stage card, over the clef) */
 
 /* iPhone-sized screens (portrait, or a phone turned sideways): no difficulty controls in Find the chord;
    the level-up banner stays, on its own, under the keyboard */
@@ -4515,9 +4514,9 @@ var KeyboardRender = (function () {
   // between steps of a stage: what the next step puts in play (the chord numeral or key in bold)
   function stepNote(n) {
     var mode = state.mode, pop = ftcPop(), info = FindChord.levelInfo(mode, pop, n), add = FindChord.stepAdds(mode, pop, n);
-    var lead = 'You\u2019ve completed Step ' + (info.step - 1) + ', on to Step ' + info.step + ' of ' + FindChord.stageSteps(mode, pop, n) + '. ';
-    if (!add) return lead;
-    var verb = add.back ? 'Adding back ' : 'Introducing ', names, one;
+    var lead = 'You\u2019ve completed Step ' + (info.step - 1) + '. On to Step ' + info.step + ' of ' + FindChord.stageSteps(mode, pop, n) + ', ';
+    if (!add) return lead.replace(/, $/, '.');
+    var verb = add.back ? 'adding back ' : 'introducing ', names, one;
     if (add.dim === 'K') {
       names = ftcNames(add.keys, true); one = names.length === 1;
       return lead + verb + (one ? 'a ' + (add.back ? '' : 'new ') + 'key: ' : (add.back ? '' : 'new ') + 'keys: ') + '<strong>' + ftcJoin(names) + '</strong>!';
@@ -4552,6 +4551,8 @@ var KeyboardRender = (function () {
       title = 'Congratulations!';
       html = 'You have completed Stage ' + doneStage + '. You can now play ' + (p < 1 ? 'a few' : 'about ' + p + '% of all') + ' ' + (pop ? 'pop' : 'jazz') + ' songs!<br>' + stageNote(FindChord.levelInfo(state.mode, pop, n).stage);
     } else html = stepNote(n);
+    var home = newStage ? document.querySelector('.stage-card') : ftcSection;           // a finished stage's banner sits over the clef; a step's stays under the keyboard
+    if (levelBanner.parentNode !== home) home.insertBefore(levelBanner, newStage ? home.firstChild : null);
     document.getElementById('ftc-levelup-icon').textContent = '\u{1F389}';
     document.getElementById('ftc-levelup-title').textContent = title;
     levelText.innerHTML = html;
