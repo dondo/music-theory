@@ -675,7 +675,7 @@ html.is-local .ftc-local { display: inline-flex; }
 .tl-stage-head { display: flex; align-items: baseline; gap: 4px; width: 100%; padding: 7px 12px; border-radius: 8px; border: 0; background: transparent; cursor: pointer; text-align: left; }
 .tl-stage-head:hover, .tl-stage-head:focus-visible { background: #eff6ff; }
 .tl-stage-head .tl-best { margin-left: auto; }
-.tl-caret { display: inline-block; width: 0.7em; transition: transform 0.15s; color: var(--muted); }
+.tl-caret { display: inline-block; width: 0.9em; font-size: 1.25em; line-height: 1; transition: transform 0.15s; color: var(--muted); }
 .tl-stage-head[aria-expanded="true"] .tl-caret { transform: rotate(90deg); }
 .tl-steps { padding: 4px 0 2px 23px; margin: 2px 8px 4px 0; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 2px; }
 .tl-steps[hidden] { display: none; }
@@ -696,7 +696,7 @@ html.is-local .ftc-local { display: inline-flex; }
 .tr-time { font-size: 3rem; font-weight: 800; color: #1e3a8a; font-variant-numeric: tabular-nums; }
 .tr-detail, .tr-best { margin: 0; color: var(--muted); }
 .tr-actions { display: flex; gap: 12px; margin-top: 14px; flex-wrap: wrap; justify-content: center; }
-.tr-actions button { padding: 10px 24px; border-radius: 999px; font-size: 1rem; font-weight: 700; cursor: pointer; border: 2px solid #2563eb; background: #eff6ff; color: #1e3a8a; }
+.tr-actions > button, .tr-actions .tr-trials { padding: 10px 24px; border-radius: 999px; font-size: 1rem; font-weight: 700; cursor: pointer; border: 2px solid #2563eb; background: #eff6ff; color: #1e3a8a; }
 .tr-actions .tr-again { background: #2563eb; color: #fff; }
 .trial-stop[hidden] { display: none; }
 
@@ -708,6 +708,9 @@ html.is-local .ftc-local { display: inline-flex; }
   #chords.trialing .chip[data-key]::after { display: block; content: attr(data-key); position: absolute; top: auto; right: auto; left: 50%; transform: translateX(-50%); bottom: 3px; font-size: 0.62rem; font-weight: 600; line-height: 1; color: var(--muted); opacity: 0.75; }
 }
 .chord-row[hidden] { display: none; }
+.tr-menu { position: relative; display: inline-block; }
+.tr-menu .trial-list { z-index: 30; }
+.tr-menu .trial-list { top: auto; bottom: calc(100% + 6px); max-height: 13rem; }   /* (opens upward: the card below the results button is clipped) */
 </style>
 </head>
 <body>
@@ -4755,16 +4758,17 @@ var KeyboardRender = (function () {
     trialStop.hidden = !!(ftcTrial && ftcTrial.done);
     chordsPanel.classList.toggle('trialing', !!ftcTrial);              // (keyboard hints on the chips, where there is a keyboard)
     trialBtn.setAttribute('aria-expanded', trialListOpen ? 'true' : 'false');
-    trialList.hidden = !trialListOpen || !!ftcTrial;
+    if (!(ftcTrial && ftcTrial.done) && trialList.parentNode !== trialBox) trialBox.appendChild(trialList);      // (the results borrow the list for their own menu button)
+    trialList.hidden = !trialListOpen || !!(ftcTrial && !ftcTrial.done);
   }
   function closeTrialList() { if (trialListOpen) { trialListOpen = false; syncTrialBox(); } }
-  document.addEventListener('click', function (e) { if (trialListOpen && !trialBox.contains(e.target)) closeTrialList(); });
+  document.addEventListener('click', function (e) { if (trialListOpen && !trialBox.contains(e.target) && !(e.target.closest && e.target.closest('.tr-menu'))) closeTrialList(); });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && trialListOpen) { closeTrialList(); trialBtn.focus(); } });
   function stageLabel(n) { var i = FindChord.levelInfo(state.mode, ftcPop(), n); return 'Stage ' + i.stage + ': Step ' + i.step; }
   // two levels: the stages (newest first; only the current one open to start with), and under each the steps reached so far
   function buildTrialList() {
     trialList.textContent = '';
-    var cur = ftcLevelNo(), bests = trialBests(), curStage = FindChord.levelInfo(state.mode, ftcPop(), cur).stage, groups = {}, order = [];
+    var cur = FindChord.clamp(ftcLv[ftcLvKey()] || 1, 1, FindChord.levelCount(state.mode, ftcPop())), bests = trialBests(), curStage = FindChord.levelInfo(state.mode, ftcPop(), cur).stage, groups = {}, order = [];
     for (var n = cur; n >= 1; n--) {
       var st = FindChord.levelInfo(state.mode, ftcPop(), n).stage;
       if (!groups[st]) { groups[st] = []; order.push(st); }
@@ -4856,10 +4860,10 @@ var KeyboardRender = (function () {
     }
     pushBub(ok ? 'ok' : 'bad');
     t.n++;
-    feedback(ok ? 'yes' : 'nope');
     if (t.n >= TRIAL_LEN) { finishTrial(now); return; }
     t.qStart = now;
     ftcNewQuestionDraw();
+    feedback(ok ? 'yes' : 'nope');                                      // (shown in the clef area of the next card, while the clock runs on)
   }
   // the results take the place of the staff: time, wrong answers, and two ways on
   function finishTrial(now) {
@@ -4872,7 +4876,7 @@ var KeyboardRender = (function () {
     chordsPanel.classList.add('counting');
     t.view = function () {
       stage.innerHTML = '<div class="trial-result"><div class="tr-icon"></div><h3 class="tr-title"></h3><div class="tr-time"></div><p class="tr-detail"></p><p class="tr-best"></p>' +
-        '<div class="tr-actions"><button type="button" class="btn-reset tr-again">Try Again</button><button type="button" class="btn-reset tr-back">Back to Study</button></div></div>';
+        '<div class="tr-actions"><button type="button" class="btn-reset tr-again">Try Again</button><span class="tr-menu"><button type="button" class="btn-reset tr-trials" aria-haspopup="true">Time Trial \u25be</button></span><button type="button" class="btn-reset tr-back">Back to Study</button></div></div>';
       var q = function (c) { return stage.querySelector(c); };
       q('.tr-icon').textContent = isBest ? '\u{1F389}' : t.wrongs >= 3 ? '\u{1F61E}' : '\u{1F610}';      // party / sad (three or more wrong) / shrug
       q('.tr-title').textContent = isBest ? 'New best time for ' + stageLabel(t.level) + '!' : stageLabel(t.level) + ' time trial complete';
@@ -4881,6 +4885,11 @@ var KeyboardRender = (function () {
       q('.tr-best').textContent = isBest ? (best ? 'Previous best: ' + fmtTime(best.ms) + ' · ' + best.wrong + ' wrong' : 'First time at this step') :
         'Best: ' + fmtTime(best.ms) + (best.wrong == null ? '' : ' · ' + best.wrong + ' wrong');
       q('.tr-again').addEventListener('click', function () { startTrial(t.level); });
+      q('.tr-trials').addEventListener('click', function () {
+        trialListOpen = !trialListOpen;
+        if (trialListOpen) { buildTrialList(); q('.tr-menu').appendChild(trialList); }
+        syncTrialBox();
+      });
       q('.tr-back').addEventListener('click', function () { abortTrial(); ftcNewQuestionDraw(); });
     };
     syncTrialBox(); drawClock(); updateFtc(); updateScore(); updateChordPanel();
