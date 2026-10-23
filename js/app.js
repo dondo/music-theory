@@ -1484,7 +1484,7 @@
     ftcLv = {};
     trialUnlocked = trialEver = false; ftcAuto = true; ftcStreak = 0; ftcTried = 0; ftcRight = 0; ftcBub = null; bubFull = false; ftcFresh = { asked: 0, fresh: 0 };
     ftcAutoBox.checked = true;
-    try { window.localStorage.removeItem(FTC_KEY); window.localStorage.removeItem(TRIALS_KEY); } catch (e) { /* storage unavailable */ }   // (the time trial bests go too)
+    try { window.localStorage.removeItem(FTC_KEY); window.localStorage.removeItem(TRIALS_KEY); window.localStorage.removeItem(WELCOME_KEY); } catch (e) { /* storage unavailable */ }   // (the time trial bests go too)
   }
   // the levels in force: the chord dial is capped by what this level (Pop / Jazz) offers
   function ftcLevels() { return ftcTrial ? { keys: ftcTrial.keys, chords: ftcTrial.chords, inv: ftcTrial.inv } : FindChord.levelAt(state.mode, ftcPop(), ftcLevelNo()); }
@@ -1520,7 +1520,7 @@
   // between steps of a stage: what the next step puts in play (the chord numeral or key in bold)
   function stepNote(n) {
     var mode = state.mode, pop = ftcPop(), info = FindChord.levelInfo(mode, pop, n), add = FindChord.stepAdds(mode, pop, n);
-    var lead = 'You\u2019ve completed Step ' + (info.step - 1) + '. On to Step ' + info.step + ' of ' + FindChord.stageSteps(mode, pop, n) + ', ';
+    var lead = 'You\u2019ve completed Step ' + (info.step - 1) + ' (of ' + FindChord.stageSteps(mode, pop, n) + '). On to step ' + info.step + ', ';
     if (!add) return lead.replace(/, $/, '.');
     var verb = add.back ? 'adding back ' : 'introducing ', names, one;
     if (add.dim === 'K') {
@@ -1553,6 +1553,7 @@
     }
   }
   function celebrate(n, newStage, doneStage) {                     // n: the level just reached
+    levelBanner.removeAttribute('data-welcome');
     var pop = ftcPop(), html, title = 'Nice work!', goRow = false;
     if (newStage) {
       var p = FindChord.stageCoverage(state.mode, pop, doneStage);
@@ -1575,7 +1576,31 @@
     var r = levelBanner.getBoundingClientRect();
     confetti(r.left + r.width / 2, Math.max(60, r.top + r.height / 2));
   }
+  // the first time Find the chord is opened: how it works (the banner sits over the clef; "Go" or the first answer dismisses it)
+  var WELCOME_KEY = 'music-theory-ftc-welcomed';
+  var NUM_WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
+  function maybeWelcome() {
+    try { if (window.localStorage.getItem(WELCOME_KEY)) return; } catch (e) { return; }
+    if (ftcLevelNo() !== 1 || ftcTrial) return;
+    var mode = state.mode, pop = ftcPop(), total = FindChord.levelInfo(mode, pop, FindChord.levelCount(mode, pop)).stage, l = FindChord.levelAt(mode, pop, 1);
+    var ks = ftcNames(FindChord.keys(mode, pop, l.keys), true), cs = FindChord.chords(mode, pop, l.chords);
+    var w = function (n) { return NUM_WORDS[n] || String(n); };
+    var what = w(cs.length) + (cs.every(function (c) { return c.type === 'triad'; }) ? ' triads' : ' chords');
+    var home = document.querySelector('.stage-card');
+    if (levelBanner.parentNode !== home) home.insertBefore(levelBanner, home.firstChild);
+    document.getElementById('ftc-levelup-icon').textContent = '\u{1F914}';
+    document.getElementById('ftc-levelup-title').textContent = 'Welcome to \u201CFind the Chord!\u201D';
+    levelText.innerHTML = 'You\u2019ll be shown a chord with a key signature, and will identify it below. This is divided up into ' + total +
+      ' stages; in each stage, a new key or chord will be introduced and you\u2019ll work your way back up to identifying it along with what you\u2019ve already done.' +
+      '<span class="levelup-line2">The first stage starts with ' + what + ' in ' + w(ks.length) + ' keys, ' + ftcJoin(ks) + '. Good luck!</span>' +
+      '<span class="levelup-go-row"><button type="button" class="btn-reset levelup-go">Go \u2192</button></span>';
+    levelBanner.setAttribute('data-welcome', '1');
+    levelBanner.hidden = false;
+    bannerHold = true;
+    try { window.localStorage.setItem(WELCOME_KEY, '1'); } catch (e) { /* storage unavailable */ }
+  }
   levelBanner.addEventListener('click', function (e) {
+    if (levelBanner.hasAttribute('data-welcome') && e.target.closest && e.target.closest('.levelup-go')) { bannerHold = false; levelBanner.hidden = true; levelBanner.removeAttribute('data-welcome'); return; }
     if (e.target.closest && e.target.closest('.levelup-go') && quizOn() && state.answered) nextCard(false);
   });
   function confetti(ox, oy) {
@@ -1738,6 +1763,7 @@
     ftcQ = null;
     if (!resumeQ && !reopening) { ftcStreak = 0; ftcTried = 0; ftcRight = 0; ftcBub = null; bubFull = false; }                      // (a reload keeps the streak it had)
     ftcNewQuestion(false);
+    maybeWelcome();
   }
   function exitQuiz() {
     abortTrial();
@@ -1976,7 +2002,7 @@
   function ftcPick(kind, value) {
     if (!quizOn() || state.answered || !ftcQ) return;
     if (ftcTrial && (ftcTrial.counting || ftcTrial.done)) return;
-    if (bannerHold) { bannerHold = false; levelBanner.hidden = true; }
+    if (bannerHold) { bannerHold = false; levelBanner.hidden = true; levelBanner.removeAttribute('data-welcome'); }
     if (ftcWrong) ftcClearPicks();                    // after a wrong guess the next click starts a new attempt
     ftcSel[kind] = value;
     if (ftcTypesHidden()) ftcSel.type = 'triad';       // (only triads so far: the degree alone is the guess)

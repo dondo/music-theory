@@ -571,10 +571,10 @@ html.is-local body { border-top: 6px solid #ea580c; }
 .xveil { fill: var(--card); opacity: 0.4; pointer-events: none; }     /* a veil, not transparency: the boxes stay opaque while the keyboard slides over the old drawing */
 
 /* Find the chord: level-up banner and confetti */
-.levelup { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; padding: 12px 16px; border-radius: 12px;
+.levelup { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 12px; padding: 12px 16px; border-radius: 12px;
   background: linear-gradient(90deg, #fef9c3, #dcfce7); border: 1px solid #86efac; color: #14532d; animation: levelup-in 0.5s cubic-bezier(.2,1.4,.4,1); }
 .levelup[hidden] { display: none; }
-.levelup-icon { font-size: 1.8rem; }
+.levelup-icon { font-size: 1.8rem; line-height: 1; margin-top: -0.1rem; }
 .levelup strong { font-size: 1.05rem; }
 .levelup { line-height: 1.35; }
 .levelup-go-row { display: block; margin-top: 10px; text-align: right; }
