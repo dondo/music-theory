@@ -5813,6 +5813,10 @@ var KeyboardRender = (function () {
   // Flashcards: once a card is solved, the right arrow deals the next one (same as the Next button).
   document.addEventListener('keydown', function (e) {
     if (e.key !== 'ArrowRight' || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+    if (quizOn() && !levelBanner.hidden && levelBanner.hasAttribute('data-welcome')) {      // the welcome banner: the right arrow is "Go"
+      var wt = e.target;
+      if (!(wt && wt.closest && wt.closest('input, select, textarea'))) { e.preventDefault(); bannerHold = false; levelBanner.hidden = true; levelBanner.removeAttribute('data-welcome'); return; }
+    }
     if (quizOn() && state.answered && !levelBanner.hidden) {              // Find the chord: the right arrow goes on from a banner
       e.preventDefault();
       ftcNextQuestion(true);
