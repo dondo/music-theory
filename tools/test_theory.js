@@ -680,6 +680,8 @@ check('memory model: recall decays by half-life, misses shrink it, speed grades 
   var fast = FC.newMem(), slow = FC.newMem();
   FC.memAnswer(fast, 'major', q, true, 1200, 0, t0); FC.memAnswer(slow, 'major', q, true, 9000, 0, t0);
   assert.ok(fast.p['major|0|0|triad'].h > slow.p['major|0|0|triad'].h);
+  var L = FC.newMem(); FC.memAnswer(L, 'major', q, true, 1500, 0, t0); for (var i = 0; i < 4; i++) FC.memAnswer(L, 'major', { pc: 7, deg: 1, type: 'triad' }, true, 1500, 0, t0 + i);
+  assert.ok(FC.memWeight(L, 'major', q, t0 + 10) > 0.4, 'a pair seen once, a few answers ago, is due again');
   assert.ok(FC.grade(1000, 3000) === 1 && FC.grade(60000, 3000) === 0.5);
 });
 

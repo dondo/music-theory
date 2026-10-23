@@ -91,6 +91,7 @@
   // is built into the odds. A first-try answer is graded by correctness and speed (q, 0..1) and moves h; a miss shrinks it.
   var MEM_KEY = 'music-theory-ftc-mem-v1';
   var H0 = 3 * 60000, H_MIN = 2 * 60000, H_MAX = 60 * 86400000, EPS = 0.05, GAMMA = 1.5;
+  var LEARN_N = 3, LEARN_U = 0.5, LEARN_GAP = 2;      // a pair answered fewer than 3 times is still being learned: at least 50% "forgotten" unless asked in the last 2 answers
   var RELEARN = 6, RELEARN_U = 0.8;                  // after a miss a pair counts as at least 80% forgotten for the next 6 answers
   var TREF_DEFAULT = 3000, TREF_MIN = 1200, TREF_N = 100, TREF_NEED = 8, TIME_MAX = 20000, Q_NO_TIME = 0.7, OLD_R = 0.6, OLD_MIN = 1;
   function newMem() { return { p: {}, seq: 0, tm: {} }; }       // p: pair -> { h, t, n, l, rs }; tm: speed class -> the last correct first-try times
@@ -100,6 +101,7 @@
   function memWeight(mem, mode, q, now) {
     var m = mem.p[pairKey(mode, q)], u = 1 - recallOf(m, now);
     if (m && mem.seq - m.rs <= RELEARN) u = Math.max(u, RELEARN_U);
+    else if (m && m.n < LEARN_N && mem.seq - m.ls > LEARN_GAP) u = Math.max(u, LEARN_U);
     return EPS + Math.pow(u, GAMMA);
   }
   function timeClass(type, inv) { return (type === 'triad' ? 'triad' : type === '7' ? '7th' : 'ext') + (inv > 0 ? '/inv' : ''); }
@@ -115,7 +117,7 @@
     var key = pairKey(mode, q), m = mem.p[key], cls = timeClass(q.type, inv);
     var out = { R: m ? recallOf(m, now) : null, hBefore: m ? m.h : null, dt: m ? now - m.t : null, q: 0, cls: cls };
     var timed = correct && tMs != null && tMs >= 0 && tMs <= TIME_MAX;
-    if (!m) m = { h: H0, t: now, n: 0, l: 0, rs: -99 };
+    if (!m) m = { h: H0, t: now, n: 0, l: 0, rs: -99, ls: -99 };
     if (!correct) { m.h = Math.max(H_MIN, 0.35 * m.h); m.l++; m.rs = mem.seq; out.q = 0; }
     else {
       out.q = timed ? grade(tMs, tRef(mem, cls)) : Q_NO_TIME;
@@ -123,7 +125,7 @@
       m.h = Math.min(H_MAX, Math.max(m.h * (1 + 1.5 * out.q * (1.5 - R)), 0.8 * out.q * dt));
     }
     if (timed) { var a = mem.tm[cls] || (mem.tm[cls] = []); a.push(tMs); if (a.length > TREF_N) a.shift(); }
-    m.n++; m.t = now; mem.p[key] = m; mem.seq++;
+    m.n++; m.t = now; m.ls = mem.seq; mem.p[key] = m; mem.seq++;
     out.hAfter = m.h;
     return out;
   }
@@ -136,7 +138,7 @@
         if (Number.isInteger(o.seq) && o.seq >= 0) mem.seq = o.seq;
         Object.keys(o.p || {}).forEach(function (k) {
           var m = o.p[k];
-          if (m && isFinite(m.h) && isFinite(m.t) && m.h >= H_MIN && m.h <= H_MAX) mem.p[k] = { h: m.h, t: m.t, n: m.n | 0, l: m.l | 0, rs: Number.isInteger(m.rs) ? m.rs : -99 };
+          if (m && isFinite(m.h) && isFinite(m.t) && m.h >= H_MIN && m.h <= H_MAX) mem.p[k] = { h: m.h, t: m.t, n: m.n | 0, l: m.l | 0, rs: Number.isInteger(m.rs) ? m.rs : -99, ls: Number.isInteger(m.ls) ? m.ls : -99 };
         });
         Object.keys(o.tm || {}).forEach(function (c) { if (Array.isArray(o.tm[c])) mem.tm[c] = o.tm[c].filter(function (x) { return isFinite(x) && x > 0 && x <= TIME_MAX; }).slice(-TREF_N); });
       }
@@ -291,14 +293,11 @@
     return L.filter(function (l) { return l.stage === s; }).length;
   }
   // a predicate for the stage's new challenge that is in play at level n (new keys or new chords), or null when none is yet
-  function freshTest(mode, pop, n) {
-    var l = levelInfo(mode, pop, n);
-    if (l.kind === 'K') {
-      var fresh = keys(mode, pop, l.keys).slice(l.lo, l.hi);
-      return fresh.length ? function (q) { return fresh.indexOf(q.pc) >= 0; } : null;
-    }
-    var fc = chords(mode, pop, l.chords).slice(l.lo, l.hi);
-    return fc.length ? function (q) { return fc.some(function (x) { return x.deg === q.deg && x.type === q.type; }); } : null;
+  function freshTest(mode, pop, n) {                    // what step n puts in play (one key, or one chord): the "new challenge" of that step
+    var a = stepAdds(mode, pop, n);
+    if (!a) return null;
+    if (a.dim === 'K') return a.keys.length ? function (q) { return a.keys.indexOf(q.pc) >= 0; } : null;
+    return a.chords.length ? function (q) { return a.chords.some(function (x) { return x.deg === q.deg && x.type === q.type; }); } : null;
   }
   // may the chord (deg, type) come inverted at level `lv` ({ chords, inv })?
   function mayInvert(mode, pop, lv, deg, type) {

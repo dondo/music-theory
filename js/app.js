@@ -1730,7 +1730,8 @@
     var l = ftcLevels();
     var isFresh = ftcTrial ? null : FindChord.freshTest(state.mode, ftcPop(), ftcLevelNo());
     var nowMs = Date.now();
-    var isOld = isFresh ? function (c) { return !isFresh(c) && ftcMem.p[state.mode + '|' + c.pc + '|' + c.deg + '|' + c.type] && FindChord.pairRecall(ftcMem, state.mode, c, nowMs) < FindChord.OLD_R; } : null;
+    var prevFresh = isFresh && ftcLevelNo() > 1 ? FindChord.freshTest(state.mode, ftcPop(), ftcLevelNo() - 1) : null;
+    var isOld = isFresh ? function (c) { return !isFresh(c) && (!prevFresh || prevFresh(c)); } : null;     // older material: what the step before introduced (else anything already in play)
     var plan = isFresh ? FindChord.floorPlan(ftcFresh, true, FindChord.anyPair(state.mode, ftcPop(), l.keys, l.chords, function (c) { return isOld(c) && !(ftcQ && c.pc === ftcQ.pc && c.deg === ftcQ.deg && c.type === ftcQ.type); })) : null;
     ftcDraw = plan === 'fresh' ? 'f' : plan === 'old' ? 'o' : 'w';
     var q = FindChord.pick(state.mode, ftcPop(), l.keys, l.chords, Math.random, ftcQ, function (c) { return FindChord.memWeight(ftcMem, state.mode, c, nowMs); },
