@@ -771,11 +771,11 @@ html.is-local .ftc-local { display: inline-flex; }
       <p id="ftc-msg" class="sr-only" role="status" aria-live="polite"></p>
       <div id="ftc-levelup" class="levelup" role="status" hidden>
         <span class="levelup-icon" id="ftc-levelup-icon" aria-hidden="true">&#127881;</span>
-        <div><strong id="ftc-levelup-title">Level up!</strong> <span id="ftc-levelup-text"></span></div>
+        <div><strong id="ftc-levelup-title">Nice work!</strong> <span id="ftc-levelup-text"></span></div>
       </div>
-      <span id="ftc-level" class="ftc-level">Level 1</span>
+      <span id="ftc-level" class="ftc-level">Stage 1: Step 1</span>
       <div class="ftc-side-row" id="ftc-autorow">
-        <label class="ftc-auto"><input type="checkbox" id="ftc-auto" checked> Level up automatically <small id="ftc-streak"></small></label>
+        <label class="ftc-auto"><input type="checkbox" id="ftc-auto" checked> Advance automatically <small id="ftc-streak"></small></label>
         <span class="ftc-local" aria-label="Test controls (local only)">
           <button type="button" id="ftc-harder" class="btn-reset ftc-btn" aria-label="Harder (local test)" title="Harder (local test)">&#9650;</button>
           <button type="button" id="ftc-easier" class="btn-reset ftc-btn" aria-label="Easier (local test)" title="Easier (local test)">&#9660;</button>
@@ -1571,7 +1571,7 @@ var Weights = (function () {
   //  keys   - key pitch classes in the order they are introduced (C and G first); in minor, the relative minors
   //  chords - [deg, type] in the order they are introduced (I IV V first); a stage takes the next n of them
   //  stages - [kind, n] after the starting stage (2 keys, 3 chords): 'K' = n new keys, 'C' = n new chords
-  var DATA = {"major|pop":{"keys":[0,7,2,9,5,4,10,3,8,1,11,6],"chords":[[0,"triad"],[3,"triad"],[4,"triad"],[5,"triad"],[1,"triad"],[4,"7"],[2,"triad"],[6,"triad"],[0,"7"],[3,"7"],[5,"7"],[1,"7"],[2,"7"],[6,"7"],[0,"sus4"],[3,"sus4"],[4,"sus4"],[5,"sus4"],[1,"sus4"],[2,"sus4"],[6,"sus4"],[0,"add9"],[3,"add9"],[4,"add9"],[5,"add9"],[1,"add9"],[2,"add9"],[6,"add9"],[0,"sus2"],[3,"sus2"],[4,"sus2"],[5,"sus2"],[1,"sus2"],[2,"sus2"],[6,"sus2"],[0,"9"],[3,"9"],[4,"9"],[5,"9"],[1,"9"],[2,"9"],[6,"9"]],"stages":[["C",2],["C",2],["K",2],["K",1],["K",1],["K",1],["K",1],["K",1],["K",1],["K",1],["K",1],["C",1],["C",6],["C",7],["C",7],["C",7],["C",7]],"seed":[2,3]},"minor|pop":{"keys":[9,4,11,6,2,1,7,0,5,10,8,3],"chords":[[0,"triad"],[3,"triad"],[4,"triad"],[5,"triad"],[6,"triad"],[2,"triad"],[1,"triad"],[0,"7"],[3,"7"],[4,"7"],[5,"7"],[6,"7"],[2,"7"],[1,"7"],[0,"sus4"],[3,"sus4"],[4,"sus4"],[5,"sus4"],[6,"sus4"],[2,"sus4"],[1,"sus4"],[0,"add9"],[3,"add9"],[4,"add9"],[5,"add9"],[6,"add9"],[2,"add9"],[1,"add9"],[0,"sus2"],[3,"sus2"],[4,"sus2"],[5,"sus2"],[6,"sus2"],[2,"sus2"],[1,"sus2"],[0,"9"],[3,"9"],[4,"9"],[5,"9"],[6,"9"],[2,"9"],[1,"9"]],"stages":[["C",2],["K",2],["C",2],["K",1],["K",1],["K",1],["K",1],["K",1],["K",1],["K",1],["K",1],["C",7],["C",7],["C",7],["C",7],["C",7]],"seed":[2,3]},"major|jazz":{"keys":[0,7,10,5,3,8,2,1,9,4,11,6],"chords":[[0,"triad"],[3,"triad"],[4,"triad"],[4,"7"],[1,"7"],[0,"7"],[5,"7"],[3,"7"],[2,"7"],[6,"7"],[0,"9"],[3,"9"],[4,"9"],[5,"9"],[1,"9"],[2,"9"],[6,"9"],[1,"triad"],[5,"triad"],[2,"triad"],[6,"triad"],[0,"sus4"],[3,"sus4"],[4,"sus4"],[5,"sus4"],[1,"sus4"],[2,"sus4"],[6,"sus4"],[0,"add9"],[3,"add9"],[4,"add9"],[5,"add9"],[1,"add9"],[2,"add9"],[6,"add9"],[0,"sus2"],[3,"sus2"],[4,"sus2"],[5,"sus2"],[1,"sus2"],[2,"sus2"],[6,"sus2"],[0,"11"],[3,"11"],[4,"11"],[5,"11"],[1,"11"],[2,"11"],[6,"11"],[0,"13"],[3,"13"],[4,"13"],[5,"13"],[1,"13"],[2,"13"],[6,"13"]],"stages":[["C",2],["C",2],["K",2],["C",1],["C",1],["C",1],["C",7],["C",4],["C",7],["C",7],["K",1],["K",1],["C",7],["K",1],["K",1],["K",1],["C",7],["C",7],["K",1],["K",1],["K",1]],"seed":[2,3]},"minor|jazz":{"keys":[9,4,7,2,0,5,11,10,6,1,8,3],"chords":[[0,"triad"],[3,"triad"],[4,"triad"],[1,"7"],[4,"7"],[0,"7"],[5,"7"],[3,"7"],[2,"7"],[6,"7"],[0,"9"],[3,"9"],[4,"9"],[5,"9"],[6,"9"],[2,"9"],[1,"9"],[5,"triad"],[6,"triad"],[2,"triad"],[1,"triad"],[0,"sus4"],[3,"sus4"],[4,"sus4"],[5,"sus4"],[6,"sus4"],[2,"sus4"],[1,"sus4"],[0,"add9"],[3,"add9"],[4,"add9"],[5,"add9"],[6,"add9"],[2,"add9"],[1,"add9"],[0,"sus2"],[3,"sus2"],[4,"sus2"],[5,"sus2"],[6,"sus2"],[2,"sus2"],[1,"sus2"],[0,"11"],[3,"11"],[4,"11"],[5,"11"],[6,"11"],[2,"11"],[1,"11"],[0,"13"],[3,"13"],[4,"13"],[5,"13"],[6,"13"],[2,"13"],[1,"13"]],"stages":[["C",2],["C",2],["K",2],["C",1],["C",1],["C",1],["C",7],["C",4],["C",7],["C",7],["K",1],["K",1],["C",7],["K",1],["K",1],["K",1],["C",7],["C",7],["K",1],["K",1],["K",1]],"seed":[2,3]}};
+  var DATA = {"major|pop":{"keys":[0,7,2,9,5,4,10,3,8,1,11,6],"chords":[[0,"triad"],[3,"triad"],[4,"triad"],[5,"triad"],[1,"triad"],[4,"7"],[2,"triad"],[6,"triad"],[0,"7"],[3,"7"],[5,"7"],[1,"7"],[2,"7"],[6,"7"],[0,"sus4"],[3,"sus4"],[4,"sus4"],[5,"sus4"],[1,"sus4"],[2,"sus4"],[6,"sus4"],[0,"add9"],[3,"add9"],[4,"add9"],[5,"add9"],[1,"add9"],[2,"add9"],[6,"add9"],[0,"sus2"],[3,"sus2"],[4,"sus2"],[5,"sus2"],[1,"sus2"],[2,"sus2"],[6,"sus2"],[0,"9"],[3,"9"],[4,"9"],[5,"9"],[1,"9"],[2,"9"],[6,"9"]],"stages":[["C",2],["C",2],["K",2],["K",1],["K",1],["K",1],["K",1],["K",1],["K",1],["K",1],["K",1],["C",1],["C",6],["C",7],["C",7],["C",7],["C",7]],"seed":[2,3],"cov":[2,7,11,20,24,27,30,33,36,38,40,42,43,46,49,51,53,54]},"minor|pop":{"keys":[9,4,11,6,2,1,7,0,5,10,8,3],"chords":[[0,"triad"],[3,"triad"],[4,"triad"],[5,"triad"],[6,"triad"],[2,"triad"],[1,"triad"],[0,"7"],[3,"7"],[4,"7"],[5,"7"],[6,"7"],[2,"7"],[1,"7"],[0,"sus4"],[3,"sus4"],[4,"sus4"],[5,"sus4"],[6,"sus4"],[2,"sus4"],[1,"sus4"],[0,"add9"],[3,"add9"],[4,"add9"],[5,"add9"],[6,"add9"],[2,"add9"],[1,"add9"],[0,"sus2"],[3,"sus2"],[4,"sus2"],[5,"sus2"],[6,"sus2"],[2,"sus2"],[1,"sus2"],[0,"9"],[3,"9"],[4,"9"],[5,"9"],[6,"9"],[2,"9"],[1,"9"]],"stages":[["C",2],["K",2],["C",2],["K",1],["K",1],["K",1],["K",1],["K",1],["K",1],["K",1],["K",1],["C",7],["C",7],["C",7],["C",7],["C",7]],"seed":[2,3],"cov":[2,8,15,22,27,31,34,37,40,43,45,47,50,53,56,58,59]},"major|jazz":{"keys":[0,7,10,5,3,8,2,1,9,4,11,6],"chords":[[0,"triad"],[3,"triad"],[4,"triad"],[4,"7"],[1,"7"],[0,"7"],[5,"7"],[3,"7"],[2,"7"],[6,"7"],[0,"9"],[3,"9"],[4,"9"],[5,"9"],[1,"9"],[2,"9"],[6,"9"],[1,"triad"],[5,"triad"],[2,"triad"],[6,"triad"],[0,"sus4"],[3,"sus4"],[4,"sus4"],[5,"sus4"],[1,"sus4"],[2,"sus4"],[6,"sus4"],[0,"add9"],[3,"add9"],[4,"add9"],[5,"add9"],[1,"add9"],[2,"add9"],[6,"add9"],[0,"sus2"],[3,"sus2"],[4,"sus2"],[5,"sus2"],[1,"sus2"],[2,"sus2"],[6,"sus2"],[0,"11"],[3,"11"],[4,"11"],[5,"11"],[1,"11"],[2,"11"],[6,"11"],[0,"13"],[3,"13"],[4,"13"],[5,"13"],[1,"13"],[2,"13"],[6,"13"]],"stages":[["C",2],["C",2],["K",2],["C",1],["C",1],["C",1],["C",7],["C",4],["C",7],["C",7],["K",1],["K",1],["C",7],["K",1],["K",1],["K",1],["C",7],["C",7],["K",1],["K",1],["K",1]],"seed":[2,3],"cov":[0,0,1,1,2,3,4,5,6,6,7,8,9,10,10,11,11,11,12,12,12,12]},"minor|jazz":{"keys":[9,4,7,2,0,5,11,10,6,1,8,3],"chords":[[0,"triad"],[3,"triad"],[4,"triad"],[1,"7"],[4,"7"],[0,"7"],[5,"7"],[3,"7"],[2,"7"],[6,"7"],[0,"9"],[3,"9"],[4,"9"],[5,"9"],[6,"9"],[2,"9"],[1,"9"],[5,"triad"],[6,"triad"],[2,"triad"],[1,"triad"],[0,"sus4"],[3,"sus4"],[4,"sus4"],[5,"sus4"],[6,"sus4"],[2,"sus4"],[1,"sus4"],[0,"add9"],[3,"add9"],[4,"add9"],[5,"add9"],[6,"add9"],[2,"add9"],[1,"add9"],[0,"sus2"],[3,"sus2"],[4,"sus2"],[5,"sus2"],[6,"sus2"],[2,"sus2"],[1,"sus2"],[0,"11"],[3,"11"],[4,"11"],[5,"11"],[6,"11"],[2,"11"],[1,"11"],[0,"13"],[3,"13"],[4,"13"],[5,"13"],[6,"13"],[2,"13"],[1,"13"]],"stages":[["C",2],["C",2],["K",2],["C",1],["C",1],["C",1],["C",7],["C",4],["C",7],["C",7],["K",1],["K",1],["C",7],["K",1],["K",1],["K",1],["C",7],["C",7],["K",1],["K",1],["K",1]],"seed":[2,3],"cov":[0,0,1,1,2,3,4,5,6,6,7,8,9,10,10,11,11,11,12,12,12,12]}};
 
   function clamp(n, lo, hi) { n = Math.round(Number(n)); if (!isFinite(n)) n = lo; return Math.max(lo, Math.min(hi, n)); }
   function def(mode, pop) { return DATA[(mode === 'minor' ? 'minor' : 'major') + '|' + (pop ? 'pop' : 'jazz')]; }
@@ -1684,6 +1684,8 @@ var Weights = (function () {
   function levelInfo(mode, pop, n) { var L = ladder(mode, pop); return L[clamp(n, 1, L.length) - 1]; }
   function levelAt(mode, pop, n) { var l = levelInfo(mode, pop, n); return { keys: l.keys, chords: l.chords }; }
   // how many steps the stage of level n has
+  // percent of all songs (rough model) playable once the stage is complete
+  function stageCoverage(mode, pop, stage) { var c = def(mode, pop).cov; return c[clamp(stage, 1, c.length) - 1]; }
   function stageSteps(mode, pop, n) {
     var L = ladder(mode, pop), s = levelInfo(mode, pop, n).stage;
     return L.filter(function (l) { return l.stage === s; }).length;
@@ -1731,7 +1733,7 @@ var Weights = (function () {
   }
 
   return { STREAK: STREAK, DATA: DATA, maxKeys: maxKeys, clamp: clamp, keys: keys, chords: chords, pick: pick,
-           ladder: ladder, levelCount: levelCount, levelInfo: levelInfo, levelAt: levelAt, stageSteps: stageSteps, freshTest: freshTest,
+           ladder: ladder, levelCount: levelCount, levelInfo: levelInfo, levelAt: levelAt, stageSteps: stageSteps, stageCoverage: stageCoverage, freshTest: freshTest,
            identify: identify, weightKey: weightKey, weightOf: weightOf, miss: miss, hit: hit, loadWeights: loadWeights, saveWeights: saveWeights, resetWeights: resetWeights,
            pickInversion: pickInversion, freshPlan: freshPlan, freshRecord: freshRecord,
            FRESH_WINDOW: FRESH_WINDOW, FRESH_MIN: FRESH_MIN };
@@ -4463,7 +4465,7 @@ var KeyboardRender = (function () {
   var levelBanner = document.getElementById('ftc-levelup');
   var levelText = document.getElementById('ftc-levelup-text');
   function levelUpText(n) {
-    var mode = state.mode, pop = ftcPop(), info = FindChord.levelInfo(mode, pop, n), where = 'Stage ' + info.stage + ', step ' + info.step + ' of ' + FindChord.stageSteps(mode, pop, n) + '. ';
+    var mode = state.mode, pop = ftcPop(), info = FindChord.levelInfo(mode, pop, n), where = 'Stage ' + info.stage + ': Step ' + info.step + ' of ' + FindChord.stageSteps(mode, pop, n) + '. ';
     if (info.kind === 'K') {
       var nk = FindChord.keys(mode, pop, info.keys).slice(info.keys - info.added).map(function (pc) { return Theory.keyTitle(Theory.specsFor(mode, pc)[0], mode); });
       if (info.step > 1) return where + 'The chords build back up with the new key' + (info.added > 1 ? 's' : '') + ': now ' + info.chords + ' chords.';
@@ -4492,10 +4494,16 @@ var KeyboardRender = (function () {
       confetti(r.left + r.width / 2, Math.max(60, r.top + r.height / 2));
     }
   }
-  function celebrate(note) {
+  function celebrate(note, newStage, doneStage) {
+    var pop = ftcPop(), text = note, title = 'Nice work!';
+    if (newStage) {
+      var p = FindChord.stageCoverage(state.mode, pop, doneStage);
+      title = 'Congratulations!';
+      text = 'You have completed Stage ' + doneStage + '. You can now play ' + (p < 1 ? 'a few' : 'about ' + p + '% of all') + ' ' + (pop ? 'pop' : 'jazz') + ' songs! ' + note;
+    }
     document.getElementById('ftc-levelup-icon').textContent = '\u{1F389}';
-    document.getElementById('ftc-levelup-title').textContent = 'Level up!';
-    levelText.textContent = 'You are on level ' + ftcLevelNo() + '. ' + note;
+    document.getElementById('ftc-levelup-title').textContent = title;
+    levelText.textContent = text;
     levelBanner.hidden = false;
     levelBanner.style.animation = 'none'; void levelBanner.offsetWidth; levelBanner.style.animation = '';
     if (reduceMotion) return;
@@ -4670,13 +4678,14 @@ var KeyboardRender = (function () {
   function closeTrialList() { if (trialListOpen) { trialListOpen = false; syncTrialBox(); } }
   document.addEventListener('click', function (e) { if (trialListOpen && !trialBox.contains(e.target)) closeTrialList(); });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && trialListOpen) { closeTrialList(); trialBtn.focus(); } });
+  function stageLabel(n) { var i = FindChord.levelInfo(state.mode, ftcPop(), n); return 'Stage ' + i.stage + ': Step ' + i.step; }
   function buildTrialList() {
     trialList.textContent = '';
     var cur = ftcLevelNo(), bests = trialBests();
     for (var n = cur; n >= 1; n--) {
       var b = el('button', 'btn-reset trial-lvl'), best = bests[trialKey(n)];
       b.type = 'button'; b.setAttribute('data-level', n);
-      b.appendChild(el('span', 'tl-n', 'Level ' + n));
+      b.appendChild(el('span', 'tl-n', stageLabel(n)));
       b.setAttribute('role', 'menuitem');
       b.appendChild(el('span', 'tl-best', best ? fmtTime(best.ms) + (best.wrong == null ? '' : ' \u00b7 ' + best.wrong + ' wrong') : 'no time yet'));
       trialList.appendChild(b);
@@ -4762,10 +4771,10 @@ var KeyboardRender = (function () {
         '<div class="tr-actions"><button type="button" class="btn-reset tr-again">Try Again</button><button type="button" class="btn-reset tr-back">Back to Study</button></div></div>';
       var q = function (c) { return stage.querySelector(c); };
       q('.tr-icon').textContent = isBest ? '\u{1F389}' : t.wrongs >= 3 ? '\u{1F61E}' : '\u{1F610}';      // party / sad (three or more wrong) / shrug
-      q('.tr-title').textContent = isBest ? 'New best time for level ' + t.level + '!' : 'Level ' + t.level + ' time trial complete';
+      q('.tr-title').textContent = isBest ? 'New best time for ' + stageLabel(t.level) + '!' : stageLabel(t.level) + ' time trial complete';
       q('.tr-time').textContent = fmtTime(total);
       q('.tr-detail').textContent = t.wrongs + ' wrong' + (t.wrongs ? ' (+' + (t.wrongs * TRIAL_PENALTY / 1000) + 's)' : '');
-      q('.tr-best').textContent = isBest ? (best ? 'Previous best: ' + fmtTime(best.ms) + ' · ' + best.wrong + ' wrong' : 'First time at this level') :
+      q('.tr-best').textContent = isBest ? (best ? 'Previous best: ' + fmtTime(best.ms) + ' · ' + best.wrong + ' wrong' : 'First time at this step') :
         'Best: ' + fmtTime(best.ms) + (best.wrong == null ? '' : ' · ' + best.wrong + ' wrong');
       q('.tr-again').addEventListener('click', function () { startTrial(t.level); });
       q('.tr-back').addEventListener('click', function () { abortTrial(); ftcNewQuestionDraw(); });
@@ -4827,17 +4836,19 @@ var KeyboardRender = (function () {
       state.card.title = ftcName(want) + ' is ' + want.roman + ' in ' + where;
       state.card.modeLine = ftcPop() ? '' : 'Mode: ' + want.mode;
       state.card.status = '';
-      var text = 'Correct: ' + state.card.title + '.', levelUpNote = '';
+      var text = 'Correct: ' + state.card.title + '.', levelUpNote = '', newStage = false, doneStage = 0;
       if (ftcMissed) ftcStreak = 0;
       else {
         ftcStreak++; ftcTried++; ftcRight++; pushBub('ok');
         if (ftcAuto && ftcStreak >= streakNeed()) {
           var n0 = ftcLevelNo(), up = n0 < FindChord.levelCount(state.mode, ftcPop());
           if (up) {
+            doneStage = FindChord.levelInfo(state.mode, ftcPop(), n0).stage;
             ftcSetLevel(n0 + 1);
             ftcRaised(true);
+            newStage = FindChord.levelInfo(state.mode, ftcPop(), n0 + 1).stage !== doneStage;
             levelUpNote = levelUpText(n0 + 1);
-            text += ' Level up! ' + levelUpNote;
+            text += newStage ? ' Stage ' + doneStage + ' complete!' : ' Next step!';
           }
           ftcStreak = 0; ftcTried = 0; ftcRight = 0;
           if (up) bubFull = true; else { ftcBub = null; bubFull = false; }          // (the full green row stays up while the banner shows; the next question empties it)
@@ -4848,7 +4859,7 @@ var KeyboardRender = (function () {
       updateScore();
       draw(false, false);
       feedback('yes');
-      if (levelUpNote) celebrate(levelUpNote);
+      if (levelUpNote) celebrate(levelUpNote, newStage, doneStage);
       return;
     }
     score.bad++;
@@ -4885,8 +4896,8 @@ var KeyboardRender = (function () {
     chordsPanel.classList.toggle('quizzing', on);
     if (!on || !ftcQ) return;
     var li = FindChord.levelInfo(state.mode, ftcPop(), ftcLevelNo());
-    document.getElementById('ftc-level').textContent = (ftcTrial ? 'Trial \u00b7 level ' : 'Level ') + ftcLevelNo();
-    document.getElementById('ftc-level').title = 'Stage ' + li.stage + ', step ' + li.step + ' of ' + FindChord.stageSteps(state.mode, ftcPop(), ftcLevelNo());
+    document.getElementById('ftc-level').textContent = (ftcTrial ? 'Trial \u00b7 ' : '') + 'Stage ' + li.stage + ': Step ' + li.step;
+    document.getElementById('ftc-level').title = 'Step ' + li.step + ' of ' + FindChord.stageSteps(state.mode, ftcPop(), ftcLevelNo());
     document.getElementById('ftc-streak').textContent = '';
     showStreak();
   }

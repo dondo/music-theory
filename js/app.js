@@ -1445,7 +1445,7 @@
   var levelBanner = document.getElementById('ftc-levelup');
   var levelText = document.getElementById('ftc-levelup-text');
   function levelUpText(n) {
-    var mode = state.mode, pop = ftcPop(), info = FindChord.levelInfo(mode, pop, n), where = 'Stage ' + info.stage + ', step ' + info.step + ' of ' + FindChord.stageSteps(mode, pop, n) + '. ';
+    var mode = state.mode, pop = ftcPop(), info = FindChord.levelInfo(mode, pop, n), where = 'Stage ' + info.stage + ': Step ' + info.step + ' of ' + FindChord.stageSteps(mode, pop, n) + '. ';
     if (info.kind === 'K') {
       var nk = FindChord.keys(mode, pop, info.keys).slice(info.keys - info.added).map(function (pc) { return Theory.keyTitle(Theory.specsFor(mode, pc)[0], mode); });
       if (info.step > 1) return where + 'The chords build back up with the new key' + (info.added > 1 ? 's' : '') + ': now ' + info.chords + ' chords.';
@@ -1474,10 +1474,16 @@
       confetti(r.left + r.width / 2, Math.max(60, r.top + r.height / 2));
     }
   }
-  function celebrate(note) {
+  function celebrate(note, newStage, doneStage) {
+    var pop = ftcPop(), text = note, title = 'Nice work!';
+    if (newStage) {
+      var p = FindChord.stageCoverage(state.mode, pop, doneStage);
+      title = 'Congratulations!';
+      text = 'You have completed Stage ' + doneStage + '. You can now play ' + (p < 1 ? 'a few' : 'about ' + p + '% of all') + ' ' + (pop ? 'pop' : 'jazz') + ' songs! ' + note;
+    }
     document.getElementById('ftc-levelup-icon').textContent = '\u{1F389}';
-    document.getElementById('ftc-levelup-title').textContent = 'Level up!';
-    levelText.textContent = 'You are on level ' + ftcLevelNo() + '. ' + note;
+    document.getElementById('ftc-levelup-title').textContent = title;
+    levelText.textContent = text;
     levelBanner.hidden = false;
     levelBanner.style.animation = 'none'; void levelBanner.offsetWidth; levelBanner.style.animation = '';
     if (reduceMotion) return;
@@ -1652,13 +1658,14 @@
   function closeTrialList() { if (trialListOpen) { trialListOpen = false; syncTrialBox(); } }
   document.addEventListener('click', function (e) { if (trialListOpen && !trialBox.contains(e.target)) closeTrialList(); });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && trialListOpen) { closeTrialList(); trialBtn.focus(); } });
+  function stageLabel(n) { var i = FindChord.levelInfo(state.mode, ftcPop(), n); return 'Stage ' + i.stage + ': Step ' + i.step; }
   function buildTrialList() {
     trialList.textContent = '';
     var cur = ftcLevelNo(), bests = trialBests();
     for (var n = cur; n >= 1; n--) {
       var b = el('button', 'btn-reset trial-lvl'), best = bests[trialKey(n)];
       b.type = 'button'; b.setAttribute('data-level', n);
-      b.appendChild(el('span', 'tl-n', 'Level ' + n));
+      b.appendChild(el('span', 'tl-n', stageLabel(n)));
       b.setAttribute('role', 'menuitem');
       b.appendChild(el('span', 'tl-best', best ? fmtTime(best.ms) + (best.wrong == null ? '' : ' \u00b7 ' + best.wrong + ' wrong') : 'no time yet'));
       trialList.appendChild(b);
@@ -1744,10 +1751,10 @@
         '<div class="tr-actions"><button type="button" class="btn-reset tr-again">Try Again</button><button type="button" class="btn-reset tr-back">Back to Study</button></div></div>';
       var q = function (c) { return stage.querySelector(c); };
       q('.tr-icon').textContent = isBest ? '\u{1F389}' : t.wrongs >= 3 ? '\u{1F61E}' : '\u{1F610}';      // party / sad (three or more wrong) / shrug
-      q('.tr-title').textContent = isBest ? 'New best time for level ' + t.level + '!' : 'Level ' + t.level + ' time trial complete';
+      q('.tr-title').textContent = isBest ? 'New best time for ' + stageLabel(t.level) + '!' : stageLabel(t.level) + ' time trial complete';
       q('.tr-time').textContent = fmtTime(total);
       q('.tr-detail').textContent = t.wrongs + ' wrong' + (t.wrongs ? ' (+' + (t.wrongs * TRIAL_PENALTY / 1000) + 's)' : '');
-      q('.tr-best').textContent = isBest ? (best ? 'Previous best: ' + fmtTime(best.ms) + ' · ' + best.wrong + ' wrong' : 'First time at this level') :
+      q('.tr-best').textContent = isBest ? (best ? 'Previous best: ' + fmtTime(best.ms) + ' · ' + best.wrong + ' wrong' : 'First time at this step') :
         'Best: ' + fmtTime(best.ms) + (best.wrong == null ? '' : ' · ' + best.wrong + ' wrong');
       q('.tr-again').addEventListener('click', function () { startTrial(t.level); });
       q('.tr-back').addEventListener('click', function () { abortTrial(); ftcNewQuestionDraw(); });
@@ -1809,17 +1816,19 @@
       state.card.title = ftcName(want) + ' is ' + want.roman + ' in ' + where;
       state.card.modeLine = ftcPop() ? '' : 'Mode: ' + want.mode;
       state.card.status = '';
-      var text = 'Correct: ' + state.card.title + '.', levelUpNote = '';
+      var text = 'Correct: ' + state.card.title + '.', levelUpNote = '', newStage = false, doneStage = 0;
       if (ftcMissed) ftcStreak = 0;
       else {
         ftcStreak++; ftcTried++; ftcRight++; pushBub('ok');
         if (ftcAuto && ftcStreak >= streakNeed()) {
           var n0 = ftcLevelNo(), up = n0 < FindChord.levelCount(state.mode, ftcPop());
           if (up) {
+            doneStage = FindChord.levelInfo(state.mode, ftcPop(), n0).stage;
             ftcSetLevel(n0 + 1);
             ftcRaised(true);
+            newStage = FindChord.levelInfo(state.mode, ftcPop(), n0 + 1).stage !== doneStage;
             levelUpNote = levelUpText(n0 + 1);
-            text += ' Level up! ' + levelUpNote;
+            text += newStage ? ' Stage ' + doneStage + ' complete!' : ' Next step!';
           }
           ftcStreak = 0; ftcTried = 0; ftcRight = 0;
           if (up) bubFull = true; else { ftcBub = null; bubFull = false; }          // (the full green row stays up while the banner shows; the next question empties it)
@@ -1830,7 +1839,7 @@
       updateScore();
       draw(false, false);
       feedback('yes');
-      if (levelUpNote) celebrate(levelUpNote);
+      if (levelUpNote) celebrate(levelUpNote, newStage, doneStage);
       return;
     }
     score.bad++;
@@ -1867,8 +1876,8 @@
     chordsPanel.classList.toggle('quizzing', on);
     if (!on || !ftcQ) return;
     var li = FindChord.levelInfo(state.mode, ftcPop(), ftcLevelNo());
-    document.getElementById('ftc-level').textContent = (ftcTrial ? 'Trial \u00b7 level ' : 'Level ') + ftcLevelNo();
-    document.getElementById('ftc-level').title = 'Stage ' + li.stage + ', step ' + li.step + ' of ' + FindChord.stageSteps(state.mode, ftcPop(), ftcLevelNo());
+    document.getElementById('ftc-level').textContent = (ftcTrial ? 'Trial \u00b7 ' : '') + 'Stage ' + li.stage + ': Step ' + li.step;
+    document.getElementById('ftc-level').title = 'Step ' + li.step + ' of ' + FindChord.stageSteps(state.mode, ftcPop(), ftcLevelNo());
     document.getElementById('ftc-streak').textContent = '';
     showStreak();
   }
