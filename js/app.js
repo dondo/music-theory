@@ -1492,11 +1492,12 @@
     }
   }
   function celebrate(n, newStage, doneStage) {                     // n: the level just reached
-    var pop = ftcPop(), html, title = 'Nice work!';
+    var pop = ftcPop(), html, title = 'Nice work!', goRow = false;
     if (newStage) {
       var p = FindChord.stageCoverage(state.mode, pop, doneStage);
       title = 'Congratulations!';
       html = 'You have completed Stage ' + doneStage + '. You can now play ' + (p < 1 ? 'a few' : 'about ' + p + '% of all') + ' ' + (pop ? 'pop' : 'jazz') + ' songs!<span class="levelup-line2">' + stageNote(FindChord.levelInfo(state.mode, pop, n).stage) + '</span>';
+      goRow = true;
     } else html = stepNote(n);
     var allTriads = function (k) { return FindChord.chords(state.mode, pop, FindChord.levelAt(state.mode, pop, k).chords).every(function (c) { return c.type === 'triad'; }); };
     if (n > 1 && allTriads(n - 1) && !allTriads(n))                  // the TYPE chips have just appeared
@@ -1505,6 +1506,7 @@
     if (levelBanner.parentNode !== home) home.insertBefore(levelBanner, newStage ? home.firstChild : null);
     document.getElementById('ftc-levelup-icon').textContent = '\u{1F389}';
     document.getElementById('ftc-levelup-title').textContent = title;
+    if (goRow) html += '<span class="levelup-go-row"><button type="button" class="btn-reset levelup-go">Go \u2192</button></span>';   // (the same as Next)
     levelText.innerHTML = html;
     levelBanner.hidden = false;
     levelBanner.style.animation = 'none'; void levelBanner.offsetWidth; levelBanner.style.animation = '';
@@ -1512,6 +1514,9 @@
     var r = levelBanner.getBoundingClientRect();
     confetti(r.left + r.width / 2, Math.max(60, r.top + r.height / 2));
   }
+  levelBanner.addEventListener('click', function (e) {
+    if (e.target.closest && e.target.closest('.levelup-go') && quizOn() && state.answered) nextCard(false);
+  });
   function confetti(ox, oy) {
     var cv = document.createElement('canvas');
     cv.className = 'confetti';

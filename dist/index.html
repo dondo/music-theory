@@ -594,6 +594,10 @@ html.is-local body { border-top: 6px solid #ea580c; }
 .levelup-icon { font-size: 1.8rem; }
 .levelup strong { font-size: 1.05rem; }
 .levelup { line-height: 1.35; }
+.levelup-go-row { display: block; margin-top: 10px; text-align: right; }
+.levelup-go { padding: 8px 20px; border-radius: 999px; border: 2px solid #16a34a; background: #dcfce7; color: #14532d; font-weight: 700; font-size: 1rem; cursor: pointer; }
+.levelup-go:hover, .levelup-go:focus-visible { background: #bbf7d0; }
+.levelup > div { flex: 1; }
 .levelup-line2 { display: block; margin-top: 1.35em; }
 @keyframes levelup-in { from { transform: scale(0.85); opacity: 0; } to { transform: none; opacity: 1; } }
 .confetti { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 50; }
@@ -4554,11 +4558,12 @@ var KeyboardRender = (function () {
     }
   }
   function celebrate(n, newStage, doneStage) {                     // n: the level just reached
-    var pop = ftcPop(), html, title = 'Nice work!';
+    var pop = ftcPop(), html, title = 'Nice work!', goRow = false;
     if (newStage) {
       var p = FindChord.stageCoverage(state.mode, pop, doneStage);
       title = 'Congratulations!';
       html = 'You have completed Stage ' + doneStage + '. You can now play ' + (p < 1 ? 'a few' : 'about ' + p + '% of all') + ' ' + (pop ? 'pop' : 'jazz') + ' songs!<span class="levelup-line2">' + stageNote(FindChord.levelInfo(state.mode, pop, n).stage) + '</span>';
+      goRow = true;
     } else html = stepNote(n);
     var allTriads = function (k) { return FindChord.chords(state.mode, pop, FindChord.levelAt(state.mode, pop, k).chords).every(function (c) { return c.type === 'triad'; }); };
     if (n > 1 && allTriads(n - 1) && !allTriads(n))                  // the TYPE chips have just appeared
@@ -4567,6 +4572,7 @@ var KeyboardRender = (function () {
     if (levelBanner.parentNode !== home) home.insertBefore(levelBanner, newStage ? home.firstChild : null);
     document.getElementById('ftc-levelup-icon').textContent = '\u{1F389}';
     document.getElementById('ftc-levelup-title').textContent = title;
+    if (goRow) html += '<span class="levelup-go-row"><button type="button" class="btn-reset levelup-go">Go \u2192</button></span>';   // (the same as Next)
     levelText.innerHTML = html;
     levelBanner.hidden = false;
     levelBanner.style.animation = 'none'; void levelBanner.offsetWidth; levelBanner.style.animation = '';
@@ -4574,6 +4580,9 @@ var KeyboardRender = (function () {
     var r = levelBanner.getBoundingClientRect();
     confetti(r.left + r.width / 2, Math.max(60, r.top + r.height / 2));
   }
+  levelBanner.addEventListener('click', function (e) {
+    if (e.target.closest && e.target.closest('.levelup-go') && quizOn() && state.answered) nextCard(false);
+  });
   function confetti(ox, oy) {
     var cv = document.createElement('canvas');
     cv.className = 'confetti';
