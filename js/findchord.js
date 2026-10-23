@@ -161,6 +161,42 @@
   }
   function saveLog(a, st) { st = st === undefined ? storage() : st; try { if (st) st.setItem(LOG_KEY, JSON.stringify(a.slice(-LOG_CAP))); } catch (e) { /* not persisted */ } }
 
+
+  // ---- Pop answers: type + root note + quality (+ maj/dom for sevenths and beyond), as on a lead sheet ----
+  var SEVENTHS = { '7': '7', '9': '9', '11': '11', '13': '13' };
+  function needsQual(type) { return type !== 'sus2' && type !== 'sus4'; }
+  function needsSev(type, qual) { return !!SEVENTHS[type] && (qual === 'maj' || qual === 'aug'); }
+  // what a chord (from Chords.chordInKey, in a key with tonic pc `tonic`) asks for: { root, type, qual, sev }
+  function describe(ch, type) {
+    var o = ch.pcOffsets, d = function (i) { return (o[i] - o[0] + 12) % 12; };
+    var qual = null, sev = null;
+    if (needsQual(type)) qual = d(2) === 6 ? 'dim' : d(2) === 8 ? 'aug' : d(1) === 3 ? 'min' : 'maj';
+    if (needsSev(type, qual)) sev = d(3) === 11 ? 'maj' : 'dom';
+    return { root: o[0], type: type, qual: qual, sev: sev };
+  }
+  // is the pick (root as a pitch class from the question's tonic... see `tonic`) the chord asked for? Any enharmonic spelling is right.
+  function checkAnswer(want, tonic, sel) {
+    if (sel.root !== (want.root + tonic) % 12 || sel.type !== want.type) return false;
+    if (want.qual && sel.qual !== want.qual) return false;
+    if (want.sev && sel.sev !== want.sev) return false;
+    return true;
+  }
+  var SHARP_NAMES = ['C', 'C\u266F', 'D', 'D\u266F', 'E', 'F', 'F\u266F', 'G', 'G\u266F', 'A', 'A\u266F', 'B'];
+  var FLAT_NAMES = ['C', 'D\u266D', 'D', 'E\u266D', 'E', 'F', 'G\u266D', 'G', 'A\u266D', 'A', 'B\u266D', 'B'];
+  function pcName(pc, flats) { return (flats ? FLAT_NAMES : SHARP_NAMES)[((pc % 12) + 12) % 12]; }
+  // the symbol for a pick: Am, G7, Cmaj7, Bm7\u266D5, Dsus4, Fadd9
+  function answerName(sel, flats) {
+    var r = pcName(sel.root, flats), t = sel.type, q = sel.qual, n = SEVENTHS[t];
+    if (t === 'sus2' || t === 'sus4') return r + t;
+    if (t === 'triad') return r + (q === 'min' ? 'm' : q === 'dim' ? 'dim' : q === 'aug' ? '+' : '');
+    var tail = t === 'add9' ? (q === 'maj' ? 'add9' : (q === 'min' ? 'm' : q === 'dim' ? 'dim' : '+') + '(add9)') : null;
+    if (tail) return r + tail;
+    if (q === 'min') return r + 'm' + n;
+    if (q === 'dim') return r + 'm' + n + '\u266D5';
+    if (q === 'aug') return r + (sel.sev === 'maj' ? 'maj' + n + '\u266F5' : '+' + n);
+    return r + (sel.sev === 'maj' ? 'maj' + n : n);
+  }
+
   // ---- the newest challenge of a stage (new keys, or new chords) ----
   // It is asked about often at first, and in every run of FRESH_WINDOW questions at least FRESH_MIN are about it.
   var FRESH_WINDOW = 5, FRESH_MIN = 2, FRESH_BOOST = 4;
@@ -315,6 +351,7 @@
   return { STREAK: STREAK, DATA: DATA, maxKeys: maxKeys, clamp: clamp, keys: keys, chords: chords, pick: pick,
            ladder: ladder, levelCount: levelCount, levelInfo: levelInfo, levelAt: levelAt, stageSteps: stageSteps, stageIntro: stageIntro, mayInvert: mayInvert, stepAdds: stepAdds, stageCoverage: stageCoverage, freshTest: freshTest,
            identify: identify, weightKey: weightKey, weightOf: weightOf, miss: miss, hit: hit, loadWeights: loadWeights, saveWeights: saveWeights, resetWeights: resetWeights,
+           describe: describe, checkAnswer: checkAnswer, needsQual: needsQual, needsSev: needsSev, pcName: pcName, answerName: answerName,
            pickInversion: pickInversion, freshPlan: freshPlan, freshRecord: freshRecord, floorPlan: floorPlan,
            newMem: newMem, loadMem: loadMem, saveMem: saveMem, resetMem: resetMem, memWeight: memWeight, memAnswer: memAnswer, pairRecall: pairRecall, grade: grade, tRef: tRef, timeClass: timeClass, anyPair: anyPair,
            loadLog: loadLog, saveLog: saveLog, LOG_COLUMNS: LOG_COLUMNS, LOG_CAP: LOG_CAP, OLD_R: OLD_R,

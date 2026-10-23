@@ -186,7 +186,7 @@
     caption.textContent = '';
     if (quizOn() && state.card) {
       caption.appendChild(el('p', 'cap-hint', 'Study: find the chord shown on the staff, in the key of ' + Theory.keyTitle(currentSpec(), state.mode) +
-        (ftcTypesHidden() ? '. Choose the chord\u2019s degree in the Chords section.' : '. Choose a type and a degree in the Chords section; the second one you choose is your answer.')));
+        ftcHintTail()));
       return;
     }
     if (state.flash && state.card) {
@@ -301,6 +301,10 @@
     var inPlay = quizOn() && !alt ? FindChord.chords(state.mode, ftcPop(), ftcLevels().chords) : null;
     function degInPlay(dd) { return !inPlay || inPlay.some(function (c) { return c.deg === dd; }); }
     function typeInPlay(id) { return !inPlay || inPlay.some(function (c) { return c.type === id; }); }
+    var popQuiz = quizOn() && !alt && pop;                   // Pop Find the chord: root, quality and seventh rows replace the degree row
+    if (popQuiz) order = [];
+    degLabel.textContent = popQuiz ? 'Quality' : degLabel.textContent;
+    if (popQuiz) modeHeadTip.textContent = 'dim, min (minor), maj (major) or aug. For a 7th, 9th, 11th or 13th chord on a major (or augmented) triad, also choose maj (Cmaj7) or dom (C7).';
     for (var oi = 0; oi < order.length; oi++) {
       var d = order[oi];
       if (!degInPlay(d)) continue;
@@ -327,6 +331,8 @@
       }
       chordDegrees.appendChild(b);
     }
+    if (popQuiz) buildPopRows(chordDegrees);
+    else { document.getElementById('root-row').hidden = true; document.getElementById('sev-row').hidden = true; }
     chordTypes.textContent = '';
     var typeRow = chordTypes.closest ? chordTypes.closest('.chord-row') : null;
     if (typeRow) typeRow.hidden = !alt && ftcTypesHidden();               // Find the chord: no TYPE row until a chord that is not a triad is in play
@@ -355,7 +361,8 @@
     }
     types.forEach(function (t, ti) {
       var tb = el('button', 'chip chip-type', t.label);
-      if (ti < TYPE_KEYS.length) { tb.setAttribute('data-key', TYPE_KEYS.charAt(ti).toUpperCase()); tb.setAttribute('aria-keyshortcuts', TYPE_KEYS.charAt(ti)); }
+      if (popQuiz) { if (ti < 8) { tb.setAttribute('data-key', String(ti + 1)); tb.setAttribute('aria-keyshortcuts', String(ti + 1)); } }
+      else if (ti < TYPE_KEYS.length) { tb.setAttribute('data-key', TYPE_KEYS.charAt(ti).toUpperCase()); tb.setAttribute('aria-keyshortcuts', TYPE_KEYS.charAt(ti)); }
       tb.type = 'button';
       tb.setAttribute('data-type', t.id);
       tb.setAttribute('aria-pressed', (state.chord || typePicked) && type === t.id ? 'true' : 'false');   // nothing is pre-selected
@@ -379,13 +386,13 @@
     } else if (scoreBox.parentNode !== scoreHome) scoreHome.appendChild(scoreBox);
     if (quizOn()) {                                              // Find the chord: no chord description; the level controls sit below the score
       if (!scoreHere) {                                          // before the first guess: the instruction
-        chordInfo.appendChild(el('p', 'chord-hint', ftcTypesHidden() ? 'Choose the chord\u2019s degree.' : 'Choose a type and a degree, in either order. The second one you choose is your answer.'));
+        chordInfo.appendChild(el('p', 'chord-hint', ftcHint()));
         return;
       }
       return;
     }
     if (!state.chord) {
-      chordInfo.appendChild(el('p', 'chord-hint', findOn ? findHint() : quizOn() ? (ftcTypesHidden() ? 'Choose the chord\u2019s degree.' : 'Choose a type and a degree, in either order. The second one you choose is your answer.') : alt
+      chordInfo.appendChild(el('p', 'chord-hint', findOn ? findHint() : quizOn() ? (ftcHint()) : alt
         ? 'Pick a note to light up the chord built on it, then try the other types. Only chords whose notes all belong to this scale are offered.'
         : 'Pick a type and a degree to light up the chord on the keyboard. ' +
           'Each chip shows the roman numeral and chord name for the chosen type.'));
@@ -431,6 +438,44 @@
     head.appendChild(list);                             // top right of the description box, level with the symbol
   }
 
+  // Pop Find the chord: Root (a one-octave keyboard), Quality (dim / min / maj / aug) and, for a major or augmented 7th-and-up, maj or dom
+  var POP_QUALS = [['dim', 'dim', 'P'], ['min', 'min', '['], ['maj', 'maj', ']'], ['aug', 'aug', '\\']];
+  var POP_SEVS = [['maj', 'maj', ';'], ['dom', 'dom', '\'']];
+  var WHITE_PCS = [0, 2, 4, 5, 7, 9, 11], WHITE_NAMES = ['C', 'D', 'E', 'F', 'G', 'A', 'B'], BLACKS = [[1, 1, 'C\u266F', 'D\u266D'], [3, 2, 'D\u266F', 'E\u266D'], [6, 4, 'F\u266F', 'G\u266D'], [8, 5, 'G\u266F', 'A\u266D'], [10, 6, 'A\u266F', 'B\u266D']];
+  function buildPopRows(qualBox) {
+    POP_QUALS.forEach(function (q) {
+      var b = el('button', 'chip chip-qual', q[1]);
+      b.type = 'button'; b.setAttribute('data-qual', q[0]); b.setAttribute('data-key', q[2]); b.setAttribute('aria-keyshortcuts', q[2]);
+      b.setAttribute('aria-pressed', ftcSel.qual === q[0] ? 'true' : 'false');
+      qualBox.appendChild(b);
+    });
+    var rootBox = document.getElementById('chord-root'), sevBox = document.getElementById('chord-sev');
+    rootBox.textContent = '';
+    WHITE_PCS.forEach(function (pc, i) {
+      var b = el('button', 'rk white', WHITE_NAMES[i]);
+      b.type = 'button'; b.setAttribute('data-root', pc); b.style.left = (i * 44) + 'px'; b.setAttribute('aria-label', WHITE_NAMES[i]);
+      b.setAttribute('aria-pressed', ftcSel.root === pc ? 'true' : 'false');
+      rootBox.appendChild(b);
+    });
+    BLACKS.forEach(function (k) {
+      var b = el('button', 'rk black');
+      b.type = 'button'; b.setAttribute('data-root', k[0]); b.style.left = (k[1] * 44 - 14) + 'px'; b.setAttribute('aria-label', k[2] + ' or ' + k[3]);
+      b.appendChild(el('span', null, k[2])); b.appendChild(el('span', null, k[3]));
+      b.setAttribute('aria-pressed', ftcSel.root === k[0] ? 'true' : 'false');
+      rootBox.appendChild(b);
+    });
+    document.getElementById('root-row').hidden = false;
+    var needSev = FindChord.needsSev(ftcSel.type, ftcSel.qual);
+    sevBox.textContent = '';
+    document.getElementById('sev-row').hidden = !needSev;
+    if (needSev) POP_SEVS.forEach(function (q) {
+      var b = el('button', 'chip chip-sev', q[1]);
+      b.type = 'button'; b.setAttribute('data-sev', q[0]); b.setAttribute('data-key', q[2]); b.setAttribute('aria-keyshortcuts', q[2]);
+      b.setAttribute('aria-pressed', ftcSel.sev === q[0] ? 'true' : 'false');
+      sevBox.appendChild(b);
+    });
+  }
+
   modeSortSel.addEventListener('change', function () { sortBy = modeSortSel.value; updateChordPanel(); });
   typeSortSel.addEventListener('change', function () { typeSortBy = typeSortSel.value; updateChordPanel(); });
 
@@ -438,10 +483,11 @@
     var b = e.target.closest ? e.target.closest('button') : null;
     if (!b) return;
     if (quizOn()) {                                      // Find the chord: the second pick is the guess
-      if (b.hasAttribute('data-deg')) ftcPick('deg', parseInt(b.getAttribute('data-deg'), 10));
-      else if (b.hasAttribute('data-type')) ftcPick('type', b.getAttribute('data-type'));
-      else return;
-      var kept = chordsPanel.querySelector('button[' + (b.hasAttribute('data-deg') ? 'data-deg="' + b.getAttribute('data-deg') : 'data-type="' + b.getAttribute('data-type')) + '"]');
+      var kind = ['deg', 'type', 'root', 'qual', 'sev'].filter(function (k) { return b.hasAttribute('data-' + k); })[0];
+      if (!kind) return;
+      var raw = b.getAttribute('data-' + kind);
+      ftcPick(kind, kind === 'deg' || kind === 'root' ? parseInt(raw, 10) : raw);
+      var kept = chordsPanel.querySelector('button[data-' + kind + '="' + raw + '"]');
       if (kept) kept.focus({ preventScroll: true });
       return;
     }
@@ -1443,6 +1489,12 @@
   // the levels in force: the chord dial is capped by what this level (Pop / Jazz) offers
   function ftcLevels() { return ftcTrial ? { keys: ftcTrial.keys, chords: ftcTrial.chords, inv: ftcTrial.inv } : FindChord.levelAt(state.mode, ftcPop(), ftcLevelNo()); }
   // true while only triads are in play: the TYPE row is hidden and a degree alone is the answer
+  function popAns() { return quizOn() && ftcPop(); }                  // Pop answers: type + root + quality (+ seventh), not roman degrees
+  function ftcHint() {
+    if (popAns()) return ftcTypesHidden() ? 'Choose the chord\u2019s root on the keyboard and its quality.' : 'Choose the chord\u2019s type, root and quality, in any order; the last one you choose is your answer.';
+    return ftcTypesHidden() ? 'Choose the chord\u2019s degree.' : 'Choose a type and a degree, in either order. The second one you choose is your answer.';
+  }
+  function ftcHintTail() { return '. ' + (popAns() ? (ftcTypesHidden() ? 'Choose the root and quality in the Chords section.' : 'Choose the type, root and quality in the Chords section.') : (ftcTypesHidden() ? 'Choose the chord\u2019s degree in the Chords section.' : 'Choose a type and a degree in the Chords section; the second one you choose is your answer.')); }
   function ftcTypesHidden() { return quizOn() && FindChord.chords(state.mode, ftcPop(), ftcLevels().chords).every(function (c) { return c.type === 'triad'; }); }
   function ftcSpec() { return Theory.specsFor(state.mode, ftcQ.pc)[ftcQ.spell]; }
   function ftcChord() { return Chords.chordInKey(ftcSpec().name, state.mode, ftcQ.deg, ftcQ.type); }
@@ -1550,11 +1602,11 @@
 
   function ftcSay(text) { ftcMsg.textContent = text; }                // (a screen-reader message; the card shows it too)
 
-  var ftcSel = { deg: null, type: null };            // this attempt's picks; the second one makes the guess
+  var ftcSel = { deg: null, type: null, root: null, qual: null, sev: null };            // this attempt's picks; the second one makes the guess
   var ftcWrong = false;                              // the chips still show a wrong guess
 
   function ftcClearPicks() {
-    ftcSel = { deg: null, type: null };
+    ftcSel = { deg: null, type: null, root: null, qual: null, sev: null };
     ftcWrong = false;
     state.chord = null;
     typePicked = false;
@@ -1696,7 +1748,7 @@
     state.chord = null;
     state.card = null;
     typePicked = false;
-    ftcSel = { deg: null, type: null };
+    ftcSel = { deg: null, type: null, root: null, qual: null, sev: null };
   }
 
   // ---- Time trial: ten questions at a chosen level, against the clock ----
@@ -1902,7 +1954,8 @@
     ftcMissed = true;
     ftcStreak = 0;
     ftcWrong = false;
-    ftcSel = { deg: ftcQ.deg, type: ftcQ.type };
+    var wd = FindChord.describe(want, ftcQ.type);
+    ftcSel = { deg: ftcQ.deg, type: ftcQ.type, root: (wd.root + ftcQ.pc) % 12, qual: wd.qual, sev: wd.sev };
     typePicked = true;
     chordTypes_.full = ftcQ.type;
     state.chord = { deg: ftcQ.deg, type: ftcQ.type };
@@ -1926,12 +1979,25 @@
     if (ftcTypesHidden()) ftcSel.type = 'triad';       // (only triads so far: the degree alone is the guess)
     typePicked = ftcSel.type !== null;
     chordTypes_.full = ftcSel.type || 'triad';
-    if (ftcSel.deg === null || ftcSel.type === null) { draw(false, false); return; }
-    var got = { deg: ftcSel.deg, type: ftcSel.type };
-    state.chord = got;
+    var pa = popAns(), got, ok, haveName = null;
+    if (pa) {                                          // Pop: type + root + quality (+ maj/dom); sus chords need no quality
+      var T = ftcSel.type;
+      if (!FindChord.needsSev(T, ftcSel.qual)) ftcSel.sev = null;
+      if (ftcSel.root === null || T === null || (FindChord.needsQual(T) && ftcSel.qual === null) || (FindChord.needsSev(T, ftcSel.qual) && ftcSel.sev === null)) { draw(false, false); return; }
+      var sel = { root: ftcSel.root, type: T, qual: FindChord.needsQual(T) ? ftcSel.qual : null, sev: ftcSel.sev };
+      ok = FindChord.checkAnswer(FindChord.describe(ftcChord(), ftcQ.type), ftcQ.pc, sel);
+      haveName = FindChord.answerName(sel, ftcSpec().kind === 'flat');
+      got = ok ? { deg: ftcQ.deg, type: ftcQ.type } : null;
+      state.chord = got;
+    } else {
+      if (ftcSel.deg === null || ftcSel.type === null) { draw(false, false); return; }
+      got = { deg: ftcSel.deg, type: ftcSel.type };
+      state.chord = got;
+      ok = got.deg === ftcQ.deg && got.type === ftcQ.type;
+    }
     var want = ftcChord(), where = Theory.keyTitle(ftcSpec(), state.mode);
-    if (ftcTrial) { trialAnswer(got.deg === ftcQ.deg && got.type === ftcQ.type); return; }
-    if (got.deg === ftcQ.deg && got.type === ftcQ.type) {
+    if (ftcTrial) { trialAnswer(ok); return; }
+    if (ok) {
       score.ok++;
       if (!ftcMissed) ftcRecord(true, ftcT0 == null ? null : performance.now() - ftcT0, false, false);   // known: it fades more slowly now
       state.answered = true;
@@ -1970,8 +2036,8 @@
     ftcStreak = 0;
     saveFtc();
     ftcWrong = true;                                  // (the chips keep showing the wrong chord until the next click)
-    var have = Chords.chordInKey(ftcSpec().name, state.mode, got.deg, got.type);
-    state.card.status = 'That is ' + have.symbol + ' (' + have.roman + '). Try again.';
+    if (haveName) state.card.status = 'That is ' + haveName + '. Try again.';
+    else { var have = Chords.chordInKey(ftcSpec().name, state.mode, got.deg, got.type); state.card.status = 'That is ' + have.symbol + ' (' + have.roman + '). Try again.'; }
     ftcSay(state.card.status, 'bad');
     updateScore();
     draw(false, false);
@@ -2491,20 +2557,37 @@
     nextCard(true);
   });
 
+  // Pop Find the chord: 1-8 pick the type, A-G the root (Shift = sharp, Alt = flat), P [ ] \ the quality (dim min maj aug), ; ' the seventh (maj dom)
+  var NATURALS = { KeyC: 0, KeyD: 2, KeyE: 4, KeyF: 5, KeyG: 7, KeyA: 9, KeyB: 11 };
+  var QUAL_CODES = { KeyP: 'dim', BracketLeft: 'min', BracketRight: 'maj', Backslash: 'aug' }, SEV_CODES = { Semicolon: 'maj', Quote: 'dom' };
+  document.addEventListener('keydown', function (e) {
+    if (e.defaultPrevented || e.ctrlKey || e.metaKey || !popAns() || !state.selected || chordsPanel.hidden || !chordsDetails.open) return;
+    var t = e.target;
+    if (t && t.closest && t.closest('input, select, textarea')) return;
+    var btn = null, c = e.code;
+    if (/^[1-8]$/.test(e.key) && !e.altKey && !e.shiftKey) btn = chordTypes.children[parseInt(e.key, 10) - 1];
+    else if (NATURALS[c] !== undefined) btn = chordsPanel.querySelector('[data-root="' + ((NATURALS[c] + (e.shiftKey ? 1 : 0) - (e.altKey ? 1 : 0) + 12) % 12) + '"]');
+    else if (!e.altKey && !e.shiftKey && QUAL_CODES[c]) btn = chordsPanel.querySelector('[data-qual="' + QUAL_CODES[c] + '"]');
+    else if (!e.altKey && !e.shiftKey && SEV_CODES[c]) btn = chordsPanel.querySelector('[data-sev="' + SEV_CODES[c] + '"]');
+    if (!btn || btn.disabled) return;
+    e.preventDefault();
+    btn.click();
+  });
+
   // Progressions: arrows step, Enter adds the selected chord, and the section's own buttons
   document.addEventListener('keydown', function (e) {
     if (e.defaultPrevented || !plainKey(e)) return;
     var t = e.target;
     if (t && t.closest && t.closest('input, select, textarea')) return;
     if (quizOn() && e.key === 'Enter') {                  // Find the chord: Enter checks, then goes on
-      var qchip = t && t.closest && t.closest('button[data-deg], button[data-type]');
+      var qchip = t && t.closest && t.closest('button[data-deg], button[data-type], button[data-root], button[data-qual], button[data-sev]');
       if (qchip || !t || t === document.body || t === document.documentElement) {
         e.preventDefault();
         if (state.answered && levelBanner.hidden) ftcNextQuestion(true);          // (with a banner up, only the right arrow goes on)
         return;
       }
     }
-    if (state.selected && (!state.flash || quizOn()) && !chordsPanel.hidden && chordsDetails.open) {
+    if (state.selected && (!state.flash || quizOn()) && !chordsPanel.hidden && chordsDetails.open && !popAns()) {
       // chord selector shortcuts: 1-7 pick the degree/mode; A S D F ... pick the type chips in the order shown
       var sc = null;
       if (/^[1-7]$/.test(e.key)) {

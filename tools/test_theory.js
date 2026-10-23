@@ -706,5 +706,31 @@ check('floors: 2 in 5 about the new challenge and 1 in 5 about faded older mater
   assert.strictEqual(FC.floorPlan({ asked: 4, fresh: 2, old: 0 }, true, true), 'old');
 });
 
+check('pop answers: described, checked and named like a lead sheet', function () {
+  var Ch = require('../js/chords.js');
+  function d(key, mode, deg, type) { return FC.describe(Ch.chordInKey(key, mode, deg, type), type); }
+  assert.deepStrictEqual(d('C', 'major', 1, 'triad'), { root: 2, type: 'triad', qual: 'min', sev: null });     // Dm
+  assert.deepStrictEqual(d('C', 'major', 6, 'triad').qual, 'dim');
+  assert.strictEqual(d('C', 'major', 0, '7').sev, 'maj');                                                        // Cmaj7
+  assert.strictEqual(d('C', 'major', 4, '7').sev, 'dom');                                                        // G7
+  assert.strictEqual(d('C', 'major', 1, '7').sev, null);                                                         // Dm7: the m says it
+  assert.strictEqual(d('C', 'major', 4, 'sus4').qual, null);
+  var w = d('G', 'major', 1, '7');                                                                              // Am7 in G
+  assert.ok(FC.checkAnswer(w, 7, { root: 9, type: '7', qual: 'min', sev: null }));
+  assert.ok(!FC.checkAnswer(w, 7, { root: 9, type: '7', qual: 'maj', sev: 'dom' }));
+  assert.ok(!FC.checkAnswer(w, 7, { root: 9, type: 'triad', qual: 'min', sev: null }));
+  assert.ok(!FC.checkAnswer(w, 7, { root: 10, type: '7', qual: 'min', sev: null }));
+  assert.ok(FC.needsSev('9', 'maj') && !FC.needsSev('9', 'min') && !FC.needsSev('triad', 'maj') && !FC.needsQual('sus2'));
+  assert.strictEqual(FC.answerName({ root: 9, type: '7', qual: 'min' }, false), 'Am7');
+  assert.strictEqual(FC.answerName({ root: 10, type: 'triad', qual: 'maj' }, true), 'B\u266D');
+  assert.strictEqual(FC.answerName({ root: 1, type: '7', qual: 'maj', sev: 'maj' }, false), 'C\u266Fmaj7');
+  // every Pop chord in every key is named right by its own description, in both spellings of the root
+  ['major', 'minor'].forEach(function (mode) {
+    FC.chords(mode, true, 999).forEach(function (c) {
+      var ch = Ch.chordInKey('C', mode, c.deg, c.type), want = FC.describe(ch, c.type);
+      assert.ok(FC.checkAnswer(want, 0, { root: want.root, type: c.type, qual: want.qual, sev: want.sev }));
+    });
+  });
+});
 console.log(failures ? '\n' + failures + ' FAILED' : '\nall tests passed');
 process.exit(failures ? 1 : 0);

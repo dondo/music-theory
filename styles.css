@@ -698,3 +698,14 @@ html.is-local .ftc-local { display: inline-flex; }
 .log-note { margin: 0 0 .75rem; padding: .6rem .9rem; border-radius: .6rem; background: var(--card, #f3efe6); border: 1px solid currentColor; font-size: .95rem; display: flex; flex-wrap: wrap; gap: .5rem .9rem; align-items: center; }
 .log-note[hidden] { display: none; }
 .quiet-link[hidden] { display: none; }
+
+/* Pop "Find the chord": a one-octave keyboard for the root note */
+.rootkeys { position: relative; width: 308px; max-width: 100%; height: 92px; user-select: none; }
+.rootkeys .rk { position: absolute; margin: 0; padding: 0; font: inherit; cursor: pointer; border: 1px solid #b9c0d0; }
+.rootkeys .rk.white { top: 0; width: 44px; height: 92px; background: #fff; color: var(--ink); border-radius: 0 0 8px 8px; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 6px; font-weight: 700; }
+.rootkeys .rk.black { top: 0; width: 28px; height: 56px; background: #20232e; color: #fff; border-color: #20232e; border-radius: 0 0 6px 6px; z-index: 1; font-size: 0.62rem; line-height: 1.15; font-weight: 600; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; padding-bottom: 4px; }
+.rootkeys .rk[aria-pressed="true"].white { background: var(--accent); border-color: var(--accent); color: #fff; }
+.rootkeys .rk[aria-pressed="true"].black { background: var(--accent); border-color: var(--accent); }
+@media (hover: hover) { .rootkeys .rk.white:hover { border-color: var(--accent); } .rootkeys .rk.black:hover { background: #3a3f52; } }
+.rootkeys .rk:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; z-index: 2; }
+.chip-qual, .chip-sev { flex-direction: row; padding: 7px 14px; border-radius: 999px; font-weight: 600; }
