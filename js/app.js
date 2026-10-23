@@ -1476,7 +1476,7 @@
     var mode = state.mode, pop = ftcPop(), it = FindChord.stageIntro(mode, pop, stage), count = it.kind === 'K' ? it.keys.length : it.chords.length;
     var many = count === 1 ? (it.kind === 'K' ? 'a new key' : 'a new chord') : (count === 2 ? 'two' : count) + (it.kind === 'K' ? ' new keys' : ' new chords');
     var names = it.kind === 'K' ? ftcNames(it.keys, true) : ftcNames(it.chords, false);
-    return 'Stage ' + stage + ' introduces ' + many + (it.kind === 'K' ? ': ' : ' to find: ') + (it.kind === 'C' ? ftcBlockLabel(it.chords) : '') + ftcJoin(names) + '.';
+    return 'Stage ' + stage + ' introduces ' + many + (it.kind === 'K' ? ': ' : ' to find: ') + (it.kind === 'C' ? ftcBlockLabel(it.chords) : '') + ftcJoin(names.map(function (x) { return '<strong>' + x + '</strong>'; })) + '.';
   }
   var bannerHold = false;                                       // a trial result stays up until the next pick
   function showBanner(title, text, withConfetti, icon) {
@@ -1495,7 +1495,7 @@
     if (newStage) {
       var p = FindChord.stageCoverage(state.mode, pop, doneStage);
       title = 'Congratulations!';
-      html = 'You have completed Stage ' + doneStage + '. You can now play ' + (p < 1 ? 'a few' : 'about ' + p + '% of all') + ' ' + (pop ? 'pop' : 'jazz') + ' songs!<br>' + stageNote(FindChord.levelInfo(state.mode, pop, n).stage);
+      html = 'You have completed Stage ' + doneStage + '. You can now play ' + (p < 1 ? 'a few' : 'about ' + p + '% of all') + ' ' + (pop ? 'pop' : 'jazz') + ' songs!<span class="levelup-line2">' + stageNote(FindChord.levelInfo(state.mode, pop, n).stage) + '</span>';
     } else html = stepNote(n);
     var home = newStage ? document.querySelector('.stage-card') : ftcSection;           // a finished stage's banner sits over the clef; a step's stays under the keyboard
     if (levelBanner.parentNode !== home) home.insertBefore(levelBanner, newStage ? home.firstChild : null);
