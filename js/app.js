@@ -131,7 +131,7 @@
   var levelInputs = document.querySelectorAll('input[name="level"]');
   var modeHeadTip = document.getElementById('mode-head-tip');
   var MODE_TIP = modeHeadTip.textContent;
-  var POP_DEG_TIP = 'The chord built on each step of the key. The roman numeral says which step; capitals are major chords, lower case are minor.';
+  var POP_DEG_TIP = 'The chord built on each note of the key, named as on a lead sheet (the roman numeral is in the chip\u2019s accessible name).';
   var degLabel = document.getElementById('lbl-deg');
   var sortBy = 'scale';                               // mode chip order: scale | brightness | frequency
   var chordsDetails = document.getElementById('chords-details');
@@ -273,7 +273,7 @@
     chordDegrees.textContent = '';
     var n = alt ? sc.offsets.length : 7;
     var pop = level === 'pop';
-    degLabel.textContent = alt ? 'Chord on' : (pop ? 'Degree' : 'Mode');
+    degLabel.textContent = alt ? 'Chord on' : (pop ? 'Chord' : 'Mode');
     modeHeadTip.textContent = pop ? POP_DEG_TIP : MODE_TIP;
     chordsPanel.setAttribute('data-level', level);
     Array.prototype.forEach.call(typeSortSel.options, function (o) {
@@ -325,8 +325,8 @@
         var hideSym = quizOn() && !state.answered;                  // Find the chord: the names would give the answer away until the guess is right (or given up)
         b.setAttribute('aria-label', c.roman + (hideSym ? '' : ', ' + c.symbol) + (pop ? '' : ', ' + c.mode));
         if (!pop) b.setAttribute('data-dark', c.darkness);           // gentle shading: brightest mode to darkest
-        b.appendChild(el('span', 'chip-num', c.roman));
-        b.appendChild(el('span', 'chip-sym', hideSym ? '\u00a0' : c.symbol));
+        if (pop) b.appendChild(el('span', 'chip-num', c.symbol));                  // Pop: chord symbols (Am), as on a lead sheet
+        else { b.appendChild(el('span', 'chip-num', c.roman)); b.appendChild(el('span', 'chip-sym', hideSym ? '\u00a0' : c.symbol)); }
         if (!pop) b.appendChild(el('span', 'chip-mode', c.mode));
       }
       chordDegrees.appendChild(b);
@@ -394,8 +394,7 @@
     if (!state.chord) {
       chordInfo.appendChild(el('p', 'chord-hint', findOn ? findHint() : quizOn() ? (ftcHint()) : alt
         ? 'Pick a note to light up the chord built on it, then try the other types. Only chords whose notes all belong to this scale are offered.'
-        : 'Pick a type and a degree to light up the chord on the keyboard. ' +
-          'Each chip shows the roman numeral and chord name for the chosen type.'));
+        : (level === 'pop' ? 'Pick a type and a chord to light it up on the keyboard. Each chip shows the chord name for the chosen type.' : 'Pick a type and a degree to light up the chord on the keyboard. Each chip shows the roman numeral and chord name for the chosen type.')));
       return;
     }
     var head = el('div', 'ci-head');
