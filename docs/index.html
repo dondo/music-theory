@@ -700,12 +700,15 @@ html.is-local .ftc-local { display: inline-flex; }
 .tr-actions .tr-again { background: #2563eb; color: #fff; }
 .trial-stop[hidden] { display: none; }
 
-/* Time trial: the keyboard shortcut of each chip, small, bottom right (only where there is a keyboard: not phones or iPads) */
+/* (the note under the Root keyboard shows only where there is a keyboard) */
+.rootkeys-note { display: none; margin-top: 6px; font-size: 0.78rem; color: var(--muted); }
+/* The keyboard shortcut of each chip, small, bottom centre: in a time trial and for Pop answers (only where there is a keyboard: not phones or iPads) */
 @media (hover: hover) and (pointer: fine) {
-  #chords.trialing .chip { position: relative; }
-  #chords.trialing .chip-type { padding-bottom: 16px; }        /* room under the label for the hint */
-  #chords.trialing .chip-type[data-key]::after { bottom: 2px; }
-  #chords.trialing .chip[data-key]::after { display: block; content: attr(data-key); position: absolute; top: auto; right: auto; left: 50%; transform: translateX(-50%); bottom: 3px; font-size: 0.62rem; font-weight: 600; line-height: 1; color: var(--muted); opacity: 0.75; }
+  #chords.trialing .chip, #chords.popquiz .chip { position: relative; }
+  #chords.trialing .chip-type, #chords.popquiz .chip-type, #chords.popquiz .chip-qual, #chords.popquiz .chip-sev { padding-bottom: 16px; }        /* room under the label for the hint */
+  #chords.trialing .chip-type[data-key]::after, #chords.popquiz .chip[data-key]::after { bottom: 2px; }
+  #chords.trialing .chip[data-key]::after, #chords.popquiz .chip[data-key]::after { display: block; content: attr(data-key); position: absolute; top: auto; right: auto; left: 50%; transform: translateX(-50%); bottom: 3px; font-size: 0.62rem; font-weight: 600; line-height: 1; color: var(--muted); opacity: 0.75; }
+  .rootkeys-note { display: block; }
 }
 .chord-row[hidden] { display: none; }
 .tr-menu { position: relative; display: inline-block; }
@@ -3569,6 +3572,7 @@ var KeyboardRender = (function () {
       }
       chordDegrees.appendChild(b);
     }
+    chordsPanel.classList.toggle('popquiz', popQuiz);
     if (popQuiz) buildPopRows(chordDegrees);
     else { document.getElementById('root-row').hidden = true; document.getElementById('sev-row').hidden = true; }
     chordTypes.textContent = '';
@@ -3702,6 +3706,7 @@ var KeyboardRender = (function () {
       b.setAttribute('aria-pressed', ftcSel.root === k[0] ? 'true' : 'false');
       rootBox.appendChild(b);
     });
+    if (!rootBox.nextElementSibling) rootBox.parentNode.appendChild(el('p', 'rootkeys-note', 'Keyboard: A\u2013G for the root; Shift for sharp, Alt for flat.'));
     document.getElementById('root-row').hidden = false;
     var needSev = FindChord.needsSev(ftcSel.type, ftcSel.qual);
     sevBox.textContent = '';

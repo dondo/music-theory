@@ -331,6 +331,7 @@
       }
       chordDegrees.appendChild(b);
     }
+    chordsPanel.classList.toggle('popquiz', popQuiz);
     if (popQuiz) buildPopRows(chordDegrees);
     else { document.getElementById('root-row').hidden = true; document.getElementById('sev-row').hidden = true; }
     chordTypes.textContent = '';
@@ -464,6 +465,7 @@
       b.setAttribute('aria-pressed', ftcSel.root === k[0] ? 'true' : 'false');
       rootBox.appendChild(b);
     });
+    if (!rootBox.nextElementSibling) rootBox.parentNode.appendChild(el('p', 'rootkeys-note', 'Keyboard: A\u2013G for the root; Shift for sharp, Alt for flat.'));
     document.getElementById('root-row').hidden = false;
     var needSev = FindChord.needsSev(ftcSel.type, ftcSel.qual);
     sevBox.textContent = '';
