@@ -702,13 +702,13 @@ html.is-local .ftc-local { display: inline-flex; }
 
 /* (the note under the Root keyboard shows only where there is a keyboard) */
 .rootkeys-note { display: none; margin-top: 6px; font-size: 0.78rem; color: var(--muted); }
-/* The keyboard shortcut of each chip, small, bottom centre: in a time trial and for Pop answers (only where there is a keyboard: not phones or iPads) */
+/* The keyboard shortcut of each chip, small, bottom centre: in a time trial (only where there is a keyboard: not phones or iPads) */
 @media (hover: hover) and (pointer: fine) {
-  #chords.trialing .chip, #chords.popquiz .chip { position: relative; }
-  #chords.trialing .chip-type, #chords.popquiz .chip-type, #chords.popquiz .chip-qual, #chords.popquiz .chip-sev { padding-bottom: 16px; }        /* room under the label for the hint */
-  #chords.trialing .chip-type[data-key]::after, #chords.popquiz .chip[data-key]::after { bottom: 2px; }
-  #chords.trialing .chip[data-key]::after, #chords.popquiz .chip[data-key]::after { display: block; content: attr(data-key); position: absolute; top: auto; right: auto; left: 50%; transform: translateX(-50%); bottom: 3px; font-size: 0.62rem; font-weight: 600; line-height: 1; color: var(--muted); opacity: 0.75; }
-  .rootkeys-note { display: block; }
+  #chords.trialing .chip { position: relative; }
+  #chords.trialing .chip-type, #chords.trialing .chip-qual, #chords.trialing .chip-sev { padding-bottom: 16px; }        /* room under the label for the hint */
+  #chords.trialing .chip-type[data-key]::after { bottom: 2px; }
+  #chords.trialing .chip[data-key]::after { display: block; content: attr(data-key); position: absolute; top: auto; right: auto; left: 50%; transform: translateX(-50%); bottom: 3px; font-size: 0.62rem; font-weight: 600; line-height: 1; color: var(--muted); opacity: 0.75; }
+  #chords.trialing .rootkeys-note { display: block; }
 }
 .chord-row[hidden] { display: none; }
 .tr-menu { position: relative; display: inline-block; }
@@ -3572,7 +3572,6 @@ var KeyboardRender = (function () {
       }
       chordDegrees.appendChild(b);
     }
-    chordsPanel.classList.toggle('popquiz', popQuiz);
     if (popQuiz) buildPopRows(chordDegrees);
     else { document.getElementById('root-row').hidden = true; document.getElementById('sev-row').hidden = true; }
     chordTypes.textContent = '';
@@ -3708,7 +3707,7 @@ var KeyboardRender = (function () {
     });
     if (!rootBox.nextElementSibling) rootBox.parentNode.appendChild(el('p', 'rootkeys-note', 'Keyboard: A\u2013G for the root; Shift for sharp, Alt for flat.'));
     document.getElementById('root-row').hidden = false;
-    var needSev = FindChord.needsSev(ftcSel.type, ftcSel.qual);
+    var needSev = ['7', '9', '11', '13'].indexOf(ftcSel.type) >= 0;           // (shown as soon as a seventh-or-more type is chosen; only a major or augmented chord needs the answer)
     sevBox.textContent = '';
     document.getElementById('sev-row').hidden = !needSev;
     if (needSev) POP_SEVS.forEach(function (q) {
@@ -5280,7 +5279,7 @@ var KeyboardRender = (function () {
     var pa = popAns(), got, ok, haveName = null;
     if (pa) {                                          // Pop: type + root + quality (+ maj/dom); sus chords need no quality
       var T = ftcSel.type;
-      if (!FindChord.needsSev(T, ftcSel.qual)) ftcSel.sev = null;
+      if (ftcSel.qual !== null && !FindChord.needsSev(T, ftcSel.qual)) ftcSel.sev = null;
       if (ftcSel.root === null || T === null || (FindChord.needsQual(T) && ftcSel.qual === null) || (FindChord.needsSev(T, ftcSel.qual) && ftcSel.sev === null)) { draw(false, false); return; }
       var sel = { root: ftcSel.root, type: T, qual: FindChord.needsQual(T) ? ftcSel.qual : null, sev: ftcSel.sev };
       ok = FindChord.checkAnswer(FindChord.describe(ftcChord(), ftcQ.type), ftcQ.pc, sel);

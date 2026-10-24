@@ -331,7 +331,6 @@
       }
       chordDegrees.appendChild(b);
     }
-    chordsPanel.classList.toggle('popquiz', popQuiz);
     if (popQuiz) buildPopRows(chordDegrees);
     else { document.getElementById('root-row').hidden = true; document.getElementById('sev-row').hidden = true; }
     chordTypes.textContent = '';
@@ -467,7 +466,7 @@
     });
     if (!rootBox.nextElementSibling) rootBox.parentNode.appendChild(el('p', 'rootkeys-note', 'Keyboard: A\u2013G for the root; Shift for sharp, Alt for flat.'));
     document.getElementById('root-row').hidden = false;
-    var needSev = FindChord.needsSev(ftcSel.type, ftcSel.qual);
+    var needSev = ['7', '9', '11', '13'].indexOf(ftcSel.type) >= 0;           // (shown as soon as a seventh-or-more type is chosen; only a major or augmented chord needs the answer)
     sevBox.textContent = '';
     document.getElementById('sev-row').hidden = !needSev;
     if (needSev) POP_SEVS.forEach(function (q) {
@@ -2039,7 +2038,7 @@
     var pa = popAns(), got, ok, haveName = null;
     if (pa) {                                          // Pop: type + root + quality (+ maj/dom); sus chords need no quality
       var T = ftcSel.type;
-      if (!FindChord.needsSev(T, ftcSel.qual)) ftcSel.sev = null;
+      if (ftcSel.qual !== null && !FindChord.needsSev(T, ftcSel.qual)) ftcSel.sev = null;
       if (ftcSel.root === null || T === null || (FindChord.needsQual(T) && ftcSel.qual === null) || (FindChord.needsSev(T, ftcSel.qual) && ftcSel.sev === null)) { draw(false, false); return; }
       var sel = { root: ftcSel.root, type: T, qual: FindChord.needsQual(T) ? ftcSel.qual : null, sev: ftcSel.sev };
       ok = FindChord.checkAnswer(FindChord.describe(ftcChord(), ftcQ.type), ftcQ.pc, sel);
