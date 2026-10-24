@@ -473,6 +473,7 @@
       var b = el('button', 'chip chip-sev', q[1]);
       b.type = 'button'; b.setAttribute('data-sev', q[0]); b.setAttribute('data-key', q[2]); b.setAttribute('aria-keyshortcuts', q[2]);
       b.setAttribute('aria-pressed', ftcSel.sev === q[0] ? 'true' : 'false');
+      if (ftcSel.qual === 'min' || ftcSel.qual === 'dim') { b.disabled = true; b.title = 'A minor or diminished chord has no maj/dom choice'; }     // (nothing to choose: the answer is complete)
       sevBox.appendChild(b);
     });
   }

@@ -712,3 +712,4 @@ html.is-local .ftc-local { display: inline-flex; }
 @media (hover: hover) { .rootkeys .rk.white:hover { border-color: var(--accent); } .rootkeys .rk.black:hover { background: #3a3f52; } }
 .rootkeys .rk:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; z-index: 2; }
 .chip-qual, .chip-sev { flex-direction: row; padding: 7px 14px; border-radius: 999px; font-weight: 600; }
+.chip-sev:disabled { opacity: 0.4; cursor: default; }
