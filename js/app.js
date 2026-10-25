@@ -2,7 +2,7 @@
 (function () {
   'use strict';
 
-  var state = { root: 0, mode: 'major', spell: 0, selected: false,
+  var state = { chordView: 'scale', root: 0, mode: 'major', spell: 0, selected: false,
                 flash: false, cardMode: 'key', card: null, answered: false, guess: null,
                 chord: null,
                 scaleKind: 'full', clef: 'treble', layout: 'horizontal' };                      // Explore: { deg: 0..6, type } = a chord on a degree of the key
@@ -43,6 +43,10 @@
   var progPrev = document.getElementById('prog-prev');
   var progNext = document.getElementById('prog-next');
   var chordSoundRow = document.getElementById('chord-sound');
+  var qualityView = document.getElementById('quality-view'), cvGroup = document.getElementById('chordview-group');
+  var qualityShown = null;                                   // the type whose table is in the page
+  // Explore > Chord quality: with the Chords section open, a table of the qualities of the chosen type replaces the staff and keyboard
+  function qualityOn() { return state.chordView === 'quality' && !state.flash && !isAlt() && state.selected && chordsDetails.open; }
   var chordPlayBtn = document.getElementById('chord-play');
   var progSoundBtn = document.getElementById('prog-sound');
   var progSoundLabel = document.getElementById('prog-sound-label');
@@ -257,7 +261,14 @@
   function updateChordPanel() {
     var show = state.selected && (!state.flash || quizOn());
     chordsPanel.hidden = !show;
-    var canFind = show && !state.flash && chordsDetails.open;          // "Find a chord" lives in the open selector
+    var qOn = qualityOn();
+    cvGroup.hidden = !(show && !state.flash && chordsDetails.open && !isAlt());
+    document.getElementById(state.chordView === 'quality' ? 'cv-quality' : 'cv-scale').checked = true;
+    stage.hidden = qOn; qualityView.hidden = !qOn; caption.hidden = qOn;
+    if (qOn) { layoutBar.hidden = true; resetBtn.hidden = true; var qt = curType(); if (qualityShown !== qt) { qualityView.innerHTML = Quality.table(qt); qualityShown = qt; } }
+    else qualityShown = null;
+    chordInfo.hidden = qOn;
+    var canFind = show && !state.flash && chordsDetails.open && !qOn;          // "Find a chord" lives in the open selector
     findBtn.hidden = !canFind;
     if (!canFind && findOn) { findOn = false; picks = []; }
     findBtn.setAttribute('aria-pressed', findOn ? 'true' : 'false');
@@ -302,7 +313,8 @@
     function degInPlay(dd) { return !inPlay || inPlay.some(function (c) { return c.deg === dd; }); }
     function typeInPlay(id) { return !inPlay || inPlay.some(function (c) { return c.type === id; }); }
     var popQuiz = quizOn() && !alt && pop;                   // Pop Find the chord: root, quality and seventh rows replace the degree row
-    if (popQuiz) order = [];
+    if (popQuiz || qOn) order = [];
+    chordDegrees.closest('.chord-row').hidden = qOn;
     degLabel.textContent = popQuiz ? 'Quality' : degLabel.textContent;
     if (popQuiz) modeHeadTip.textContent = 'dim, min (minor), maj (major) or aug. For a 7th, 9th, 11th or 13th chord on a major (or augmented) triad, also choose maj (Cmaj7) or dom (C7).';
     for (var oi = 0; oi < order.length; oi++) {
@@ -365,7 +377,7 @@
       else if (ti < TYPE_KEYS.length) { tb.setAttribute('data-key', TYPE_KEYS.charAt(ti).toUpperCase()); tb.setAttribute('aria-keyshortcuts', TYPE_KEYS.charAt(ti)); }
       tb.type = 'button';
       tb.setAttribute('data-type', t.id);
-      tb.setAttribute('aria-pressed', (state.chord || typePicked) && type === t.id ? 'true' : 'false');   // nothing is pre-selected
+      tb.setAttribute('aria-pressed', (state.chord || typePicked || qOn) && type === t.id ? 'true' : 'false');   // nothing is pre-selected
       chordTypes.appendChild(tb);
     });
 
@@ -516,6 +528,12 @@
     if (again) again.focus({ preventScroll: true });     // the panel was rebuilt; keep keyboard focus on the same chip
   });
 
+  cvGroup.addEventListener('change', function (e) {
+    state.chordView = e.target.value === 'quality' ? 'quality' : 'scale';
+    saveState();
+    draw(false, false);
+  });
+
   // The chord highlight only shows while the panel is open; opening it picks the I chord (Ionian in major).
   chordsDetails.addEventListener('toggle', function () {
     if (restoring) return;
@@ -549,7 +567,7 @@
           root: state.root, spell: state.spell, selected: state.selected, mode: state.mode, level: level,
           scaleKind: state.scaleKind, chord: state.chord, chordTypes: chordTypes_, typePicked: typePicked,
           chordsOpen: chordsDetails.open, progOpen: progDetails.open, progIndex: progIndex, progRevealed: progRevealed, clef: state.clef,
-          layout: state.layout
+          layout: state.layout, chordView: state.chordView
         };
       }
       o.flash = !!state.flash;
@@ -579,6 +597,7 @@
     if (s.level === 'jazz') { level = 'jazz'; document.getElementById('level-jazz').checked = true; }
     var kinds = { full: 'sk-full', pentatonic: 'sk-pent', wholetone: 'sk-whole' };
     if (level === 'jazz' && kinds[s.scaleKind]) { state.scaleKind = s.scaleKind; document.getElementById(kinds[s.scaleKind]).checked = true; }
+    if (s.chordView === 'quality') state.chordView = 'quality';
     if (s.chordTypes && typeof s.chordTypes === 'object') {
       ['full', 'pentatonic', 'wholetone'].forEach(function (k) {
         if (typeof s.chordTypes[k] === 'string' && typeIds(k).indexOf(s.chordTypes[k]) >= 0) chordTypes_[k] = s.chordTypes[k];
@@ -912,7 +931,7 @@
   ftcNextBtn.addEventListener('click', function (e) { nextCard(e.detail === 0); });
   function syncSound() {
     var ok = state.selected && (!state.flash || quizOn());
-    var canHold = ok && !!state.chord && chordsDetails.open && !chordsPanel.hidden && !(quizOn() && state.answered);      // (Find the chord: no sound button once solved)
+    var canHold = ok && !!state.chord && !qualityOn() && chordsDetails.open && !chordsPanel.hidden && !(quizOn() && state.answered);      // (Find the chord: no sound button once solved)
     chordSoundRow.hidden = !canHold;
     if (holding && (!canHold || chordSig() !== holdSig)) holding = false;
     chordPlayBtn.classList.toggle('playing', holding);
@@ -1003,7 +1022,7 @@
   function updateProgPanel() {
     syncProgIndex();
     if (state.chord && chordsDetails.open && state.selected && !state.flash && !isAlt()) progRevealed = true;
-    var visible = state.selected && !state.flash && !isAlt() && (progRevealed || prog.length > 0 || saved.items.length > 0);   // a saved progression shows as soon as a key is picked
+    var visible = state.selected && !state.flash && !isAlt() && !qualityOn() && (progRevealed || prog.length > 0 || saved.items.length > 0);   // a saved progression shows as soon as a key is picked
     progSection.hidden = !visible;
     syncHints();
     if (!visible) return;

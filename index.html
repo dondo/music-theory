@@ -94,6 +94,7 @@
         </button>
       </div>
       <div id="stage" class="stage"></div>
+      <div id="quality-view" class="quality-view" hidden></div>
     </section>
 
     <section id="ftc" class="ftc" aria-label="Find the chord" hidden>
@@ -113,6 +114,13 @@
               title="Click notes on the keyboard (click again to unselect); when they name a chord in this key it lights up here and on the staff.">Find a chord</button>
       <details id="chords-details">
       <summary id="chords-summary">Chords in this key</summary>
+      <fieldset class="segmented chordview" id="chordview-group" hidden>
+        <legend class="sr-only">Chord view</legend>
+        <input type="radio" name="chordview" id="cv-scale" value="scale" checked>
+        <label for="cv-scale">Chords in scale</label>
+        <input type="radio" name="chordview" id="cv-quality" value="quality">
+        <label for="cv-quality">Chord quality</label>
+      </fieldset>
       <div class="chord-row">
         <div class="chord-head">
           <div class="chord-title">
@@ -261,6 +269,7 @@
   <noscript><p class="noscript">This page needs JavaScript to draw the keyboard.</p></noscript>
 
   <script src="js/glyphs.js"></script>
+  <script src="js/quality.js"></script>
   <script src="js/theory.js"></script>
   <script src="js/chords.js"></script>
   <script src="js/weights.js"></script>

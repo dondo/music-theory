@@ -730,6 +730,25 @@ html.is-local .ftc-local { display: inline-flex; }
 .rootkeys .rk:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; z-index: 2; }
 .chip-qual, .chip-sev { flex-direction: row; padding: 7px 14px; border-radius: 999px; font-weight: 600; }
 .chip-sev:disabled { opacity: 0.4; cursor: default; }
+
+/* Explore > Chord quality: the table replaces the staff and keyboard */
+.stage[hidden] { display: none; }
+.chordview { margin: 4px 0 12px; }
+.chordview[hidden] { display: none; }
+.quality-view { padding: 8px 14px 16px; }
+.quality-view[hidden] { display: none; }
+.q-caption { margin: 4px 0 12px; color: var(--ink); max-width: 62em; }
+.q-wrap { overflow-x: auto; }
+.q-table { border-collapse: collapse; width: 100%; font-size: 0.95rem; }
+.q-table th, .q-table td { padding: 4px 14px; text-align: left; vertical-align: middle; border-bottom: 1px solid #dfe3ee; }
+.q-table thead th { background: #e8ecf6; border-bottom: 2px solid #20232e; font-weight: 600; padding-top: 10px; padding-bottom: 10px; }
+.q-table .q-sym { font-weight: 700; white-space: nowrap; }
+.q-table .q-staff { padding-top: 0; padding-bottom: 0; }
+.q-table .q-staff svg { display: block; }
+.q-table .q-name { white-space: nowrap; }
+.q-key { margin: 10px 0 0; font-size: 0.82rem; color: var(--muted); }
+.q-blue { color: #2563eb; font-weight: 700; }
+.q-orange { color: #ea580c; font-weight: 700; }
 </style>
 </head>
 <body>
@@ -810,6 +829,7 @@ html.is-local .ftc-local { display: inline-flex; }
         </button>
       </div>
       <div id="stage" class="stage"></div>
+      <div id="quality-view" class="quality-view" hidden></div>
     </section>
 
     <section id="ftc" class="ftc" aria-label="Find the chord" hidden>
@@ -829,6 +849,13 @@ html.is-local .ftc-local { display: inline-flex; }
               title="Click notes on the keyboard (click again to unselect); when they name a chord in this key it lights up here and on the staff.">Find a chord</button>
       <details id="chords-details">
       <summary id="chords-summary">Chords in this key</summary>
+      <fieldset class="segmented chordview" id="chordview-group" hidden>
+        <legend class="sr-only">Chord view</legend>
+        <input type="radio" name="chordview" id="cv-scale" value="scale" checked>
+        <label for="cv-scale">Chords in scale</label>
+        <input type="radio" name="chordview" id="cv-quality" value="quality">
+        <label for="cv-quality">Chord quality</label>
+      </fieldset>
       <div class="chord-row">
         <div class="chord-head">
           <div class="chord-title">
@@ -990,6 +1017,171 @@ var Glyphs = {
   flat: "M12 -170c-8 10 -12 581 -12 581c1 18 17 28 31 28c10 0 19 -6 19 -17c0 -20 -6 -260 -7 -282c0 -7 4 -14 11 -17c2 -1 3 -1 5 -1c5 0 16 9 22 14c14 9 38 17 55 17c46 -3 90 -39 90 -96c0 -46 -31 -107 -120 -169c-25 -17 -49 -44 -79 -61c0 0 -3 -2 -6 -2s-6 1 -9 5z M47 -81c0 -5 2 -15 11 -15c3 0 6 1 10 3c43 27 89 81 89 135c0 25 -12 58 -41 58c-23 0 -63 -29 -70 -49c-1 -4 -2 -16 -2 -32c0 -40 3 -100 3 -100z"
 };
 if (typeof module !== 'undefined' && module.exports) { module.exports = Glyphs; }
+</script>
+  <script>
+/* Chord quality tables (Explore > "Chord quality"): for each chord type, every quality it comes in, built on C and drawn on a staff
+ * with the stacked intervals (blue, between neighbouring notes) and the interval from the root to the top note (orange bracket).
+ * Pure functions: Quality.table(typeId) returns an HTML string; Quality.rows(typeId) returns the data (tested in tools/test_theory.js). */
+(function (root, factory) {
+  if (typeof module !== 'undefined' && module.exports) module.exports = factory(require('./glyphs.js'));
+  else root.Quality = factory(root.Glyphs);
+})(typeof self !== 'undefined' ? self : this, function (Glyphs) {
+  'use strict';
+
+  var LETTERS = 'CDEFGAB', NAT = [0, 2, 4, 5, 7, 9, 11];
+  var SIZE = { 1: 0, 2: 2, 3: 4, 4: 5, 5: 7, 6: 9, 7: 11 };                // major / perfect sizes of the simple intervals
+  var PERFECT = { 1: 1, 4: 1, 5: 1 };
+  function base(n) { return ((n - 1) % 7) + 1; }
+  function adj(n, q) {                                                       // semitones from the major / perfect size, for a quality letter
+    if (PERFECT[base(n)]) return { P: 0, d: -1, A: 1 }[q];
+    return { M: 0, m: -1, d: -2, A: 1 }[q];
+  }
+  function semis(n, q) { return SIZE[base(n)] + 12 * Math.floor((n - 1) / 7) + adj(n, q); }
+  function sizeName(step, sm) {                                              // interval name between two notes (step: generic distance 0.., sm: semitones)
+    var n = step + 1, b = base(n), exp = SIZE[b] + 12 * Math.floor((n - 1) / 7), d = sm - exp;
+    var q = PERFECT[b] ? (d === 0 ? 'P' : d === -1 ? 'd' : d === 1 ? 'A' : d < 0 ? 'dd' : 'AA')
+                       : (d === 0 ? 'M' : d === -1 ? 'm' : d === -2 ? 'd' : d === 1 ? 'A' : d < 0 ? 'dd' : 'AA');
+    return q + n;
+  }
+  function accText(a) { return a === 0 ? '' : a === 1 ? '♯' : a === -1 ? '♭' : a === -2 ? '♭♭' : a === 2 ? '×' : String(a); }
+
+  // a chord from a recipe such as "3M 5P 7m": the notes above C, lowest first
+  function build(recipe) {
+    var notes = [{ n: 1, step: 0, sm: 0 }];
+    recipe.split(' ').forEach(function (t) {
+      var n = parseInt(t, 10), q = t.slice(String(n).length);
+      notes.push({ n: n, step: n - 1, sm: semis(n, q) });
+    });
+    notes.forEach(function (x) {
+      x.letter = LETTERS.charAt(x.step % 7);
+      x.acc = x.sm - (NAT[x.step % 7] + 12 * Math.floor(x.step / 7));
+      x.name = x.letter + accText(x.acc);
+    });
+    return notes;
+  }
+
+  // [symbol, recipe, extra columns..., name]
+  var TABLES = {
+    triad: {
+      caption: 'A triad is two stacked thirds (blue). Their sum is the 5th (orange): major + minor makes a perfect 5th, minor + minor a diminished one, major + major an augmented one. In a major or minor triad the word names the 3rd; in a diminished or augmented triad it names the 5th.',
+      cols: [],
+      rows: [['C', '3M 5P', 'major triad'], ['Cm', '3m 5P', 'minor triad'], ['C°', '3m 5d', 'diminished triad'], ['C+', '3M 5A', 'augmented triad']]
+    },
+    sus2: {
+      caption: 'A suspended chord swaps the 3rd for a neighbouring note, so it is neither major nor minor. Sus2 uses the 2nd.',
+      cols: [],
+      rows: [['Csus2', '2M 5P', 'suspended 2nd']]
+    },
+    sus4: {
+      caption: 'A suspended chord swaps the 3rd for a neighbouring note, so it is neither major nor minor. Sus4 uses the 4th, which wants to fall to the 3rd.',
+      cols: [],
+      rows: [['Csus4', '4P 5P', 'suspended 4th']]
+    },
+    add9: {
+      caption: 'Add9 puts a 9th (a 2nd, an octave up) on a triad, with no 7th. The triad is named as usual.',
+      cols: ['Triad', 'Added'],
+      rows: [['Cadd9', '3M 5P 9M', 'major', 'major 9th', 'major add 9'], ['Cm(add9)', '3m 5P 9M', 'minor', 'major 9th', 'minor add 9'],
+             ['C°(add9)', '3m 5d 9M', 'diminished', 'major 9th', 'diminished add 9'], ['C+(add9)', '3M 5A 9M', 'augmented', 'major 9th', 'augmented add 9']]
+    },
+    '7': {
+      caption: 'A seventh chord adds a third on top of a triad. The triad and the 7th are named separately: in Cmaj7 the C is a major triad and “maj” describes the 7th. A bare 7 means a minor 7th on a major triad (the dominant seventh).',
+      cols: ['Triad', '7th'],
+      rows: [['Cmaj7', '3M 5P 7M', 'major', 'major', 'major seventh'], ['C7', '3M 5P 7m', 'major', 'minor', 'dominant seventh'],
+             ['Cm7', '3m 5P 7m', 'minor', 'minor', 'minor seventh'], ['Cm(maj7)', '3m 5P 7M', 'minor', 'major', 'minor-major seventh'],
+             ['Cø7', '3m 5d 7m', 'diminished', 'minor', 'half-diminished seventh'], ['C°7', '3m 5d 7d', 'diminished', 'diminished', 'fully diminished seventh'],
+             ['Caug7 (C7♯5)', '3M 5A 7m', 'augmented', 'minor', 'augmented seventh'], ['Cmaj7♯5', '3M 5A 7M', 'augmented', 'major', 'augmented major seventh'],
+             ['(not used)', '3M 5A 7A', 'augmented', 'augmented', '—'], ['(very rare)', '3m 5d 7M', 'diminished', 'major', 'diminished major seventh']]
+    },
+    '9': {
+      caption: 'A ninth chord is a seventh chord with a major 9th (a 2nd, an octave up) added on top.',
+      cols: ['Seventh chord', 'Added'],
+      rows: [['Cmaj9', '3M 5P 7M 9M', 'major seventh', 'major 9th', 'major ninth'], ['C9', '3M 5P 7m 9M', 'dominant seventh', 'major 9th', 'dominant ninth'],
+             ['Cm9', '3m 5P 7m 9M', 'minor seventh', 'major 9th', 'minor ninth'], ['Cm(maj9)', '3m 5P 7M 9M', 'minor-major seventh', 'major 9th', 'minor-major ninth'],
+             ['Cm9♭5', '3m 5d 7m 9M', 'half-diminished seventh', 'major 9th', 'half-diminished ninth'],
+             ['C9♯5', '3M 5A 7m 9M', 'augmented seventh', 'major 9th', 'augmented ninth'], ['Cmaj9♯5', '3M 5A 7M 9M', 'augmented major seventh', 'major 9th', 'augmented major ninth']]
+    },
+    '11': {
+      caption: 'An eleventh chord stacks the 7th, 9th and 11th on a triad. The 11th is a perfect 4th an octave up; over a major 3rd it rubs against the 3rd, so it is often voiced without it.',
+      cols: ['Ninth chord', 'Added'],
+      rows: [['Cmaj11', '3M 5P 7M 9M 11P', 'major ninth', 'perfect 11th', 'major eleventh'], ['C11', '3M 5P 7m 9M 11P', 'dominant ninth', 'perfect 11th', 'dominant eleventh'],
+             ['Cm11', '3m 5P 7m 9M 11P', 'minor ninth', 'perfect 11th', 'minor eleventh']]
+    },
+    '13': {
+      caption: 'A thirteenth chord stacks every third up to the 13th (a 6th, an octave up): 7th, 9th, 11th and 13th. Players usually leave some out, most often the 5th and the 11th.',
+      cols: ['Eleventh chord', 'Added'],
+      rows: [['Cmaj13', '3M 5P 7M 9M 11P 13M', 'major eleventh', 'major 13th', 'major thirteenth'], ['C13', '3M 5P 7m 9M 11P 13M', 'dominant eleventh', 'major 13th', 'dominant thirteenth'],
+             ['Cm13', '3m 5P 7m 9M 11P 13M', 'minor eleventh', 'major 13th', 'minor thirteenth']]
+    }
+  };
+
+  function rows(type) {
+    var t = TABLES[type] || TABLES.triad, nc = t.cols.length;
+    return t.rows.map(function (r) {
+      var notes = build(r[1]);
+      return { symbol: r[0], notes: notes, cells: r.slice(2, 2 + nc), name: r[2 + nc], names: notes.map(function (n) { return n.name; }) };
+    });
+  }
+
+  // ---- drawing ----
+  var SP = 11, K = SP / 250, W = 190, X_NOTE = 86;
+  function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;'); }
+  function staff(row) {
+    var notes = row.notes, top = 13, bot = -3, H = (top - bot) * SP / 2 + 10;                // positions -3..13 (half spaces above the bottom line)
+    function y(p) { return 5 + (top - p) * SP / 2; }
+    var out = ['<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + W + ' ' + H + '" width="' + W + '" height="' + H + '" role="img" aria-label="' + esc(row.symbol + ': ' + row.names.join(' ')) + '">'];
+    var i;
+    for (i = 0; i < 5; i++) out.push('<line x1="2" x2="' + (W - 2) + '" y1="' + y(2 * i) + '" y2="' + y(2 * i) + '" stroke="#333" stroke-width="1"/>');
+    out.push('<path d="' + Glyphs.gclef + '" transform="translate(6,' + y(2) + ') scale(' + K + ',-' + K + ')" fill="#222"/>');
+    var pos = notes.map(function (n) { return n.step * 1 - 2 + (n.step >= 0 ? 0 : 0) ; });        // C4 sits at -2: one step = one half space
+    var minP = Math.min.apply(null, pos), maxP = Math.max.apply(null, pos), q;
+    for (q = -2; q >= minP; q -= 2) out.push('<line x1="' + (X_NOTE - 11) + '" x2="' + (X_NOTE + 11) + '" y1="' + y(q) + '" y2="' + y(q) + '" stroke="#333" stroke-width="1.1"/>');
+    for (q = 10; q <= maxP; q += 2) out.push('<line x1="' + (X_NOTE - 11) + '" x2="' + (X_NOTE + 11) + '" y1="' + y(q) + '" y2="' + y(q) + '" stroke="#333" stroke-width="1.1"/>');
+    var cols = [];                                                                             // accidentals, stacked leftwards, highest first
+    for (i = notes.length - 1; i >= 0; i--) {
+      var a = notes[i].acc;
+      if (!a) continue;
+      var c = 0;
+      while (cols[c] !== undefined && cols[c] - pos[i] < 6) c++;
+      cols[c] = pos[i];
+      var ax = X_NOTE - 15 - c * 9, ay = y(pos[i]);
+      if (a === 1) out.push('<path d="' + Glyphs.sharp + '" transform="translate(' + ax + ',' + ay + ') scale(' + K + ',-' + K + ')" fill="#222"/>');
+      else if (a === -1) out.push('<path d="' + Glyphs.flat + '" transform="translate(' + ax + ',' + ay + ') scale(' + K + ',-' + K + ')" fill="#222"/>');
+      else if (a === -2) {
+        out.push('<path d="' + Glyphs.flat + '" transform="translate(' + (ax - 4) + ',' + ay + ') scale(' + K + ',-' + K + ')" fill="#222"/>');
+        out.push('<path d="' + Glyphs.flat + '" transform="translate(' + (ax + 3) + ',' + ay + ') scale(' + K + ',-' + K + ')" fill="#222"/>');
+      } else out.push('<text x="' + ax + '" y="' + (ay + 4) + '" font-size="12" text-anchor="middle">' + esc(accText(a)) + '</text>');
+    }
+    notes.forEach(function (n, k) {                                                             // whole notes
+      out.push('<ellipse cx="' + X_NOTE + '" cy="' + y(pos[k]) + '" rx="' + (0.72 * SP) + '" ry="' + (0.5 * SP) + '" fill="#fff" stroke="#222" stroke-width="1.6"/>');
+    });
+    // blue: the interval between neighbouring notes, to the right of the stack
+    var bx = X_NOTE + 14;
+    for (i = 0; i + 1 < notes.length; i++) {
+      var lab = sizeName(notes[i + 1].step - notes[i].step, notes[i + 1].sm - notes[i].sm);
+      out.push('<text x="' + bx + '" y="' + (y((pos[i] + pos[i + 1]) / 2) + 3.5) + '" font-size="9.5" font-weight="700" fill="#2563eb">' + lab + '</text>');
+    }
+    // orange: the bracket from the root to the top note, and its interval
+    var tp = notes[notes.length - 1], bk = X_NOTE + 44, y0 = y(pos[0]), y1 = y(pos[notes.length - 1]);
+    out.push('<path d="M' + (bk - 4) + ' ' + y0 + 'H' + bk + 'V' + y1 + 'H' + (bk - 4) + '" fill="none" stroke="#ea580c" stroke-width="1.6"/>');
+    out.push('<text x="' + (bk + 4) + '" y="' + ((y0 + y1) / 2 + 3.5) + '" font-size="11" font-weight="700" fill="#ea580c">' + sizeName(tp.step, tp.sm) + '</text>');
+    out.push('</svg>');
+    return out.join('');
+  }
+
+  function table(type) {
+    var t = TABLES[type] || TABLES.triad, data = rows(type);
+    var h = ['<p class="q-caption">' + esc(t.caption) + '</p>',
+      '<div class="q-wrap"><table class="q-table"><thead><tr><th>Chord</th><th>Notes in C</th>' + t.cols.map(function (c) { return '<th>' + esc(c) + '</th>'; }).join('') + '<th>Name</th></tr></thead><tbody>'];
+    data.forEach(function (r) {
+      h.push('<tr><th scope="row" class="q-sym">' + esc(r.symbol) + '</th><td class="q-staff">' + staff(r) + '</td>' +
+        r.cells.map(function (c) { return '<td>' + esc(c) + '</td>'; }).join('') + '<td class="q-name">' + esc(r.name) + '</td></tr>');
+    });
+    h.push('</tbody></table></div><p class="q-key"><span class="q-blue">Blue</span>: the interval between neighbouring notes. <span class="q-orange">Orange</span>: from the root to the top note. M major, m minor, P perfect, d diminished, A augmented.</p>');
+    return h.join('');
+  }
+
+  return { table: table, rows: rows, sizeName: sizeName, TYPES: Object.keys(TABLES) };
+});
 </script>
   <script>
 /* Music theory data for the key-signature keyboard.
@@ -3244,7 +3436,7 @@ var KeyboardRender = (function () {
 (function () {
   'use strict';
 
-  var state = { root: 0, mode: 'major', spell: 0, selected: false,
+  var state = { chordView: 'scale', root: 0, mode: 'major', spell: 0, selected: false,
                 flash: false, cardMode: 'key', card: null, answered: false, guess: null,
                 chord: null,
                 scaleKind: 'full', clef: 'treble', layout: 'horizontal' };                      // Explore: { deg: 0..6, type } = a chord on a degree of the key
@@ -3285,6 +3477,10 @@ var KeyboardRender = (function () {
   var progPrev = document.getElementById('prog-prev');
   var progNext = document.getElementById('prog-next');
   var chordSoundRow = document.getElementById('chord-sound');
+  var qualityView = document.getElementById('quality-view'), cvGroup = document.getElementById('chordview-group');
+  var qualityShown = null;                                   // the type whose table is in the page
+  // Explore > Chord quality: with the Chords section open, a table of the qualities of the chosen type replaces the staff and keyboard
+  function qualityOn() { return state.chordView === 'quality' && !state.flash && !isAlt() && state.selected && chordsDetails.open; }
   var chordPlayBtn = document.getElementById('chord-play');
   var progSoundBtn = document.getElementById('prog-sound');
   var progSoundLabel = document.getElementById('prog-sound-label');
@@ -3499,7 +3695,14 @@ var KeyboardRender = (function () {
   function updateChordPanel() {
     var show = state.selected && (!state.flash || quizOn());
     chordsPanel.hidden = !show;
-    var canFind = show && !state.flash && chordsDetails.open;          // "Find a chord" lives in the open selector
+    var qOn = qualityOn();
+    cvGroup.hidden = !(show && !state.flash && chordsDetails.open && !isAlt());
+    document.getElementById(state.chordView === 'quality' ? 'cv-quality' : 'cv-scale').checked = true;
+    stage.hidden = qOn; qualityView.hidden = !qOn; caption.hidden = qOn;
+    if (qOn) { layoutBar.hidden = true; resetBtn.hidden = true; var qt = curType(); if (qualityShown !== qt) { qualityView.innerHTML = Quality.table(qt); qualityShown = qt; } }
+    else qualityShown = null;
+    chordInfo.hidden = qOn;
+    var canFind = show && !state.flash && chordsDetails.open && !qOn;          // "Find a chord" lives in the open selector
     findBtn.hidden = !canFind;
     if (!canFind && findOn) { findOn = false; picks = []; }
     findBtn.setAttribute('aria-pressed', findOn ? 'true' : 'false');
@@ -3544,7 +3747,8 @@ var KeyboardRender = (function () {
     function degInPlay(dd) { return !inPlay || inPlay.some(function (c) { return c.deg === dd; }); }
     function typeInPlay(id) { return !inPlay || inPlay.some(function (c) { return c.type === id; }); }
     var popQuiz = quizOn() && !alt && pop;                   // Pop Find the chord: root, quality and seventh rows replace the degree row
-    if (popQuiz) order = [];
+    if (popQuiz || qOn) order = [];
+    chordDegrees.closest('.chord-row').hidden = qOn;
     degLabel.textContent = popQuiz ? 'Quality' : degLabel.textContent;
     if (popQuiz) modeHeadTip.textContent = 'dim, min (minor), maj (major) or aug. For a 7th, 9th, 11th or 13th chord on a major (or augmented) triad, also choose maj (Cmaj7) or dom (C7).';
     for (var oi = 0; oi < order.length; oi++) {
@@ -3607,7 +3811,7 @@ var KeyboardRender = (function () {
       else if (ti < TYPE_KEYS.length) { tb.setAttribute('data-key', TYPE_KEYS.charAt(ti).toUpperCase()); tb.setAttribute('aria-keyshortcuts', TYPE_KEYS.charAt(ti)); }
       tb.type = 'button';
       tb.setAttribute('data-type', t.id);
-      tb.setAttribute('aria-pressed', (state.chord || typePicked) && type === t.id ? 'true' : 'false');   // nothing is pre-selected
+      tb.setAttribute('aria-pressed', (state.chord || typePicked || qOn) && type === t.id ? 'true' : 'false');   // nothing is pre-selected
       chordTypes.appendChild(tb);
     });
 
@@ -3758,6 +3962,12 @@ var KeyboardRender = (function () {
     if (again) again.focus({ preventScroll: true });     // the panel was rebuilt; keep keyboard focus on the same chip
   });
 
+  cvGroup.addEventListener('change', function (e) {
+    state.chordView = e.target.value === 'quality' ? 'quality' : 'scale';
+    saveState();
+    draw(false, false);
+  });
+
   // The chord highlight only shows while the panel is open; opening it picks the I chord (Ionian in major).
   chordsDetails.addEventListener('toggle', function () {
     if (restoring) return;
@@ -3791,7 +4001,7 @@ var KeyboardRender = (function () {
           root: state.root, spell: state.spell, selected: state.selected, mode: state.mode, level: level,
           scaleKind: state.scaleKind, chord: state.chord, chordTypes: chordTypes_, typePicked: typePicked,
           chordsOpen: chordsDetails.open, progOpen: progDetails.open, progIndex: progIndex, progRevealed: progRevealed, clef: state.clef,
-          layout: state.layout
+          layout: state.layout, chordView: state.chordView
         };
       }
       o.flash = !!state.flash;
@@ -3821,6 +4031,7 @@ var KeyboardRender = (function () {
     if (s.level === 'jazz') { level = 'jazz'; document.getElementById('level-jazz').checked = true; }
     var kinds = { full: 'sk-full', pentatonic: 'sk-pent', wholetone: 'sk-whole' };
     if (level === 'jazz' && kinds[s.scaleKind]) { state.scaleKind = s.scaleKind; document.getElementById(kinds[s.scaleKind]).checked = true; }
+    if (s.chordView === 'quality') state.chordView = 'quality';
     if (s.chordTypes && typeof s.chordTypes === 'object') {
       ['full', 'pentatonic', 'wholetone'].forEach(function (k) {
         if (typeof s.chordTypes[k] === 'string' && typeIds(k).indexOf(s.chordTypes[k]) >= 0) chordTypes_[k] = s.chordTypes[k];
@@ -4154,7 +4365,7 @@ var KeyboardRender = (function () {
   ftcNextBtn.addEventListener('click', function (e) { nextCard(e.detail === 0); });
   function syncSound() {
     var ok = state.selected && (!state.flash || quizOn());
-    var canHold = ok && !!state.chord && chordsDetails.open && !chordsPanel.hidden && !(quizOn() && state.answered);      // (Find the chord: no sound button once solved)
+    var canHold = ok && !!state.chord && !qualityOn() && chordsDetails.open && !chordsPanel.hidden && !(quizOn() && state.answered);      // (Find the chord: no sound button once solved)
     chordSoundRow.hidden = !canHold;
     if (holding && (!canHold || chordSig() !== holdSig)) holding = false;
     chordPlayBtn.classList.toggle('playing', holding);
@@ -4245,7 +4456,7 @@ var KeyboardRender = (function () {
   function updateProgPanel() {
     syncProgIndex();
     if (state.chord && chordsDetails.open && state.selected && !state.flash && !isAlt()) progRevealed = true;
-    var visible = state.selected && !state.flash && !isAlt() && (progRevealed || prog.length > 0 || saved.items.length > 0);   // a saved progression shows as soon as a key is picked
+    var visible = state.selected && !state.flash && !isAlt() && !qualityOn() && (progRevealed || prog.length > 0 || saved.items.length > 0);   // a saved progression shows as soon as a key is picked
     progSection.hidden = !visible;
     syncHints();
     if (!visible) return;

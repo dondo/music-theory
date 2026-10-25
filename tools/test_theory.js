@@ -734,5 +734,18 @@ check('pop answers: described, checked and named like a lead sheet', function ()
     });
   });
 });
+// chord quality tables
+(function () {
+  var Q = require('../js/quality.js');
+  var d7 = Q.rows('7').filter(function (r) { return r.symbol === 'C\u00B07'; })[0];
+  assert.deepStrictEqual(d7.names, ['C', 'E\u266D', 'G\u266D', 'B\u266D\u266D']);
+  assert.strictEqual(Q.sizeName(6, 9), 'd7');
+  Q.TYPES.forEach(function (t) {
+    var rs = Q.rows(t);
+    assert.ok(rs.length > 0 && Q.table(t).indexOf('<svg') > 0);
+    rs.forEach(function (r) { assert.strictEqual(r.notes[0].name, 'C'); });
+  });
+  console.log('ok quality tables');
+})();
 console.log(failures ? '\n' + failures + ' FAILED' : '\nall tests passed');
 process.exit(failures ? 1 : 0);

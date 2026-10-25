@@ -713,3 +713,22 @@ html.is-local .ftc-local { display: inline-flex; }
 .rootkeys .rk:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; z-index: 2; }
 .chip-qual, .chip-sev { flex-direction: row; padding: 7px 14px; border-radius: 999px; font-weight: 600; }
 .chip-sev:disabled { opacity: 0.4; cursor: default; }
+
+/* Explore > Chord quality: the table replaces the staff and keyboard */
+.stage[hidden] { display: none; }
+.chordview { margin: 4px 0 12px; }
+.chordview[hidden] { display: none; }
+.quality-view { padding: 8px 14px 16px; }
+.quality-view[hidden] { display: none; }
+.q-caption { margin: 4px 0 12px; color: var(--ink); max-width: 62em; }
+.q-wrap { overflow-x: auto; }
+.q-table { border-collapse: collapse; width: 100%; font-size: 0.95rem; }
+.q-table th, .q-table td { padding: 4px 14px; text-align: left; vertical-align: middle; border-bottom: 1px solid #dfe3ee; }
+.q-table thead th { background: #e8ecf6; border-bottom: 2px solid #20232e; font-weight: 600; padding-top: 10px; padding-bottom: 10px; }
+.q-table .q-sym { font-weight: 700; white-space: nowrap; }
+.q-table .q-staff { padding-top: 0; padding-bottom: 0; }
+.q-table .q-staff svg { display: block; }
+.q-table .q-name { white-space: nowrap; }
+.q-key { margin: 10px 0 0; font-size: 0.82rem; color: var(--muted); }
+.q-blue { color: #2563eb; font-weight: 700; }
+.q-orange { color: #ea580c; font-weight: 700; }
