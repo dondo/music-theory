@@ -42,7 +42,7 @@
   // [symbol, recipe, extra columns..., name]
   var TABLES = {
     triad: {
-      caption: 'A triad is composed of two stacked thirds. Each of those thirds can be major (two whole steps) or minor (1.5 steps).\n\nStacking these thirds creates a fifth; that fifth can contain two minor thirds creating three steps (diminished fifth), can contain a major and a minor third for 3.5 steps (perfect fifth), or two major thirds for four whole steps (augmented fifth).',
+      caption: 'A major third has two whole steps; a minor third has 1.5 steps.\n\nA triad is composed of two stacked thirds. Each of those thirds can be major or minor, giving four combinations from two minor thirds (three total steps) to two major thirds (four total steps).\n\nStacking these thirds creates a fifth. When a fifth contains two minor thirds, for three steps, it\'s called a diminished fifth; a major and minor third take 3.5 steps which is a perfect fifth; and two major thirds give us four whole steps, known as an augmented fifth.',
       cols: [],
       rows: [['C', '3M 5P', 'major triad'], ['Cm', '3m 5P', 'minor triad'], ['C°', '3m 5d', 'diminished triad'], ['C+', '3M 5A', 'augmented triad']]
     },
@@ -63,7 +63,7 @@
              ['C°(add9)', '3m 5d 9M', 'diminished', 'major 9th', 'diminished add 9'], ['C+(add9)', '3M 5A 9M', 'augmented', 'major 9th', 'augmented add 9']]
     },
     '7': {
-      caption: 'A seventh chord adds a third on top of a triad. The triad and the 7th are named separately: in Cmaj7 the C is a major triad and “maj” describes the 7th. A bare 7 means a minor 7th on a major triad (the dominant seventh).',
+      caption: 'A seventh chord adds a third on top of a triad, and that additional third can be major (two whole steps) or minor (1.5 steps). When the seventh is major, the annotation specifies "maj"; when it\'s minor, the annotation is omitted.',
       cols: ['Triad', '7th'],
       rows: [['Cmaj7', '3M 5P 7M', 'major', 'major', 'major seventh'], ['C7', '3M 5P 7m', 'major', 'minor', 'dominant seventh'],
              ['Cm7', '3m 5P 7m', 'minor', 'minor', 'minor seventh'], ['Cm(maj7)', '3m 5P 7M', 'minor', 'major', 'minor-major seventh'],
