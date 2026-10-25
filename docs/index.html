@@ -733,7 +733,6 @@ html.is-local .ftc-local { display: inline-flex; }
 
 /* Explore > Chord quality: the table replaces the staff and keyboard */
 .stage[hidden] { display: none; }
-.chordview { margin: 4px 0 12px; }
 .chordview[hidden] { display: none; }
 .quality-view { padding: 8px 14px 16px; }
 .quality-view[hidden] { display: none; }
@@ -798,6 +797,13 @@ html.is-local .ftc-local { display: inline-flex; }
         <input type="radio" name="flashmode" id="fm-chord" value="chord">
         <label for="fm-chord">Find the chord</label>
       </fieldset>
+      <fieldset class="segmented chordview" id="chordview-group" hidden>
+        <legend class="sr-only">Chord view</legend>
+        <input type="radio" name="chordview" id="cv-scale" value="scale" checked>
+        <label for="cv-scale">Chords in scale</label>
+        <input type="radio" name="chordview" id="cv-quality" value="quality">
+        <label for="cv-quality">Chord quality</label>
+      </fieldset>
       <button type="button" id="reset" class="btn-reset" hidden>Reset view</button>
       <div id="score" class="score" hidden aria-label="Score">
         <span class="score-ok"><span aria-hidden="true">✓</span> <b id="n-ok">0</b> correct</span>
@@ -849,13 +855,6 @@ html.is-local .ftc-local { display: inline-flex; }
               title="Click notes on the keyboard (click again to unselect); when they name a chord in this key it lights up here and on the staff.">Find a chord</button>
       <details id="chords-details">
       <summary id="chords-summary">Chords in this key</summary>
-      <fieldset class="segmented chordview" id="chordview-group" hidden>
-        <legend class="sr-only">Chord view</legend>
-        <input type="radio" name="chordview" id="cv-scale" value="scale" checked>
-        <label for="cv-scale">Chords in scale</label>
-        <input type="radio" name="chordview" id="cv-quality" value="quality">
-        <label for="cv-quality">Chord quality</label>
-      </fieldset>
       <div class="chord-row">
         <div class="chord-head">
           <div class="chord-title">
@@ -1171,10 +1170,10 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = Glyphs; 
   function table(type) {
     var t = TABLES[type] || TABLES.triad, data = rows(type);
     var h = ['<p class="q-caption">' + esc(t.caption) + '</p>',
-      '<div class="q-wrap"><table class="q-table"><thead><tr><th>Chord</th><th>Notes in C</th>' + t.cols.map(function (c) { return '<th>' + esc(c) + '</th>'; }).join('') + '<th>Name</th></tr></thead><tbody>'];
+      '<div class="q-wrap"><table class="q-table"><thead><tr><th>Chord</th><th>Name</th><th>Notes in C</th>' + t.cols.map(function (c) { return '<th>' + esc(c) + '</th>'; }).join('') + '</tr></thead><tbody>'];
     data.forEach(function (r) {
-      h.push('<tr><th scope="row" class="q-sym">' + esc(r.symbol) + '</th><td class="q-staff">' + staff(r) + '</td>' +
-        r.cells.map(function (c) { return '<td>' + esc(c) + '</td>'; }).join('') + '<td class="q-name">' + esc(r.name) + '</td></tr>');
+      h.push('<tr><th scope="row" class="q-sym">' + esc(r.symbol) + '</th><td class="q-name">' + esc(r.name) + '</td><td class="q-staff">' + staff(r) + '</td>' +
+        r.cells.map(function (c) { return '<td>' + esc(c) + '</td>'; }).join('') + '</tr>');
     });
     h.push('</tbody></table></div><p class="q-key"><span class="q-blue">Blue</span>: the interval between neighbouring notes. <span class="q-orange">Orange</span>: from the root to the top note. M major, m minor, P perfect, d diminished, A augmented.</p>');
     return h.join('');

@@ -716,7 +716,6 @@ html.is-local .ftc-local { display: inline-flex; }
 
 /* Explore > Chord quality: the table replaces the staff and keyboard */
 .stage[hidden] { display: none; }
-.chordview { margin: 4px 0 12px; }
 .chordview[hidden] { display: none; }
 .quality-view { padding: 8px 14px 16px; }
 .quality-view[hidden] { display: none; }
