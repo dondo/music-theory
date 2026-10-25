@@ -157,7 +157,7 @@
     t.cols.forEach(function (c, i) {
       h.push('<tr><th scope="row">' + esc(c) + '</th>' + data.map(function (r) { return '<td>' + esc(r.cells[i]) + '</td>'; }).join('') + '</tr>');
     });
-    h.push('</tbody></table></div><p class="q-key"><span class="q-blue">Blue</span>: the interval between neighbouring notes. <span class="q-orange">Orange</span>: from the root to the top note. M major, m minor, P perfect, d diminished, A augmented.</p>');
+    h.push('</tbody></table></div><p class="q-key"><span class="q-blue">Blue</span>: the interval between neighbouring notes; <span class="q-blue">M</span> major, <span class="q-blue">m</span> minor, <span class="q-blue">P</span> perfect, <span class="q-blue">d</span> diminished, <span class="q-blue">A</span> augmented. <span class="q-orange">Orange</span>: from the root to the top note.</p>');
     return h.join('');
   }
 
