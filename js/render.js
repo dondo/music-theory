@@ -271,7 +271,7 @@ var KeyboardRender = (function () {
       '" stroke="' + (ctx.flash ? NEUTRAL_BAND : PAL[sp.kind][1]) + '" stroke-width="6" pointer-events="none"/>');
     if (k.inside) {
       if (sp.n > 0 && !ctx.flash) {
-        out.push('<text x="' + f(k.cx) + '" y="' + COUNT_Y + '" text-anchor="middle" font-size="15" ' +
+        out.push('<text class="sigcount" x="' + f(k.cx) + '" y="' + COUNT_Y + '" text-anchor="middle" font-size="15" ' +
           'font-weight="bold" fill="' + (type ? PAL_DARK[sp.kind] : PAL[sp.kind][1]) +
           '" pointer-events="none">' + sp.n + '</text>');
       }
@@ -308,7 +308,7 @@ var KeyboardRender = (function () {
     }
     var colFor = function (kind) { return type ? PAL_DARK[kind] : PAL[kind][1]; };
     function count(cx, n, kind) {
-      return '<text x="' + f(cx) + '" y="' + COUNT_Y + '" text-anchor="middle" font-size="15" font-weight="bold" fill="' +
+      return '<text class="sigcount" x="' + f(cx) + '" y="' + COUNT_Y + '" text-anchor="middle" font-size="15" font-weight="bold" fill="' +
         colFor(kind) + '" pointer-events="none">' + n + '</text>';
     }
     if (ctx.flash) {
@@ -317,7 +317,7 @@ var KeyboardRender = (function () {
       out.push(count(k.cx, specs[0].n, specs[0].kind));
     } else {
       out.push(count(k.cx - 11, specs[0].n, specs[0].kind));
-      out.push('<text x="' + f(k.cx) + '" y="' + COUNT_Y + '" text-anchor="middle" font-size="12" fill="' +
+      out.push('<text class="sigcount" x="' + f(k.cx) + '" y="' + COUNT_Y + '" text-anchor="middle" font-size="12" fill="' +
         (type ? '#6b5a1a' : '#999') + '" pointer-events="none">/</text>');
       out.push(count(k.cx + 11, specs[1].n, specs[1].kind));
     }

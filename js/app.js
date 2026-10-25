@@ -264,6 +264,7 @@
     var qOn = qualityOn();
     cvGroup.hidden = !(show && !state.flash && chordsDetails.open && !isAlt());
     document.getElementById(state.chordView === 'quality' ? 'cv-quality' : 'cv-scale').checked = true;
+    stage.classList.toggle('chords-open', !!(show && chordsDetails.open));
     stage.hidden = qOn; qualityView.hidden = !qOn; caption.hidden = qOn;
     if (qOn) { layoutBar.hidden = true; resetBtn.hidden = true; var qt = curType(); if (qualityShown !== qt) { qualityView.innerHTML = Quality.table(qt); qualityShown = qt; } }
     else qualityShown = null;

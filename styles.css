@@ -735,3 +735,4 @@ html.is-local .ftc-local { display: inline-flex; }
 .q-land tbody th[scope="row"] { font-weight: 600; white-space: nowrap; color: var(--muted); }
 .q-land td { min-width: 190px; }
 .q-land .q-name { white-space: normal; }
+#stage.chords-open .sigcount { display: none; }
