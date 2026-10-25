@@ -1083,7 +1083,7 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = Glyphs; 
       rows: [['Csus2', '2M 5P', 'suspended 2nd'], ['Csus4', '4P 5P', 'suspended 4th']]
     },
     add9: {
-      caption: 'Add9 puts a 9th above a triad with no 7th. The triad is named as usual.\n\nSince a ninth is also a 2nd, Add2 is an equivalent chord that differs only in voicing. Add9 is described as open, clear, and sparkling, while Add2 is denser and grittier; the same pitches come across as shimmering in one place and abrasive in the other because a major 2nd close together is a clash, while the same interval spread over an octave is a color.\n\nAdd9 is much more common and in practice many players treat it as covering both: they read “add9” and choose whichever voicing the arrangement calls for. “Add2” is usually written when the composer or arranger wants the close voicing specified.',
+      caption: 'Add9 puts a 9th above a triad with no 7th. The triad is named as usual.\n\nSince a ninth is also a 2nd, Add2 is an equivalent chord that differs only in voicing. Add9 is described as open, clear, and sparkling, while Add2 is denser and grittier; the same pitches come across as shimmering in one place and abrasive in the other because a major 2nd close together is a clash, while the same interval spread over an octave is a color.\n\nAdd9 is a much more common notation and in practice many players treat it as covering both: they read “add9” and choose whichever voicing the arrangement calls for. “Add2” is usually written when the composer or arranger wants the close voicing specified.',
       cols: ['Triad', 'Added'],
       rows: [['Cadd9', '3M 5P 9M', 'major', 'major 9th', 'major add 9'], ['Cm(add9)', '3m 5P 9M', 'minor', 'major 9th', 'minor add 9'],
              ['C°(add9)', '3m 5d 9M', 'diminished', 'major 9th', 'diminished add 9'], ['C+(add9)', '3M 5A 9M', 'augmented', 'major 9th', 'augmented add 9']]
@@ -1098,7 +1098,7 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = Glyphs; 
              ['(not used)', '3M 5A 7A', 'augmented', 'augmented', '—'], ['(very rare)', '3m 5d 7M', 'diminished', 'major', 'diminished major seventh']]
     },
     '9': {
-      caption: 'A ninth chord is a seventh chord with a major 9th (a 2nd, an octave up) added on top.',
+      caption: 'A ninth chord is a seventh chord with yet another third stacked on top of it, making a major 9th - as with Add9, that\'s a 2nd an octave up.',
       cols: ['Seventh chord', 'Added'],
       rows: [['Cmaj9', '3M 5P 7M 9M', 'major seventh', 'major 9th', 'major ninth'], ['C9', '3M 5P 7m 9M', 'dominant seventh', 'major 9th', 'dominant ninth'],
              ['Cm9', '3m 5P 7m 9M', 'minor seventh', 'major 9th', 'minor ninth'], ['Cm(maj9)', '3m 5P 7M 9M', 'minor-major seventh', 'major 9th', 'minor-major ninth'],
@@ -3742,7 +3742,7 @@ var KeyboardRender = (function () {
     if (!show) return;
     var alt = isAlt();
     var rootName = currentSpec().name;
-    document.getElementById('chords-summary').textContent = 'Chords in the key of ' + rootName + (state.mode === 'minor' ? ' minor' : '');
+    document.getElementById('chords-summary').textContent = qualityOn() ? 'Chord quality (tables are in C)' : 'Chords in the key of ' + rootName + (state.mode === 'minor' ? ' minor' : '');
     var sc = alt ? altScale() : null;
     var type = curType();
 

@@ -294,7 +294,7 @@
     if (!show) return;
     var alt = isAlt();
     var rootName = currentSpec().name;
-    document.getElementById('chords-summary').textContent = 'Chords in the key of ' + rootName + (state.mode === 'minor' ? ' minor' : '');
+    document.getElementById('chords-summary').textContent = qualityOn() ? 'Chord quality (tables are in C)' : 'Chords in the key of ' + rootName + (state.mode === 'minor' ? ' minor' : '');
     var sc = alt ? altScale() : null;
     var type = curType();
 
