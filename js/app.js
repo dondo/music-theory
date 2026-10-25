@@ -352,7 +352,7 @@
     var types = alt ? Chords.ALT_TYPES.filter(function (t) {
       for (var i = 0; i < sc.offsets.length; i++) if (Chords.chordInScale(sc, i, t.id)) return true;
       return false;
-    }) : Chords.TYPES.filter(function (t) { return (!pop || POP_HIDDEN_TYPES.indexOf(t.id) < 0) && typeInPlay(t.id); });
+    }) : Chords.TYPES.filter(function (t) { return (!pop || POP_HIDDEN_TYPES.indexOf(t.id) < 0) && typeInPlay(t.id) && !(qOn && t.id === 'sus2'); });   // (the quality view shows Sus2 and Sus4 together)
     if (!alt && typeSortBy !== 'complexity') {         // stable sort: ties keep the complexity (list) order
       var rank = null;
       if (typeSortBy === 'ambiguity' || typeSortBy === 'tension') {
@@ -373,12 +373,12 @@
       }).map(function (o) { return o.t; });
     }
     types.forEach(function (t, ti) {
-      var tb = el('button', 'chip chip-type', t.label);
+      var tb = el('button', 'chip chip-type', qOn && t.id === 'sus4' ? 'Sus' : t.label);
       if (popQuiz) { if (ti < 8) { tb.setAttribute('data-key', String(ti + 1)); tb.setAttribute('aria-keyshortcuts', String(ti + 1)); } }
       else if (ti < TYPE_KEYS.length) { tb.setAttribute('data-key', TYPE_KEYS.charAt(ti).toUpperCase()); tb.setAttribute('aria-keyshortcuts', TYPE_KEYS.charAt(ti)); }
       tb.type = 'button';
       tb.setAttribute('data-type', t.id);
-      tb.setAttribute('aria-pressed', (state.chord || typePicked || qOn) && type === t.id ? 'true' : 'false');   // nothing is pre-selected
+      tb.setAttribute('aria-pressed', (state.chord || typePicked || qOn) && (type === t.id || (qOn && t.id === 'sus4' && type === 'sus2')) ? 'true' : 'false');   // nothing is pre-selected
       chordTypes.appendChild(tb);
     });
 

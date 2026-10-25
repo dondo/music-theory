@@ -46,15 +46,10 @@
       cols: [],
       rows: [['C', '3M 5P', 'major triad'], ['Cm', '3m 5P', 'minor triad'], ['C°', '3m 5d', 'diminished triad'], ['C+', '3M 5A', 'augmented triad']]
     },
-    sus2: {
-      caption: 'A suspended chord swaps the 3rd for a neighbouring note, so it is neither major nor minor. Sus2 uses the 2nd.',
+    sus: {
+      caption: '“Sus” is short for suspended, and it comes from the musical concept of "suspension" - in traditional harmony, a suspension happens when a note from one chord is held over (suspended) into the next chord, where it clashes with the new harmony.\n\nA suspended chord moves the middle note of the traditional triad one more half step than diminished or augmented triads; since the middle note is moving another half-step, one way to think about it is that Sus2 is even more diminished and Sus4 more augmented. However, although the chord has three notes, it\'s no longer considered a triad; additionally, because the chord swaps the major/minor third for a 2nd or 4th, it is neither major nor minor. The result of this is a chord that wants to resolve to a true triad \u2013 hence the "suspension."',
       cols: [],
-      rows: [['Csus2', '2M 5P', 'suspended 2nd']]
-    },
-    sus4: {
-      caption: 'A suspended chord swaps the 3rd for a neighbouring note, so it is neither major nor minor. Sus4 uses the 4th, which wants to fall to the 3rd.',
-      cols: [],
-      rows: [['Csus4', '4P 5P', 'suspended 4th']]
+      rows: [['Csus2', '2M 5P', 'suspended 2nd'], ['Csus4', '4P 5P', 'suspended 4th']]
     },
     add9: {
       caption: 'Add9 puts a 9th (a 2nd, an octave up) on a triad, with no 7th. The triad is named as usual.',
@@ -94,6 +89,7 @@
   };
 
   function rows(type) {
+    if (type === 'sus2' || type === 'sus4') type = 'sus';
     var t = TABLES[type] || TABLES.triad, nc = t.cols.length;
     return t.rows.map(function (r) {
       var notes = build(r[1]);
@@ -153,6 +149,7 @@
   }
 
   function table(type) {
+    if (type === 'sus2' || type === 'sus4') type = 'sus';
     var t = TABLES[type] || TABLES.triad, data = rows(type);
     var h = [t.caption.split('\n\n').map(function (p) { return '<p class="q-caption">' + esc(p) + '</p>'; }).join(''),
       '<div class="q-wrap"><table class="q-table q-land"><tbody>'];

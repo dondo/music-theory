@@ -1071,15 +1071,10 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = Glyphs; 
       cols: [],
       rows: [['C', '3M 5P', 'major triad'], ['Cm', '3m 5P', 'minor triad'], ['C°', '3m 5d', 'diminished triad'], ['C+', '3M 5A', 'augmented triad']]
     },
-    sus2: {
-      caption: 'A suspended chord swaps the 3rd for a neighbouring note, so it is neither major nor minor. Sus2 uses the 2nd.',
+    sus: {
+      caption: '“Sus” is short for suspended, and it comes from the musical concept of "suspension" - in traditional harmony, a suspension happens when a note from one chord is held over (suspended) into the next chord, where it clashes with the new harmony.\n\nA suspended chord moves the middle note of the traditional triad one more half step than diminished or augmented triads; since the middle note is moving another half-step, one way to think about it is that Sus2 is even more diminished and Sus4 more augmented. However, although the chord has three notes, it\'s no longer considered a triad; additionally, because the chord swaps the major/minor third for a 2nd or 4th, it is neither major nor minor. The result of this is a chord that wants to resolve to a true triad \u2013 hence the "suspension."',
       cols: [],
-      rows: [['Csus2', '2M 5P', 'suspended 2nd']]
-    },
-    sus4: {
-      caption: 'A suspended chord swaps the 3rd for a neighbouring note, so it is neither major nor minor. Sus4 uses the 4th, which wants to fall to the 3rd.',
-      cols: [],
-      rows: [['Csus4', '4P 5P', 'suspended 4th']]
+      rows: [['Csus2', '2M 5P', 'suspended 2nd'], ['Csus4', '4P 5P', 'suspended 4th']]
     },
     add9: {
       caption: 'Add9 puts a 9th (a 2nd, an octave up) on a triad, with no 7th. The triad is named as usual.',
@@ -1119,6 +1114,7 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = Glyphs; 
   };
 
   function rows(type) {
+    if (type === 'sus2' || type === 'sus4') type = 'sus';
     var t = TABLES[type] || TABLES.triad, nc = t.cols.length;
     return t.rows.map(function (r) {
       var notes = build(r[1]);
@@ -1178,6 +1174,7 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = Glyphs; 
   }
 
   function table(type) {
+    if (type === 'sus2' || type === 'sus4') type = 'sus';
     var t = TABLES[type] || TABLES.triad, data = rows(type);
     var h = [t.caption.split('\n\n').map(function (p) { return '<p class="q-caption">' + esc(p) + '</p>'; }).join(''),
       '<div class="q-wrap"><table class="q-table q-land"><tbody>'];
@@ -3797,7 +3794,7 @@ var KeyboardRender = (function () {
     var types = alt ? Chords.ALT_TYPES.filter(function (t) {
       for (var i = 0; i < sc.offsets.length; i++) if (Chords.chordInScale(sc, i, t.id)) return true;
       return false;
-    }) : Chords.TYPES.filter(function (t) { return (!pop || POP_HIDDEN_TYPES.indexOf(t.id) < 0) && typeInPlay(t.id); });
+    }) : Chords.TYPES.filter(function (t) { return (!pop || POP_HIDDEN_TYPES.indexOf(t.id) < 0) && typeInPlay(t.id) && !(qOn && t.id === 'sus2'); });   // (the quality view shows Sus2 and Sus4 together)
     if (!alt && typeSortBy !== 'complexity') {         // stable sort: ties keep the complexity (list) order
       var rank = null;
       if (typeSortBy === 'ambiguity' || typeSortBy === 'tension') {
@@ -3818,12 +3815,12 @@ var KeyboardRender = (function () {
       }).map(function (o) { return o.t; });
     }
     types.forEach(function (t, ti) {
-      var tb = el('button', 'chip chip-type', t.label);
+      var tb = el('button', 'chip chip-type', qOn && t.id === 'sus4' ? 'Sus' : t.label);
       if (popQuiz) { if (ti < 8) { tb.setAttribute('data-key', String(ti + 1)); tb.setAttribute('aria-keyshortcuts', String(ti + 1)); } }
       else if (ti < TYPE_KEYS.length) { tb.setAttribute('data-key', TYPE_KEYS.charAt(ti).toUpperCase()); tb.setAttribute('aria-keyshortcuts', TYPE_KEYS.charAt(ti)); }
       tb.type = 'button';
       tb.setAttribute('data-type', t.id);
-      tb.setAttribute('aria-pressed', (state.chord || typePicked || qOn) && type === t.id ? 'true' : 'false');   // nothing is pre-selected
+      tb.setAttribute('aria-pressed', (state.chord || typePicked || qOn) && (type === t.id || (qOn && t.id === 'sus4' && type === 'sus2')) ? 'true' : 'false');   // nothing is pre-selected
       chordTypes.appendChild(tb);
     });
 
