@@ -731,3 +731,7 @@ html.is-local .ftc-local { display: inline-flex; }
 .q-key { margin: 10px 0 0; font-size: 0.82rem; color: var(--muted); }
 .q-blue { color: #2563eb; font-weight: 700; }
 .q-orange { color: #ea580c; font-weight: 700; }
+.q-land tr:first-child th { background: #e8ecf6; border-bottom: 2px solid #20232e; padding-top: 10px; padding-bottom: 10px; }
+.q-land tbody th[scope="row"] { font-weight: 600; white-space: nowrap; color: var(--muted); }
+.q-land td { min-width: 190px; }
+.q-land .q-name { white-space: normal; }

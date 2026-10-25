@@ -150,10 +150,12 @@
   function table(type) {
     var t = TABLES[type] || TABLES.triad, data = rows(type);
     var h = ['<p class="q-caption">' + esc(t.caption) + '</p>',
-      '<div class="q-wrap"><table class="q-table"><thead><tr><th>Chord</th><th>Name</th><th>Notes in C</th>' + t.cols.map(function (c) { return '<th>' + esc(c) + '</th>'; }).join('') + '</tr></thead><tbody>'];
-    data.forEach(function (r) {
-      h.push('<tr><th scope="row" class="q-sym">' + esc(r.symbol) + '</th><td class="q-name">' + esc(r.name) + '</td><td class="q-staff">' + staff(r) + '</td>' +
-        r.cells.map(function (c) { return '<td>' + esc(c) + '</td>'; }).join('') + '</tr>');
+      '<div class="q-wrap"><table class="q-table q-land"><tbody>'];
+    h.push('<tr><th scope="row"></th>' + data.map(function (r) { return '<th scope="col" class="q-sym">' + esc(r.symbol) + '</th>'; }).join('') + '</tr>');
+    h.push('<tr><th scope="row">Name</th>' + data.map(function (r) { return '<td class="q-name">' + esc(r.name) + '</td>'; }).join('') + '</tr>');
+    h.push('<tr><th scope="row">Notes in C</th>' + data.map(function (r) { return '<td class="q-staff">' + staff(r) + '</td>'; }).join('') + '</tr>');
+    t.cols.forEach(function (c, i) {
+      h.push('<tr><th scope="row">' + esc(c) + '</th>' + data.map(function (r) { return '<td>' + esc(r.cells[i]) + '</td>'; }).join('') + '</tr>');
     });
     h.push('</tbody></table></div><p class="q-key"><span class="q-blue">Blue</span>: the interval between neighbouring notes. <span class="q-orange">Orange</span>: from the root to the top note. M major, m minor, P perfect, d diminished, A augmented.</p>');
     return h.join('');
