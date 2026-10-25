@@ -42,7 +42,7 @@
   // [symbol, recipe, extra columns..., name]
   var TABLES = {
     triad: {
-      caption: 'A triad is two stacked thirds (blue). Their sum is the 5th (orange): major + minor makes a perfect 5th, minor + minor a diminished one, major + major an augmented one. In a major or minor triad the word names the 3rd; in a diminished or augmented triad it names the 5th.',
+      caption: 'A triad is composed of two stacked thirds. Each of those thirds can be major (two whole steps) or minor (1.5 steps).\n\nStacking these thirds creates a fifth; that fifth can contain three whole steps (diminished), 3.5 steps (perfect), or four whole steps (augmented).',
       cols: [],
       rows: [['C', '3M 5P', 'major triad'], ['Cm', '3m 5P', 'minor triad'], ['C°', '3m 5d', 'diminished triad'], ['C+', '3M 5A', 'augmented triad']]
     },
@@ -137,19 +137,24 @@
     var bx = X_NOTE + 14;
     for (i = 0; i + 1 < notes.length; i++) {
       var lab = sizeName(notes[i + 1].step - notes[i].step, notes[i + 1].sm - notes[i].sm);
-      out.push('<text x="' + bx + '" y="' + (y((pos[i] + pos[i + 1]) / 2) + 3.5) + '" font-size="9.5" font-weight="700" fill="#2563eb">' + lab + '</text>');
+      if (lab === 'M3' || lab === 'm3') lab = lab.charAt(0);                                    // thirds: just M or m
+      var ly = y((pos[i] + pos[i + 1]) / 2) + 3.5;
+      out.push('<rect x="' + (bx - 2) + '" y="' + (ly - 9) + '" width="' + (lab.length * 6 + 4) + '" height="11.5" rx="2" fill="#fff" fill-opacity=".72"/>');
+      out.push('<text x="' + bx + '" y="' + ly + '" font-size="9.5" font-weight="700" fill="#2563eb">' + lab + '</text>');
     }
     // orange: the bracket from the root to the top note, and its interval
     var tp = notes[notes.length - 1], bk = X_NOTE + 44, y0 = y(pos[0]), y1 = y(pos[notes.length - 1]);
     out.push('<path d="M' + (bk - 4) + ' ' + y0 + 'H' + bk + 'V' + y1 + 'H' + (bk - 4) + '" fill="none" stroke="#ea580c" stroke-width="1.6"/>');
-    out.push('<text x="' + (bk + 4) + '" y="' + ((y0 + y1) / 2 + 3.5) + '" font-size="11" font-weight="700" fill="#ea580c">' + sizeName(tp.step, tp.sm) + '</text>');
+    var ol = sizeName(tp.step, tp.sm), oy = (y0 + y1) / 2 + 3.5;
+    out.push('<rect x="' + (bk + 2) + '" y="' + (oy - 10) + '" width="' + (ol.length * 6.8 + 4) + '" height="13" rx="2" fill="#fff" fill-opacity=".72"/>');
+    out.push('<text x="' + (bk + 4) + '" y="' + oy + '" font-size="11" font-weight="700" fill="#ea580c">' + ol + '</text>');
     out.push('</svg>');
     return out.join('');
   }
 
   function table(type) {
     var t = TABLES[type] || TABLES.triad, data = rows(type);
-    var h = ['<p class="q-caption">' + esc(t.caption) + '</p>',
+    var h = [t.caption.split('\n\n').map(function (p) { return '<p class="q-caption">' + esc(p) + '</p>'; }).join(''),
       '<div class="q-wrap"><table class="q-table q-land"><tbody>'];
     h.push('<tr><th scope="row"></th>' + data.map(function (r) { return '<th scope="col" class="q-sym">' + esc(r.symbol) + '</th>'; }).join('') + '</tr>');
     h.push('<tr><th scope="row">Name</th>' + data.map(function (r) { return '<td class="q-name">' + esc(r.name) + '</td>'; }).join('') + '</tr>');
