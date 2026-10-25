@@ -24,14 +24,27 @@
     </header>
 
     <section class="controls" aria-label="Controls">
-      <fieldset class="segmented" id="level-group">
+      <fieldset class="segmented" id="appmode-group">
+        <legend class="sr-only">Topic</legend>
+        <input type="radio" name="appmode" id="am-note" value="note">
+        <label for="am-note">Note</label>
+        <input type="radio" name="appmode" id="am-key" value="key" checked>
+        <label for="am-key">Key</label>
+        <input type="radio" name="appmode" id="am-popchord" value="popchord">
+        <label for="am-popchord">Pop Chord</label>
+        <input type="radio" name="appmode" id="am-minor" value="minor">
+        <label for="am-minor">Minor key</label>
+        <input type="radio" name="appmode" id="am-jazz" value="jazz">
+        <label for="am-jazz">Jazz Chord</label>
+      </fieldset>
+      <fieldset class="segmented" id="level-group" hidden>
         <legend class="sr-only">Theory level</legend>
         <input type="radio" name="level" id="level-pop" value="pop" checked>
         <label for="level-pop">Pop</label>
         <input type="radio" name="level" id="level-jazz" value="jazz">
         <label for="level-jazz">Jazz</label>
       </fieldset>
-      <fieldset class="segmented">
+      <fieldset class="segmented" id="mode-group" hidden>
         <legend class="sr-only">Mode</legend>
         <input type="radio" name="mode" id="mode-major" value="major" checked>
         <label for="mode-major">Major</label>
@@ -101,7 +114,8 @@
         </button>
       </div>
       <div id="stage" class="stage"></div>
-      <div id="quality-view" class="quality-view" hidden></div>
+      <p id="note-soon" class="note-soon" hidden>Note mode is coming soon.</p>
+    <div id="quality-view" class="quality-view" hidden></div>
     </section>
 
     <section id="ftc" class="ftc" aria-label="Find the chord" hidden>

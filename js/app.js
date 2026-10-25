@@ -130,6 +130,8 @@
   var viewGroup = document.getElementById('view-group');
   var flashModeGroup = document.getElementById('flashmode-group');
   var flashModeInputs = document.querySelectorAll('input[name="flashmode"]');
+  var appMode = 'key', chordMode = 'major';            // Note | Key | Pop Chord | Minor key | Jazz Chord; chordMode: the Major/Minor choice inside the chord modes
+  function chordy() { return appMode === 'popchord' || appMode === 'jazz'; }
   var level = 'pop';                                  // pop | jazz: pop hides the advanced theory
   var POP_HIDDEN_TYPES = ['11', '13'];
   var levelInputs = document.querySelectorAll('input[name="level"]');
@@ -274,13 +276,15 @@
   window.addEventListener('resize', updateQMore);
   // ---- chord selector ---------------------------------------------------------
   function updateChordPanel() {
-    var show = state.selected && (!state.flash || quizOn());
+    var show = chordy() && state.selected && (!state.flash || quizOn());
     chordsPanel.hidden = !show;
     var qOn = qualityOn();
     cvGroup.hidden = !(show && !state.flash && chordsDetails.open && !isAlt());
     document.getElementById(state.chordView === 'quality' ? 'cv-quality' : 'cv-scale').checked = true;
     stage.classList.toggle('chords-open', !!(show && chordsDetails.open));
-    stage.hidden = qOn; qualityView.hidden = !qOn; caption.hidden = qOn;
+    var noteOn = appMode === 'note';
+    document.getElementById('note-soon').hidden = !noteOn;
+    stage.hidden = qOn || noteOn; qualityView.hidden = !qOn; caption.hidden = qOn || noteOn;
     if (qOn) { layoutBar.hidden = true; resetBtn.hidden = true; var qt = curType(); if (qualityShown !== qt) { qualityView.innerHTML = Quality.table(qt); qualityShown = qt; }
       updateQMore(); }
     else qualityShown = null;
@@ -581,13 +585,13 @@
       var o;
       if (state.flash) {          // Study: the Explore picks are kept as they were; only what is shared and the Study view itself change
         try { o = JSON.parse(window.localStorage.getItem(STATE_KEY)); } catch (e) { o = null; }
-        o = Object.assign(o && typeof o === 'object' ? o : {}, { mode: state.mode, level: level, layout: state.layout, clef: state.clef });
+        o = Object.assign(o && typeof o === 'object' ? o : {}, { mode: state.mode, level: level, appMode: appMode, layout: state.layout, clef: state.clef });
       } else {
         o = {
           root: state.root, spell: state.spell, selected: state.selected, mode: state.mode, level: level,
           scaleKind: state.scaleKind, chord: state.chord, chordTypes: chordTypes_, typePicked: typePicked,
           chordsOpen: chordsDetails.open, progOpen: progDetails.open, progIndex: progIndex, progRevealed: progRevealed, clef: state.clef,
-          layout: state.layout, chordView: state.chordView
+          layout: state.layout, chordView: state.chordView, appMode: appMode
         };
       }
       o.flash = !!state.flash;
@@ -615,6 +619,12 @@
     if (s.layout === 'vertical') { state.layout = 'vertical'; syncDial(); }
     if (s.mode === 'minor') { state.mode = 'minor'; document.getElementById('mode-minor').checked = true; }
     if (s.level === 'jazz') { level = 'jazz'; document.getElementById('level-jazz').checked = true; }
+    appMode = ['note', 'key', 'popchord', 'minor', 'jazz'].indexOf(s.appMode) >= 0 ? s.appMode : (level === 'jazz' ? 'jazz' : 'popchord');
+    if (appMode === 'minor' || appMode === 'key' || appMode === 'note') { level = 'pop'; document.getElementById('level-pop').checked = true; }
+    if (appMode === 'minor') { state.mode = 'minor'; document.getElementById('mode-minor').checked = true; }
+    if (appMode === 'key' || appMode === 'note') { state.mode = 'major'; document.getElementById('mode-major').checked = true; }
+    if (chordy()) chordMode = state.mode;
+    document.getElementById('am-' + appMode).checked = true;
     var kinds = { full: 'sk-full', pentatonic: 'sk-pent', wholetone: 'sk-whole' };
     if (level === 'jazz' && kinds[s.scaleKind]) { state.scaleKind = s.scaleKind; document.getElementById(kinds[s.scaleKind]).checked = true; }
     if (s.chordView === 'quality') state.chordView = 'quality';
@@ -633,7 +643,8 @@
         state.chord = { deg: c.deg, type: c.type };
       }
     }
-    if (s.flash && FM_IDS[s.cardMode]) pendingStudy = s.cardMode;
+    if (s.flash && FM_IDS[s.cardMode]) pendingStudy = chordy() ? 'chord' : (s.cardMode === 'chord' ? 'key' : s.cardMode);
+    if (appMode === 'note') pendingStudy = null;
     var rq = s.q;
     if (pendingStudy && rq && rq.cardMode === pendingStudy && rq.mode === state.mode && Number.isInteger(rq.pc) && rq.pc >= 0 && rq.pc < 12 &&
         Number.isInteger(rq.spell) && rq.spell >= 0 && rq.spell < Theory.specsFor(state.mode, rq.pc).length &&
@@ -1042,7 +1053,7 @@
   function updateProgPanel() {
     syncProgIndex();
     if (state.chord && chordsDetails.open && state.selected && !state.flash && !isAlt()) progRevealed = true;
-    var visible = state.selected && !state.flash && !isAlt() && !qualityOn() && (progRevealed || prog.length > 0 || saved.items.length > 0);   // a saved progression shows as soon as a key is picked
+    var visible = chordy() && state.selected && !state.flash && !isAlt() && !qualityOn() && (progRevealed || prog.length > 0 || saved.items.length > 0);   // a saved progression shows as soon as a key is picked
     progSection.hidden = !visible;
     syncHints();
     if (!visible) return;
@@ -2190,12 +2201,15 @@
   }
   // Pop studies keys, signatures and chords; Jazz studies chords only
   function syncStudyOptions() {
-    viewGroup.hidden = false;
     ['fm-key', 'fm-sig'].forEach(function (id) {
       var input = document.getElementById(id);
-      input.hidden = level === 'jazz';
-      input.nextElementSibling.hidden = level === 'jazz';
+      input.hidden = chordy();
+      input.nextElementSibling.hidden = chordy();
     });
+    var fc = document.getElementById('fm-chord');
+    fc.hidden = !chordy(); fc.nextElementSibling.hidden = !chordy();
+    viewGroup.hidden = appMode === 'note';
+    document.getElementById('mode-group').hidden = !chordy();
   }
 
   // ---- Chords: find a chord from keys picked on the keyboard ------------------------
@@ -2458,7 +2472,8 @@
     state.chord = null;
     chordCleared = false;
     if (flash) {
-      if (level === 'jazz' && state.cardMode !== 'chord') setCardMode('chord');     // Jazz studies chords only
+      if (chordy() && state.cardMode !== 'chord') setCardMode('chord');     // the chord modes study chords only; the others never do
+      else if (!chordy() && state.cardMode === 'chord') setCardMode('key');
       if (quizOn()) enterQuiz(); else newCard();
     } else { exitQuiz(); state.card = null; }
     updateScore();
@@ -2820,12 +2835,34 @@
     });
   });
 
+  // the top-level topic: Note | Key | Pop Chord | Minor key | Jazz Chord (drives the hidden level and mode switches)
+  function applyAppMode(am) {
+    if (am === appMode) return;
+    appMode = am;
+    var wantLevel = am === 'jazz' ? 'jazz' : 'pop';
+    var wantMode = am === 'minor' ? 'minor' : chordy() ? chordMode : 'major';
+    if (am === 'note' && state.flash) { document.getElementById('view-explore').checked = true; setView(false); }
+    var lr = document.getElementById('level-' + wantLevel);
+    if (!lr.checked) { lr.checked = true; lr.dispatchEvent(new Event('change')); } else { level = wantLevel; }
+    var mr = document.getElementById('mode-' + wantMode);
+    mr.checked = true; setMode(wantMode);
+    syncStudyOptions();
+    var wantCard = chordy() ? 'chord' : (state.cardMode === 'chord' ? 'key' : state.cardMode);
+    if (wantCard !== state.cardMode) { if (state.flash) setFlashMode(wantCard); else setCardMode(wantCard); }
+    state.chord = null;
+    updateScore();
+    draw(false, false);
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('input[name="appmode"]'), function (input) {
+    input.addEventListener('change', function () { if (input.checked) applyAppMode(input.value); });
+  });
+
   Array.prototype.forEach.call(levelInputs, function (input) {
     input.addEventListener('change', function () {
       if (!input.checked) return;
       level = input.value;
       syncStudyOptions();                           // Jazz studies chords only; Pop has all three activities
-      if (level === 'jazz' && state.flash && state.cardMode !== 'chord') setFlashMode('chord');
+      /* (the app-mode switch sets the study activity) */
       if (level === 'pop') {
         if (chordTypes_.full && POP_HIDDEN_TYPES.indexOf(chordTypes_.full) >= 0) chordTypes_.full = 'triad';
         if (state.scaleKind !== 'full') { state.scaleKind = 'full'; document.getElementById('sk-full').checked = true; chordCleared = false; state.chord = null; }
@@ -2839,7 +2876,7 @@
 
   Array.prototype.forEach.call(modeInputs, function (input) {
     input.addEventListener('change', function () {
-      if (input.checked) setMode(input.value);
+      if (input.checked) { if (chordy()) chordMode = input.value; setMode(input.value); }
     });
   });
 
@@ -2917,8 +2954,9 @@
     armed = null;
     try { window.localStorage.removeItem(PROG_KEY); window.localStorage.removeItem(SAVED_KEY); window.localStorage.removeItem(STATE_KEY); } catch (e) { /* storage unavailable */ }
     state.clef = 'treble';
-    level = 'pop';
+    level = 'pop'; appMode = 'key'; chordMode = 'major';
     document.getElementById('level-pop').checked = true;
+    document.getElementById('am-key').checked = true;
     state.layout = 'horizontal'; syncDial();
     syncStudyOptions();
     resetFtc();

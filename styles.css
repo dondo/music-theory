@@ -742,3 +742,6 @@ html.is-local .ftc-local { display: inline-flex; }
 .q-more svg { width: 28px; height: 56px; filter: drop-shadow(0 1px 2px rgba(0,0,0,.35)); }
 .q-more-l { left: 0; background: linear-gradient(90deg, rgba(37,99,235,.55), rgba(37,99,235,.18) 70%, rgba(37,99,235,0)); border-radius: 8px 0 0 8px; }
 .q-more-r { right: 0; background: linear-gradient(270deg, rgba(37,99,235,.55), rgba(37,99,235,.18) 70%, rgba(37,99,235,0)); border-radius: 0 8px 8px 0; }
+.segmented[hidden] { display: none; }
+.note-soon { margin: 16px 0; padding: 18px; text-align: center; color: var(--muted); background: #fff; border-radius: 14px; }
+.note-soon[hidden] { display: none; }
