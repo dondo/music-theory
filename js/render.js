@@ -267,7 +267,7 @@ var KeyboardRender = (function () {
     // hover / focus indicator: an inset ring, so neighbouring keys can't paint over it
     out.push('<rect class="hover-ring" x="' + f(k.x + 3) + '" y="' + (KEY_TOP + 3) + '" width="' + (W - 6) +
       '" height="' + (WH - 6) + '" rx="3" pointer-events="none"/>');
-    out.push('<line x1="' + f(k.x) + '" y1="' + KEY_TOP + '" x2="' + f(k.x + W) + '" y2="' + KEY_TOP +
+    out.push('<line class="sigbar" x1="' + f(k.x) + '" y1="' + KEY_TOP + '" x2="' + f(k.x + W) + '" y2="' + KEY_TOP +
       '" stroke="' + (ctx.flash ? NEUTRAL_BAND : PAL[sp.kind][1]) + '" stroke-width="6" pointer-events="none"/>');
     if (k.inside) {
       if (sp.n > 0 && !ctx.flash) {
@@ -303,7 +303,7 @@ var KeyboardRender = (function () {
     out.push('<rect class="hover-ring" x="' + f(x + ri) + '" y="' + (KEY_TOP + ri) + '" width="' + (BW - 2 * ri) +
       '" height="' + (BH - 2 * ri) + '" rx="2" pointer-events="none"/>');
     if (single) {
-      out.push('<line x1="' + f(x) + '" y1="' + KEY_TOP + '" x2="' + f(x + BW) + '" y2="' + KEY_TOP +
+      out.push('<line class="sigbar" x1="' + f(x) + '" y1="' + KEY_TOP + '" x2="' + f(x + BW) + '" y2="' + KEY_TOP +
         '" stroke="' + (ctx.flash ? NEUTRAL_BAND : PAL[specs[0].kind][1]) + '" stroke-width="6" pointer-events="none"/>');
     }
     var colFor = function (kind) { return type ? PAL_DARK[kind] : PAL[kind][1]; };

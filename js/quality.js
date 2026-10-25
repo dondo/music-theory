@@ -42,7 +42,7 @@
   // [symbol, recipe, extra columns..., name]
   var TABLES = {
     triad: {
-      caption: 'A triad is composed of two stacked thirds. Each of those thirds can be major (two whole steps) or minor (1.5 steps).\n\nStacking these thirds creates a fifth; that fifth can contain three whole steps (diminished), 3.5 steps (perfect), or four whole steps (augmented).',
+      caption: 'A triad is composed of two stacked thirds. Each of those thirds can be major (two whole steps) or minor (1.5 steps).\n\nStacking these thirds creates a fifth; that fifth can contain two minor thirds creating three steps (diminished fifth), can contain a major and a minor third for 3.5 steps (perfect fifth), or two major thirds for four whole steps (augmented fifth).',
       cols: [],
       rows: [['C', '3M 5P', 'major triad'], ['Cm', '3m 5P', 'minor triad'], ['C°', '3m 5d', 'diminished triad'], ['C+', '3M 5A', 'augmented triad']]
     },

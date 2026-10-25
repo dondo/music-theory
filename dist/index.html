@@ -752,7 +752,7 @@ html.is-local .ftc-local { display: inline-flex; }
 .q-land tbody th[scope="row"] { font-weight: 600; white-space: nowrap; color: var(--muted); }
 .q-land td { min-width: 190px; }
 .q-land .q-name { white-space: normal; }
-#stage.chords-open .sigcount { display: none; }
+#stage.chords-open .sigcount, #stage.chords-open .sigbar { display: none; }
 </style>
 </head>
 <body>
@@ -1067,7 +1067,7 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = Glyphs; 
   // [symbol, recipe, extra columns..., name]
   var TABLES = {
     triad: {
-      caption: 'A triad is composed of two stacked thirds. Each of those thirds can be major (two whole steps) or minor (1.5 steps).\n\nStacking these thirds creates a fifth; that fifth can contain three whole steps (diminished), 3.5 steps (perfect), or four whole steps (augmented).',
+      caption: 'A triad is composed of two stacked thirds. Each of those thirds can be major (two whole steps) or minor (1.5 steps).\n\nStacking these thirds creates a fifth; that fifth can contain two minor thirds creating three steps (diminished fifth), can contain a major and a minor third for 3.5 steps (perfect fifth), or two major thirds for four whole steps (augmented fifth).',
       cols: [],
       rows: [['C', '3M 5P', 'major triad'], ['Cm', '3m 5P', 'minor triad'], ['C°', '3m 5d', 'diminished triad'], ['C+', '3M 5A', 'augmented triad']]
     },
@@ -2726,7 +2726,7 @@ var KeyboardRender = (function () {
     // hover / focus indicator: an inset ring, so neighbouring keys can't paint over it
     out.push('<rect class="hover-ring" x="' + f(k.x + 3) + '" y="' + (KEY_TOP + 3) + '" width="' + (W - 6) +
       '" height="' + (WH - 6) + '" rx="3" pointer-events="none"/>');
-    out.push('<line x1="' + f(k.x) + '" y1="' + KEY_TOP + '" x2="' + f(k.x + W) + '" y2="' + KEY_TOP +
+    out.push('<line class="sigbar" x1="' + f(k.x) + '" y1="' + KEY_TOP + '" x2="' + f(k.x + W) + '" y2="' + KEY_TOP +
       '" stroke="' + (ctx.flash ? NEUTRAL_BAND : PAL[sp.kind][1]) + '" stroke-width="6" pointer-events="none"/>');
     if (k.inside) {
       if (sp.n > 0 && !ctx.flash) {
@@ -2762,7 +2762,7 @@ var KeyboardRender = (function () {
     out.push('<rect class="hover-ring" x="' + f(x + ri) + '" y="' + (KEY_TOP + ri) + '" width="' + (BW - 2 * ri) +
       '" height="' + (BH - 2 * ri) + '" rx="2" pointer-events="none"/>');
     if (single) {
-      out.push('<line x1="' + f(x) + '" y1="' + KEY_TOP + '" x2="' + f(x + BW) + '" y2="' + KEY_TOP +
+      out.push('<line class="sigbar" x1="' + f(x) + '" y1="' + KEY_TOP + '" x2="' + f(x + BW) + '" y2="' + KEY_TOP +
         '" stroke="' + (ctx.flash ? NEUTRAL_BAND : PAL[specs[0].kind][1]) + '" stroke-width="6" pointer-events="none"/>');
     }
     var colFor = function (kind) { return type ? PAL_DARK[kind] : PAL[kind][1]; };
