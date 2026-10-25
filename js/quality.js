@@ -152,14 +152,14 @@
     if (type === 'sus2' || type === 'sus4') type = 'sus';
     var t = TABLES[type] || TABLES.triad, data = rows(type);
     var h = [t.caption.split('\n\n').map(function (p) { return '<p class="q-caption">' + esc(p) + '</p>'; }).join(''),
-      '<div class="q-wrap"><table class="q-table q-land"><tbody>'];
+      '<div class="q-scroll"><div class="q-wrap"><table class="q-table q-land"><tbody>'];
     h.push('<tr><th scope="row"></th>' + data.map(function (r) { return '<th scope="col" class="q-sym">' + esc(r.symbol) + '</th>'; }).join('') + '</tr>');
     h.push('<tr><th scope="row">Name</th>' + data.map(function (r) { return '<td class="q-name">' + esc(r.name) + '</td>'; }).join('') + '</tr>');
     h.push('<tr><th scope="row">Notes in C</th>' + data.map(function (r) { return '<td class="q-staff">' + staff(r) + '</td>'; }).join('') + '</tr>');
     t.cols.forEach(function (c, i) {
       h.push('<tr><th scope="row">' + esc(c) + '</th>' + data.map(function (r) { return '<td>' + esc(r.cells[i]) + '</td>'; }).join('') + '</tr>');
     });
-    h.push('</tbody></table></div><p class="q-key"><span class="q-blue">Blue</span>: the interval between neighbouring notes; <span class="q-blue">M</span> major, <span class="q-blue">m</span> minor, <span class="q-blue">P</span> perfect, <span class="q-blue">d</span> diminished, <span class="q-blue">A</span> augmented. <span class="q-orange">Orange</span>: from the root to the top note.</p>');
+    h.push('</tbody></table></div><button type="button" class="q-more q-more-l" hidden aria-label="Scroll left"><svg viewBox="0 0 24 48" aria-hidden="true"><path d="M17 8 L6 24 L17 40" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg></button><button type="button" class="q-more q-more-r" hidden aria-label="Scroll right"><svg viewBox="0 0 24 48" aria-hidden="true"><path d="M7 8 L18 24 L7 40" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div><p class="q-key"><span class="q-blue">Blue</span>: the interval between neighbouring notes; <span class="q-blue">M</span> major, <span class="q-blue">m</span> minor, <span class="q-blue">P</span> perfect, <span class="q-blue">d</span> diminished, <span class="q-blue">A</span> augmented. <span class="q-orange">Orange</span>: from the root to the top note.</p>');
     return h.join('');
   }
 

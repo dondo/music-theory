@@ -257,6 +257,21 @@
   // the chosen type, or one that exists on the root if the last one doesn't fit this key
   function curType() { return chordTypes_[state.scaleKind] || 'triad'; }
 
+
+  // Chord quality: arrows at the edges when the table scrolls sideways
+  function updateQMore() {
+    var wrap = qualityView.querySelector('.q-wrap'); if (!wrap) return;
+    var l = qualityView.querySelector('.q-more-l'), r = qualityView.querySelector('.q-more-r');
+    l.hidden = !(wrap.scrollLeft > 2);
+    r.hidden = !(wrap.scrollLeft + wrap.clientWidth < wrap.scrollWidth - 2);
+  }
+  qualityView.addEventListener('scroll', updateQMore, true);
+  qualityView.addEventListener('click', function (e) {
+    var b = e.target.closest && e.target.closest('.q-more'); if (!b) return;
+    var wrap = qualityView.querySelector('.q-wrap');
+    wrap.scrollBy({ left: (b.classList.contains('q-more-l') ? -1 : 1) * wrap.clientWidth * 0.7, behavior: 'smooth' });
+  });
+  window.addEventListener('resize', updateQMore);
   // ---- chord selector ---------------------------------------------------------
   function updateChordPanel() {
     var show = state.selected && (!state.flash || quizOn());
@@ -266,7 +281,8 @@
     document.getElementById(state.chordView === 'quality' ? 'cv-quality' : 'cv-scale').checked = true;
     stage.classList.toggle('chords-open', !!(show && chordsDetails.open));
     stage.hidden = qOn; qualityView.hidden = !qOn; caption.hidden = qOn;
-    if (qOn) { layoutBar.hidden = true; resetBtn.hidden = true; var qt = curType(); if (qualityShown !== qt) { qualityView.innerHTML = Quality.table(qt); qualityShown = qt; } }
+    if (qOn) { layoutBar.hidden = true; resetBtn.hidden = true; var qt = curType(); if (qualityShown !== qt) { qualityView.innerHTML = Quality.table(qt); qualityShown = qt; }
+      updateQMore(); }
     else qualityShown = null;
     chordInfo.hidden = qOn;
     var canFind = show && !state.flash && chordsDetails.open && !qOn;          // "Find a chord" lives in the open selector
@@ -353,7 +369,10 @@
       for (var i = 0; i < sc.offsets.length; i++) if (Chords.chordInScale(sc, i, t.id)) return true;
       return false;
     }) : Chords.TYPES.filter(function (t) { return (!pop || POP_HIDDEN_TYPES.indexOf(t.id) < 0) && typeInPlay(t.id) && !(qOn && t.id === 'sus2'); });   // (the quality view shows Sus2 and Sus4 together)
-    if (!alt && typeSortBy !== 'complexity') {         // stable sort: ties keep the complexity (list) order
+    if (qOn && !alt) {                                  // Chord quality: its own teaching order
+      var QORDER = ['triad', 'sus4', 'sus2', 'add9', '7', '9', '11', '13'];
+      types = types.slice().sort(function (x, y) { return QORDER.indexOf(x.id) - QORDER.indexOf(y.id); });
+    } else if (!alt && typeSortBy !== 'complexity') {         // stable sort: ties keep the complexity (list) order
       var rank = null;
       if (typeSortBy === 'ambiguity' || typeSortBy === 'tension') {
         var rkey = typeSortBy === 'ambiguity' ? 'ambiguityRank' : 'tensionRank';
