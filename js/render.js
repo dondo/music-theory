@@ -779,8 +779,10 @@ var KeyboardRender = (function () {
     var endX = winR - 18;
     var chords = data.chords || [];
     var clipId = 'stc' + (++staveSeq);
+    var nSlots = data.slot ? chords.length : Math.max(chords.length, data.slots || 0);
+    var slotV = chords.length ? (data.slot || Math.min(150, (endX - startX) / nSlots)) : 0;
     out.push('<clipPath id="' + clipId + '"><rect x="' + f(startX - 8) + '" y="0" width="' + WIDTH + '" height="' + (HEIGHT + 200) + '"/></clipPath>' +
-      '<g class="stave-notes-wrap" clip-path="url(#' + clipId + ')"><g class="stave-notes">');
+      '<g class="stave-notes-wrap" data-startx="' + f(startX) + '" data-slot="' + f(slotV) + '" clip-path="url(#' + clipId + ')"><g class="stave-notes">');
     if (!chords.length) {
       out.push('<text x="' + f((startX + endX) / 2) + '" y="' + f(YB - 2 * SB + 5) + '" text-anchor="middle" font-size="15" fill="#7b8294" pointer-events="none">' +
         esc(data.hint || '') + '</text>');

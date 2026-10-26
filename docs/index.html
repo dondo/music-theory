@@ -3295,8 +3295,10 @@ var KeyboardRender = (function () {
     var endX = winR - 18;
     var chords = data.chords || [];
     var clipId = 'stc' + (++staveSeq);
+    var nSlots = data.slot ? chords.length : Math.max(chords.length, data.slots || 0);
+    var slotV = chords.length ? (data.slot || Math.min(150, (endX - startX) / nSlots)) : 0;
     out.push('<clipPath id="' + clipId + '"><rect x="' + f(startX - 8) + '" y="0" width="' + WIDTH + '" height="' + (HEIGHT + 200) + '"/></clipPath>' +
-      '<g class="stave-notes-wrap" clip-path="url(#' + clipId + ')"><g class="stave-notes">');
+      '<g class="stave-notes-wrap" data-startx="' + f(startX) + '" data-slot="' + f(slotV) + '" clip-path="url(#' + clipId + ')"><g class="stave-notes">');
     if (!chords.length) {
       out.push('<text x="' + f((startX + endX) / 2) + '" y="' + f(YB - 2 * SB + 5) + '" text-anchor="middle" font-size="15" fill="#7b8294" pointer-events="none">' +
         esc(data.hint || '') + '</text>');
@@ -4751,7 +4753,27 @@ var KeyboardRender = (function () {
       var move = function (g, from, to) { return g.animate([{ transform: 'translateX(' + from * u2 + 'px)' }, { transform: 'translateX(' + to * u2 + 'px)' }], opts); };
       q(oldSvg, '.keys-slide').forEach(function (g) { a1 = move(g, 0, -dx); extra.push(a1); });
       q(newSvg, '.keys-slide').forEach(function (g) { a2 = move(g, dx, 0); extra.push(a2); });
-      q(oldSvg, '.stave-notes').forEach(function (g) { extra.push(move(g, 0, -dx)); });
+      // the old notes ride with the keyboard but stop where they line up with the new notes (a whole number of slots on), so the cross-fade needs no further movement
+      var ow = oldSvg.querySelector('.stave-notes-wrap'), nw = newSvg.querySelector('.stave-notes-wrap');
+      var D = dx * u2, S = D;
+      if (ow && nw && +ow.getAttribute('data-slot') > 0) {
+        var slotU = +ow.getAttribute('data-slot'), base = +ow.getAttribute('data-startx') - +nw.getAttribute('data-startx');
+        var mm = (D - base) / slotU, kk = mm >= 0 ? Math.floor(mm) : Math.ceil(mm);
+        S = base + kk * slotU;
+        if (S * D < 0 || Math.abs(S) > Math.abs(D)) S = 0;
+      }
+      var bez = function (p1x, p1y, p2x, p2y) {                         // the slide's own easing curve, so the notes follow the keyboard exactly until they stop
+        return function (x) {
+          var lo = 0, hi = 1, t = x, i;
+          for (i = 0; i < 30; i++) { t = (lo + hi) / 2; var bx = 3 * (1 - t) * (1 - t) * t * p1x + 3 * (1 - t) * t * t * p2x + t * t * t; if (bx < x) lo = t; else hi = t; }
+          return 3 * (1 - t) * (1 - t) * t * p1y + 3 * (1 - t) * t * t * p2y + t * t * t;
+        };
+      }(0.45, 0, 0.2, 1), frames = [], N = 40;
+      for (var fi = 0; fi <= N; fi++) {
+        var disp = D * bez(fi / N);
+        frames.push({ transform: 'translateX(' + (-(Math.abs(disp) > Math.abs(S) ? S : disp)) + 'px)', offset: fi / N });
+      }
+      q(oldSvg, '.stave-notes').forEach(function (g) { extra.push(g.animate(frames, { duration: SLIDE_MS, easing: 'linear', fill: 'both' })); });
       q(oldSvg, '.stave-under').forEach(function (g) { g.style.display = 'none'; });
       q(oldSvg, '.stave-sig, .stave-notes-wrap').forEach(function (g) { extra.push(g.animate([{ opacity: 1 }, { opacity: 0 }], fade)); });
       q(newSvg, '.stave-sig, .stave-notes-wrap, .stave-under').forEach(function (g) { lastAnim = g.animate([{ opacity: 0 }, { opacity: 1 }], fade); extra.push(lastAnim); });
