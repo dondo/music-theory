@@ -1284,7 +1284,7 @@
 
   function buildStaff() {
     if (!state.selected || state.flash || !chordy()) return null;      // (the stave belongs to the chord modes)
-    var progOpen = progDetails.open;          // (the sections are visible whenever a key is selected outside the flashcards)
+    var progOpen = progDetails.open && theoryMode();          // (the Progressions section belongs to the chord theory topics; Chords shows the chosen chord)
     var chordOpen = chordsDetails.open;
     if (!progOpen && !chordOpen) return null;
     var tonic = ChordAudio.tonicMidi(state.root);
