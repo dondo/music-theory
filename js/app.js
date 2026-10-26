@@ -2945,7 +2945,7 @@
     var html = '<div class="clef-pop-title">Clef</div><div class="clef-pop-list' + (level === 'jazz' ? ' two' : '') + '" role="listbox">';
     KeyboardRender.CLEFS.filter(function (c) { return clefAllowed(c.id); }).forEach(function (c) {
       html += '<button type="button" role="option" class="clef-opt" data-clef="' + c.id + '" aria-selected="' + (c.id === state.clef) + '">' +
-        KeyboardRender.clefIcon(c.id) + '<span class="clef-opt-name">' + c.name + '</span><span class="clef-opt-note">' + c.note + '</span></button>';
+        KeyboardRender.clefIcon(c.id) + '<span class="clef-opt-name">' + c.name + '</span><span class="clef-opt-note">' + c.note + (c.more ? '<br>' + c.more : '') + '</span></button>';
     });
     clefPop.innerHTML = html + '</div>';
     document.body.appendChild(clefPop);
