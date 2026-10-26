@@ -1396,7 +1396,12 @@
     var ghosts = pendingLayout === 'out' && oldSvg ? Array.prototype.map.call(oldSvg.querySelectorAll('.xbox'), function (g) { return g.outerHTML; }).join('') : '';
     stage.innerHTML = KeyboardRender.render(quizOn() ? Object.assign({}, state, { selected: false }) : state);
     if (ftcTrial && ftcTrial.view) ftcTrial.view();                       // (a countdown or the trial results fills the stage)
+    if (levelBanner.hasAttribute('data-welcome')) {                        // a welcome belongs to its own study activity: leaving it takes the banner away
+      var wk = levelBanner.getAttribute('data-welcome');
+      if (!state.flash || state.cardMode !== (wk === '1' ? 'chord' : wk)) dismissWelcome();
+    }
     if (!(quizOn() && state.answered) && !bannerHold) levelBanner.hidden = true;        // the level-up note stays until the next question
+    if (!quizOn()) maybeStudyWelcome();
     resetBtn.hidden = noteOn() || !state.selected || (state.flash && state.cardMode === 'sig') || quizOn();
     updateCaption();
     updateChordPanel();
@@ -1585,7 +1590,7 @@
     ftcLv = {};
     trialUnlocked = trialEver = false; ftcAuto = true; ftcStreak = 0; ftcTried = 0; ftcRight = 0; ftcBub = null; bubFull = false; ftcFresh = { asked: 0, fresh: 0 };
     ftcAutoBox.checked = true;
-    try { window.localStorage.removeItem(FTC_KEY); window.localStorage.removeItem(TRIALS_KEY); window.localStorage.removeItem(WELCOME_KEY); } catch (e) { /* storage unavailable */ }   // (the time trial bests go too)
+    try { window.localStorage.removeItem(FTC_KEY); window.localStorage.removeItem(TRIALS_KEY); window.localStorage.removeItem(WELCOME_KEY); window.localStorage.removeItem(STUDY_WELCOME_KEY); } catch (e) { /* storage unavailable */ }   // (the time trial bests go too)
   }
   // the levels in force: the chord dial is capped by what this level (Pop / Jazz) offers
   function ftcLevels() { return ftcTrial ? { keys: ftcTrial.keys, chords: ftcTrial.chords, inv: ftcTrial.inv } : FindChord.levelAt(state.mode, ftcPop(), ftcLevelNo()); }
@@ -1680,6 +1685,33 @@
   }
   // the first time Find the chord is opened: how it works (the banner sits over the clef; "Go" or the first answer dismisses it)
   var WELCOME_KEY = 'music-theory-ftc-welcomed';
+  var STUDY_WELCOME_KEY = 'music-theory-study-welcomed';          // the other study activities, each welcomed once
+  var STUDY_WELCOMES = {
+    key: ['Find the Key', 'You\u2019ll be shown a key signature on the staff. Press the piano key it belongs to \u2014 click it, or type its letter (Shift for a sharp, Alt for a flat). Keys you miss come back more often.'],
+    sig: ['Find the Signature', 'A key is lit on the keyboard, and the key signatures are laid out above it. Click the signature that belongs to the lit key. F\u266F and G\u266D are separate boxes: the lit key says which one is asked for.'],
+    play: ['Play the Note', 'A note appears on the staff. Press the matching piano key (any octave), or type its letter A\u2013G (Shift for a sharp, Alt for a flat). Sharps and flats take turns.'],
+    find: ['Find the Note', 'A key is lit on the keyboard. Click its note on the staff, in the right octave. Sharps and flats take turns.']
+  };
+  function dismissWelcome() {
+    if (!levelBanner.hasAttribute('data-welcome')) return;
+    bannerHold = false; levelBanner.hidden = true; levelBanner.removeAttribute('data-welcome');
+  }
+  function maybeStudyWelcome() {
+    var m = state.cardMode, w = STUDY_WELCOMES[m], seen = [];
+    if (!w || !state.flash || !state.card || bannerHold || state.answered) return;
+    try { seen = JSON.parse(window.localStorage.getItem(STUDY_WELCOME_KEY)) || []; } catch (e) { return; }
+    if (seen.indexOf(m) >= 0) return;
+    var home = document.querySelector('.stage-card');
+    if (levelBanner.parentNode !== home) home.insertBefore(levelBanner, home.firstChild);
+    document.getElementById('ftc-levelup-icon').textContent = '\u{1F914}';
+    document.getElementById('ftc-levelup-title').textContent = 'Welcome to \u201C' + w[0] + '!\u201D';
+    levelText.innerHTML = w[1] + '<span class="levelup-go-row"><button type="button" class="btn-reset levelup-go">Go \u2192</button></span>';
+    levelBanner.setAttribute('data-welcome', m);
+    levelBanner.hidden = false;
+    bannerHold = true;
+    seen.push(m);
+    try { window.localStorage.setItem(STUDY_WELCOME_KEY, JSON.stringify(seen)); } catch (e) { /* storage unavailable */ }
+  }
   var NUM_WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
   function maybeWelcome() {
     try { if (window.localStorage.getItem(WELCOME_KEY)) return; } catch (e) { return; }
@@ -2397,6 +2429,7 @@
 
   // The player pressed a key (pitch class `pc`, absolute semitone `fromS` in the drawing).
   function answer(pc, viaKeyboard, fromS, keyEl) {
+    dismissWelcome();
     if (state.answered) return;                 // already solved: press Next for the next card
     if (pc !== state.card.pc) {
       score.bad++;
@@ -2519,7 +2552,8 @@
     card.animate([{ transform: 'translateX(' + d + 'px)', opacity: 0 }, { transform: 'translateX(0)', opacity: 1 }], opts);
   }
 
-  function noteAnswer(val) {                             // play the note: the pitch class pressed (any octave); find the note: the staff note clicked (0..24)
+  function noteAnswer(val) {
+    dismissWelcome();                             // play the note: the pitch class pressed (any octave); find the note: the staff note clicked (0..24)
     if (state.answered || !state.card) return;
     var find = state.cardMode === 'find', pc = val % 12;
     if (find ? val !== state.card.idx : pc !== state.card.pc) {
@@ -2691,6 +2725,7 @@
   }
 
   stage.addEventListener('click', function (e) {
+    if (levelBanner.getAttribute('data-welcome') && levelBanner.getAttribute('data-welcome') !== '1' && !(e.target.closest && e.target.closest('.levelup-go'))) dismissWelcome();
     var ch = e.target.closest && e.target.closest('.clef-hit');
     if (ch) { openClefPop(ch); return; }
     var iz = e.target.closest && e.target.closest('.inv-zone');
@@ -2757,7 +2792,7 @@
   // Flashcards: once a card is solved, the right arrow deals the next one (same as the Next button).
   document.addEventListener('keydown', function (e) {
     if (e.key !== 'ArrowRight' || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
-    if (quizOn() && !levelBanner.hidden && levelBanner.hasAttribute('data-welcome')) {      // the welcome banner: the right arrow is "Go"
+    if (state.flash && !levelBanner.hidden && levelBanner.hasAttribute('data-welcome')) {      // the welcome banner: the right arrow is "Go"
       var wt = e.target;
       if (!(wt && wt.closest && wt.closest('input, select, textarea'))) { e.preventDefault(); bannerHold = false; levelBanner.hidden = true; levelBanner.removeAttribute('data-welcome'); return; }
     }
@@ -2960,9 +2995,7 @@
   // the top-level topic: Note | Key | Pop Chord | Minor key | Jazz Chord (drives the hidden level and mode switches)
   function applyAppMode(am) {
     if (am === appMode) return;
-    markIntroSeen(appMode);
     appMode = am;
-    syncIntro();
     var wantLevel = theoryMode() ? 'jazz' : 'pop';
     var wantMode = appIsMinor() ? 'minor' : 'major';
     var lr = document.getElementById('level-' + wantLevel);
@@ -2997,27 +3030,6 @@
       '<g filter="url(#goo)" fill="#4a7bec"><rect x="21.5" y="' + ys[0] + '" width="7" height="' + (ys[n - 1] - ys[0]) + '"/>' + g + '</g></svg>';
     document.getElementById('appmode-group').insertAdjacentHTML('afterbegin', svg);
   })();
-  // ---- the introduction: each topic explains itself the first time you visit it ----
-  var INTRO_KEY = 'music-theory-intros';
-  var INTROS = {
-    note: 'Notes: the keyboard and the staff side by side. Explore climbs two octaves from middle C, a half step at a time \u2014 click a key or a note to light it up, and choose sharps or flats with the switch. Study quizzes you: Play the note shows a note on the staff and you play it; Find the note lights a key and you find its note on the staff.',
-    key: 'Each box shows the key signature of the key below it: the sharp keys share one octave and the flat keys the other, and signatures with an odd number of accidentals sit on the lower row, an even number on the upper. Click any key, black or white, to move the keyboard to that root and light up its scale.',
-    minor: 'Each box shows the key signature of the natural minor key below it. Every minor key shares its signature with the major key three half steps above it (its relative major). Click any key to move the keyboard to that root and light up its minor scale.',
-    chords: 'Chords: pick a key, then choose a chord built on any note of its scale to see it on the keyboard and the staff. \u201CChords in scale\u201D shows what the key gives you; \u201CChord quality\u201D compares how triads, sevenths, sus and extended chords are built. Study quizzes you with Find the chord, in stages.',
-    minorchords: 'Minor chords: pick a minor key, then choose a chord built on any note of its natural minor scale to see it on the keyboard and the staff. \u201CChords in scale\u201D shows what the key gives you; \u201CChord quality\u201D compares how chords are built. Study quizzes you with Find the chord, in stages.',
-    theory: 'Chord theory goes further: roman numerals, ninths, 11ths and 13ths, other scale types, and a progression section where you string chords together. Pick a key, then explore the chords it gives you.',
-    minortheory: 'Minor chord theory goes further: roman numerals, ninths, 11ths and 13ths, other scale types, and a progression section where you string chords together. Pick a minor key, then explore the chords it gives you.'
-  };
-  function introsSeen() { try { var a = JSON.parse(window.localStorage.getItem(INTRO_KEY)); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
-  function markIntroSeen(m) {
-    var a = introsSeen(); if (a.indexOf(m) >= 0) return; a.push(m);
-    try { window.localStorage.setItem(INTRO_KEY, JSON.stringify(a)); } catch (e) { /* storage unavailable */ }
-  }
-  function syncIntro() {
-    var p = document.querySelector('.lede');
-    if (introsSeen().indexOf(appMode) >= 0) { p.hidden = true; return; }
-    p.textContent = INTROS[appMode]; p.hidden = false;
-  }
   function initCardMode() {                              // a first visit opens in Notes, whose study cards are not the Keys ones
     var want = chordy() ? 'chord' : noteOn() ? ((state.cardMode === 'play' || state.cardMode === 'find') ? state.cardMode : 'play') : ((state.cardMode === 'sig') ? 'sig' : 'key');
     state.cardMode = want; document.getElementById('fm-' + want).checked = true;
@@ -3039,7 +3051,6 @@
   syncModeBtn();
   document.getElementById('am-' + appMode).checked = true;
   initCardMode();
-  syncIntro();
 
   Array.prototype.forEach.call(levelInputs, function (input) {
     input.addEventListener('change', function () {
@@ -3140,9 +3151,8 @@
     state.clef = 'treble';
     noteSpell = 0; noteSel = null;
     level = 'pop'; appMode = 'note';
-    try { window.localStorage.removeItem(INTRO_KEY); } catch (e) { /* storage unavailable */ }
     document.getElementById('level-pop').checked = true;
-    document.getElementById('am-note').checked = true; syncModeBtn(); syncIntro();
+    document.getElementById('am-note').checked = true; syncModeBtn();
     state.layout = 'horizontal'; syncDial();
     syncStudyOptions();
     resetFtc();
