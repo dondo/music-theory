@@ -1191,6 +1191,23 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = Glyphs; 
   // ---- drawing ----
   var SP = 11, K = SP / 250, W = 190, X_NOTE = 86;
   function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;'); }
+  function blueLabels(notes) {                                                                  // the interval between neighbouring notes (thirds: just M or m)
+    var r = [];
+    for (var i = 0; i + 1 < notes.length; i++) {
+      var lab = sizeName(notes[i + 1].step - notes[i].step, notes[i + 1].sm - notes[i].sm);
+      r.push(lab === 'M3' || lab === 'm3' ? lab.charAt(0) : lab);
+    }
+    return r;
+  }
+  function orangeLabel(notes) { var tp = notes[notes.length - 1]; return sizeName(tp.step, tp.sm); }
+  var QNAME = { M: 'major', m: 'minor', P: 'perfect', d: 'diminished', A: 'augmented' }, QORDER = 'MmPdA';
+  function orangeLabels(notes) { return [orangeLabel(notes)]; }
+  function keyList(data, fn, cls) { return legend(data.reduce(function (a, r) { return a.concat(fn(r.notes)); }, [])).join(', ').replace(/LC/g, cls); }
+  function legend(list) {                                                                       // "M major, m minor, d3 diminished": only the labels that appear
+    var seen = {}, u = list.filter(function (l) { return seen[l] ? false : (seen[l] = true); });
+    u.sort(function (x, y) { return QORDER.indexOf(x.charAt(0)) - QORDER.indexOf(y.charAt(0)) || parseInt(x.slice(1) || 0, 10) - parseInt(y.slice(1) || 0, 10); });
+    return u.map(function (l) { return '<span class="LC">' + esc(l) + '</span> ' + QNAME[l.charAt(0)]; });
+  }
   function staff(row) {
     var notes = row.notes, top = 13, bot = -3, H = (top - bot) * SP / 2 + 10;                // positions -3..13 (half spaces above the bottom line)
     function y(p) { return 5 + (top - p) * SP / 2; }
@@ -1222,9 +1239,9 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = Glyphs; 
     });
     // blue: the interval between neighbouring notes, to the right of the stack
     var bx = X_NOTE + 14;
+    var bl = blueLabels(notes);
     for (i = 0; i + 1 < notes.length; i++) {
-      var lab = sizeName(notes[i + 1].step - notes[i].step, notes[i + 1].sm - notes[i].sm);
-      if (lab === 'M3' || lab === 'm3') lab = lab.charAt(0);                                    // thirds: just M or m
+      var lab = bl[i];
       var ly = y((pos[i] + pos[i + 1]) / 2) + 3.5;
       out.push('<rect x="' + (bx - 2) + '" y="' + (ly - 9) + '" width="' + (lab.length * 6 + 4) + '" height="11.5" rx="2" fill="#fff" fill-opacity=".72"/>');
       out.push('<text x="' + bx + '" y="' + ly + '" font-size="9.5" font-weight="700" fill="#2563eb">' + lab + '</text>');
@@ -1232,7 +1249,7 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = Glyphs; 
     // orange: the bracket from the root to the top note, and its interval
     var tp = notes[notes.length - 1], bk = X_NOTE + 44, y0 = y(pos[0]), y1 = y(pos[notes.length - 1]);
     out.push('<path d="M' + (bk - 4) + ' ' + y0 + 'H' + bk + 'V' + y1 + 'H' + (bk - 4) + '" fill="none" stroke="#ea580c" stroke-width="1.6"/>');
-    var ol = sizeName(tp.step, tp.sm), oy = (y0 + y1) / 2 + 3.5;
+    var ol = orangeLabel(notes), oy = (y0 + y1) / 2 + 3.5;
     out.push('<rect x="' + (bk + 2) + '" y="' + (oy - 10) + '" width="' + (ol.length * 6.8 + 4) + '" height="13" rx="2" fill="#fff" fill-opacity=".72"/>');
     out.push('<text x="' + (bk + 4) + '" y="' + oy + '" font-size="11" font-weight="700" fill="#ea580c">' + ol + '</text>');
     out.push('</svg>');
@@ -1250,7 +1267,7 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = Glyphs; 
     t.cols.forEach(function (c, i) {
       h.push('<tr><th scope="row">' + esc(c) + '</th>' + data.map(function (r) { return '<td>' + esc(r.cells[i]) + '</td>'; }).join('') + '</tr>');
     });
-    h.push('</tbody></table></div><button type="button" class="q-more q-more-l" hidden aria-label="Scroll left"><svg viewBox="0 0 24 48" aria-hidden="true"><path d="M17 8 L6 24 L17 40" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg></button><button type="button" class="q-more q-more-r" hidden aria-label="Scroll right"><svg viewBox="0 0 24 48" aria-hidden="true"><path d="M7 8 L18 24 L7 40" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div><p class="q-key"><span class="q-blue">Blue</span>: the interval between neighbouring notes; <span class="q-blue">M</span> major, <span class="q-blue">m</span> minor, <span class="q-blue">P</span> perfect, <span class="q-blue">d</span> diminished, <span class="q-blue">A</span> augmented. <span class="q-orange">Orange</span>: from the root to the top note.</p>');
+    h.push('</tbody></table></div><button type="button" class="q-more q-more-l" hidden aria-label="Scroll left"><svg viewBox="0 0 24 48" aria-hidden="true"><path d="M17 8 L6 24 L17 40" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg></button><button type="button" class="q-more q-more-r" hidden aria-label="Scroll right"><svg viewBox="0 0 24 48" aria-hidden="true"><path d="M7 8 L18 24 L7 40" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div><p class="q-key"><span class="q-blue">Blue</span>: the interval between neighbouring notes; ' + keyList(data, blueLabels, 'q-blue') + '. <span class="q-orange">Orange</span>: from the root to the top note; ' + keyList(data, orangeLabels, 'q-orange') + '.</p>');
     return h.join('');
   }
 
