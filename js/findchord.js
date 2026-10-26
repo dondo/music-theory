@@ -155,7 +155,7 @@
   }
   // the answer log: every answer, kept for fitting the constants above to you (capped; oldest dropped first)
   var LOG_KEY = 'music-theory-ftc-log-v1', LOG_CAP = 10000;
-  var LOG_COLUMNS = ['t', 'mode', 'pop', 'pc', 'deg', 'type', 'inv', 'correct', 'ms', 'since_ms', 'R_pred', 'h_before', 'h_after', 'grade', 'stage', 'step', 'draw', 'gave_up', 'trial'];
+  var LOG_COLUMNS = ['t', 'mode', 'pop', 'pc', 'deg', 'type', 'inv', 'correct', 'ms', 'since_ms', 'R_pred', 'h_before', 'h_after', 'grade', 'stage', 'level', 'draw', 'gave_up', 'trial'];
   function loadLog(st) {
     st = st === undefined ? storage() : st;
     try { var a = JSON.parse(st && st.getItem(LOG_KEY)); if (Array.isArray(a)) return a.filter(Array.isArray).slice(-LOG_CAP); } catch (e) { /* none */ }

@@ -909,7 +909,7 @@ html.is-local .ftc-local { display: inline-flex; }
 
     <section id="ftc" class="ftc" aria-label="Find the chord" hidden>
       <p id="ftc-msg" class="sr-only" role="status" aria-live="polite"></p>
-      <span id="ftc-level" class="ftc-level">Stage 1: Step 1</span>
+      <span id="ftc-level" class="ftc-level">Stage 1: Level 1</span>
       <div class="ftc-side-row" id="ftc-autorow">
         <label class="ftc-auto"><input type="checkbox" id="ftc-auto" checked> Advance automatically <small id="ftc-streak"></small></label>
         <span class="ftc-local" aria-label="Test controls (local only)">
@@ -2032,7 +2032,7 @@ var Memory = (function () {
   }
   // the answer log: every answer, kept for fitting the constants above to you (capped; oldest dropped first)
   var LOG_KEY = 'music-theory-ftc-log-v1', LOG_CAP = 10000;
-  var LOG_COLUMNS = ['t', 'mode', 'pop', 'pc', 'deg', 'type', 'inv', 'correct', 'ms', 'since_ms', 'R_pred', 'h_before', 'h_after', 'grade', 'stage', 'step', 'draw', 'gave_up', 'trial'];
+  var LOG_COLUMNS = ['t', 'mode', 'pop', 'pc', 'deg', 'type', 'inv', 'correct', 'ms', 'since_ms', 'R_pred', 'h_before', 'h_after', 'grade', 'stage', 'level', 'draw', 'gave_up', 'trial'];
   function loadLog(st) {
     st = st === undefined ? storage() : st;
     try { var a = JSON.parse(st && st.getItem(LOG_KEY)); if (Array.isArray(a)) return a.filter(Array.isArray).slice(-LOG_CAP); } catch (e) { /* none */ }
@@ -5288,7 +5288,7 @@ var KeyboardRender = (function () {
   // between steps of a stage: what the next step puts in play (the chord numeral or key in bold)
   function stepNote(n) {
     var mode = state.mode, pop = ftcPop(), info = FindChord.levelInfo(mode, pop, n), add = FindChord.stepAdds(mode, pop, n);
-    var lead = 'You\u2019ve completed Step ' + (info.step - 1) + ' (of ' + FindChord.stageSteps(mode, pop, n) + '). On to step ' + info.step + ', ';
+    var lead = 'You\u2019ve completed Level ' + (info.step - 1) + ' (of ' + FindChord.stageSteps(mode, pop, n) + '). On to level ' + info.step + ', ';
     if (!add) return lead.replace(/, $/, '.');
     var verb = add.back ? 'adding back ' : 'introducing ', names, one;
     if (add.dim === 'K') {
@@ -5332,7 +5332,7 @@ var KeyboardRender = (function () {
     var allTriads = function (k) { return FindChord.chords(state.mode, pop, FindChord.levelAt(state.mode, pop, k).chords).every(function (c) { return c.type === 'triad'; }); };
     if (n > 1 && allTriads(n - 1) && !allTriads(n))                  // the TYPE chips have just appeared
       html += '<span class="levelup-line2">Since we now have both triads and seventh chords, you\u2019ll have to select the \u2018type\u2019 as well as the ' + (pop ? 'root and quality' : 'degree') + '. Ready?</span>';
-    var home = newStage ? document.querySelector('.stage-card') : ftcSection;           // a finished stage's banner sits over the clef; a step's stays under the keyboard
+    var home = newStage ? document.querySelector('.stage-card') : ftcSection;           // a finished stage's banner sits over the clef; a level's stays under the keyboard
     if (levelBanner.parentNode !== home) home.insertBefore(levelBanner, newStage ? home.firstChild : null);
     document.getElementById('ftc-levelup-icon').textContent = '\u{1F389}';
     document.getElementById('ftc-levelup-title').textContent = title;
@@ -5348,7 +5348,7 @@ var KeyboardRender = (function () {
   // Play / Find the note: a level-up (n: the step just reached)
   function celebrateStep(n) {
     levelBanner.removeAttribute('data-welcome');
-    var html = 'You\u2019ve completed Step ' + (n - 1) + ' (of ' + STUDY_STEPS + '). On to step ' + n + ', ' +
+    var html = 'You\u2019ve completed Level ' + (n - 1) + ' (of ' + STUDY_STEPS + '). On to level ' + n + ', ' +
       ['', '', 'the <strong>bass clef</strong>!', 'where <strong>treble and bass</strong> take turns!', 'introducing the <strong>alto clef</strong>!', 'where <strong>treble, bass and alto</strong> all take turns!'][n] +
       '<span class="levelup-go-row"><button type="button" class="btn-reset levelup-go">Go \u2192</button></span>';
     if (levelBanner.parentNode !== ftcSection) ftcSection.appendChild(levelBanner);
@@ -5367,7 +5367,7 @@ var KeyboardRender = (function () {
   var STUDY_WELCOMES = {
     key: ['Find the Key', 'You\u2019ll be shown a key signature on the staff. Press the piano key it belongs to' + (HAS_KEYBOARD ? ' \u2014 click it, or type its letter (Shift for a sharp, ' + ALT_NAME + ' for a flat)' : '') + '. Keys you miss come back more often.'],
     sig: ['Find the Signature', 'A key is lit on the keyboard, and the key signatures are laid out above it. Click the signature that belongs to the lit key. F\u266F and G\u266D are separate boxes: the lit key says which one is asked for.'],
-    play: ['Play the Note', 'A note appears on the staff. Press the matching piano key (any octave)' + (HAS_KEYBOARD ? ', or type its letter A\u2013G (Shift for a sharp, ' + ALT_NAME + ' for a flat)' : '') + '. Sharps and flats take turns.<span class="levelup-line2">There are five steps, aimed at learning different clefs: first the treble clef, then the bass clef, then the alto clef.</span>'],
+    play: ['Play the Note', 'A note appears on the staff. Press the matching piano key (any octave)' + (HAS_KEYBOARD ? ', or type its letter A\u2013G (Shift for a sharp, ' + ALT_NAME + ' for a flat)' : '') + '. Sharps and flats take turns.<span class="levelup-line2">There are five levels, aimed at learning different clefs: first the treble clef, then the bass clef, then the alto clef.</span>'],
     find: ['Find the Note', 'A key is lit on the keyboard. Click its note on the staff, in the right octave. Sharps and flats take turns.']
   };
   function dismissWelcome() {
@@ -5663,7 +5663,7 @@ var KeyboardRender = (function () {
   function closeTrialList() { if (trialListOpen) { trialListOpen = false; syncTrialBox(); } }
   document.addEventListener('click', function (e) { if (trialListOpen && !trialBox.contains(e.target) && !(e.target.closest && e.target.closest('.tr-menu'))) closeTrialList(); });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && trialListOpen) { closeTrialList(); trialBtn.focus(); } });
-  function stageLabel(n) { if (studyQuizOn()) return 'Step ' + n; var i = FindChord.levelInfo(state.mode, ftcPop(), n); return 'Stage ' + i.stage + ': Step ' + i.step; }
+  function stageLabel(n) { if (studyQuizOn()) return 'Level ' + n; var i = FindChord.levelInfo(state.mode, ftcPop(), n); return 'Stage ' + i.stage + ': Level ' + i.step; }
   // two levels: the stages (newest first; only the current one open to start with), and under each the steps reached so far
   function buildTrialList() {
     trialList.textContent = '';
@@ -5673,7 +5673,7 @@ var KeyboardRender = (function () {
         var nbtn = el('button', 'btn-reset trial-lvl'), nbest = nb[trialKey(k)], nlocked = k === ncur && !trialUnlocked;
         nbtn.type = 'button'; nbtn.setAttribute('data-level', k); nbtn.setAttribute('role', 'menuitem');
         if (nlocked) { nbtn.disabled = true; nbtn.classList.add('locked'); nbtn.title = 'Answer ' + (window.MUSIC_THEORY_LOCAL ? '3 of the last 5' : '7 of the last 10') + ' right to unlock'; }
-        nbtn.appendChild(el('span', 'tl-n', 'Step ' + k));
+        nbtn.appendChild(el('span', 'tl-n', 'Level ' + k));
         nbtn.appendChild(el('span', 'tl-best', nlocked ? 'play it first' : nbest ? fmtTime(nbest.ms) + (nbest.wrong == null ? '' : ' \u00b7 ' + nbest.wrong + ' wrong') : 'no time yet'));
         trialList.appendChild(nbtn);
       }
@@ -5690,14 +5690,14 @@ var KeyboardRender = (function () {
       h.type = 'button'; h.setAttribute('aria-expanded', open ? 'true' : 'false');
       h.appendChild(el('span', 'tl-caret', '\u25b8'));
       h.appendChild(el('span', 'tl-n', 'Stage ' + st));
-      h.appendChild(el('span', 'tl-best', groups[st].length + (groups[st].length === 1 ? ' step' : ' steps')));
+      h.appendChild(el('span', 'tl-best', groups[st].length + (groups[st].length === 1 ? ' level' : ' levels')));
       body.hidden = !open;
       groups[st].forEach(function (n) {
         var b = el('button', 'btn-reset trial-lvl'), best = bests[trialKey(n)];
         b.type = 'button'; b.setAttribute('data-level', n); b.setAttribute('role', 'menuitem');
         var locked = n === cur && !trialUnlocked;                    // the step in progress opens for a trial once it has been played well enough
         if (locked) { b.disabled = true; b.classList.add('locked'); b.title = 'Answer ' + (window.MUSIC_THEORY_LOCAL ? '3 of the last 5' : '7 of the last 10') + ' right to unlock'; }
-        b.appendChild(el('span', 'tl-n', 'Step ' + FindChord.levelInfo(state.mode, ftcPop(), n).step));
+        b.appendChild(el('span', 'tl-n', 'Level ' + FindChord.levelInfo(state.mode, ftcPop(), n).step));
         b.appendChild(el('span', 'tl-best', locked ? 'play it first' : best ? fmtTime(best.ms) + (best.wrong == null ? '' : ' \u00b7 ' + best.wrong + ' wrong') : 'no time yet'));
         body.appendChild(b);
       });
@@ -5802,7 +5802,7 @@ var KeyboardRender = (function () {
       q('.tr-title').textContent = isBest ? 'New best time for ' + stageLabel(t.level) + '!' : stageLabel(t.level) + ' time trial complete';
       q('.tr-time').textContent = fmtTime(total);
       q('.tr-detail').textContent = t.wrongs + ' wrong' + (t.wrongs ? ' (+' + (t.wrongs * TRIAL_PENALTY / 1000) + 's)' : '');
-      q('.tr-best').textContent = isBest ? (best ? 'Previous best: ' + fmtTime(best.ms) + ' · ' + best.wrong + ' wrong' : 'First time at this step') :
+      q('.tr-best').textContent = isBest ? (best ? 'Previous best: ' + fmtTime(best.ms) + ' · ' + best.wrong + ' wrong' : 'First time at this level') :
         'Best: ' + fmtTime(best.ms) + (best.wrong == null ? '' : ' · ' + best.wrong + ' wrong');
       q('.tr-again').addEventListener('click', function () { startTrial(t.level); });
       q('.tr-trials').addEventListener('click', function () {
@@ -5895,7 +5895,7 @@ var KeyboardRender = (function () {
             ftcRaised(true);
             newStage = FindChord.levelInfo(state.mode, ftcPop(), n0 + 1).stage !== doneStage;
             levelUpNote = n0 + 1;
-            text += newStage ? ' Stage ' + doneStage + ' complete!' : ' Next step!';
+            text += newStage ? ' Stage ' + doneStage + ' complete!' : ' Next level!';
           }
           ftcStreak = 0; ftcTried = 0; ftcRight = 0;
           if (up) bubFull = true; else { ftcBub = null; bubFull = false; }          // (the full green row stays up while the banner shows; the next question empties it)
@@ -5944,8 +5944,8 @@ var KeyboardRender = (function () {
     if (non) { updateStudyHead(); return; }
     if (!on || !ftcQ) return;
     var li = FindChord.levelInfo(state.mode, ftcPop(), ftcLevelNo());
-    document.getElementById('ftc-level').textContent = (ftcTrial ? 'Trial \u00b7 ' : '') + 'Stage ' + li.stage + ': Step ' + li.step;
-    document.getElementById('ftc-level').title = 'Step ' + li.step + ' of ' + FindChord.stageSteps(state.mode, ftcPop(), ftcLevelNo());
+    document.getElementById('ftc-level').textContent = (ftcTrial ? 'Trial \u00b7 ' : '') + 'Stage ' + li.stage + ': Level ' + li.step;
+    document.getElementById('ftc-level').title = 'Level ' + li.step + ' of ' + FindChord.stageSteps(state.mode, ftcPop(), ftcLevelNo());
     document.getElementById('ftc-streak').textContent = '';
     showStreak();
   }
@@ -6113,8 +6113,8 @@ var KeyboardRender = (function () {
     stepCard.hidden = !on;
     if (!on) return;
     syncSlot();
-    levelTag.textContent = (ftcTrial ? 'Trial \u00b7 ' : '') + 'Step ' + stepNo();
-    levelTag.title = 'Step ' + stepNo() + ' of ' + STUDY_STEPS;
+    levelTag.textContent = (ftcTrial ? 'Trial \u00b7 ' : '') + 'Level ' + stepNo();
+    levelTag.title = 'Level ' + stepNo() + ' of ' + STUDY_STEPS;
     quizHead.appendChild(levelTag);
     quizHead.appendChild(scoreBox); scoreBox.hidden = false;
     quizHead.appendChild(trialBox);
