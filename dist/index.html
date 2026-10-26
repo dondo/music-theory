@@ -4866,7 +4866,8 @@ var KeyboardRender = (function () {
   // Notes: the run from middle C up an octave, a half step at a time (explore, find the note), or one note (play the note)
   function buildNoteStaff() {
     var clefId = clefAllowed(state.clef) ? state.clef : 'treble';
-    var base = 60, flash = state.flash, card = state.card, answered = !!state.answered;
+    var base = 60 + 12 * Math.round((clefConfig().mid - 72) / 12);            // the two-octave run sits around the middle of the clef (middle C up in treble); the notation only, the keyboard stays put
+    var flash = state.flash, card = state.card, answered = !!state.answered;
     if (flash && state.cardMode === 'play') {
       if (!card) return { kind: 'empty', clef: clefId, chords: [] };
       return { kind: 'notes', clef: clefId, slot: 260, chords: [{ notes: [{ midi: base + card.idx, name: card.name }], top: answered ? card.name : '', sub: '', lit: false }] };
