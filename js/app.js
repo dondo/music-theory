@@ -1227,7 +1227,8 @@
         S = base + kk * slotU;
         if (S * D < 0 || Math.abs(S) > Math.abs(D)) S = 0;
       }
-      q(oldSvg, '.stave-notes').forEach(function (g) { extra.push(move(g, 0, -S / u2)); });   // (the same easing over the same time, just a shorter way: they arrive together)
+      q(oldSvg, '.stave-notes').forEach(function (g) { extra.push(move(g, 0, -S / u2)); });
+      q(newSvg, '.stave-notes').forEach(function (g) { extra.push(move(g, S / u2, 0)); });   // the new notes slide in alongside the old ones, in step with them throughout   // (the same easing over the same time, just a shorter way: they arrive together)
       q(oldSvg, '.stave-under').forEach(function (g) { g.style.display = 'none'; });
       // the notes cross-fade while they slide; the key and its signature change once the slide is over
       var fadeNotes = { duration: SLIDE_MS, fill: 'both', easing: 'ease-in-out' };
