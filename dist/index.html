@@ -1786,76 +1786,85 @@ var Chords = (function () {
 })();
 </script>
   <script>
-/* Flashcard weights: keys you miss come up more often. Pure functions plus optional
-   persistence to localStorage (silently skipped where storage isn't available). */
-var Weights = (function () {
+/* Flashcard memory model for the study cards (Keys, Find the signature, Play the note, Find the note).
+   The same model Find the Chord uses (js/findchord.js), over any set of string-keyed items: each item has a
+   half-life h (its recall halves every h ms), R = 2^(-elapsed / h) is the chance you still remember it, and an
+   item is drawn in proportion to EPS + (1 - R)^GAMMA, so the time since you last saw it is built into the odds.
+   A first-try answer moves h by correctness and speed; a miss shrinks it. Items are independent, so a note in the
+   upper octave is tracked apart from the same note an octave down. Pure functions plus optional persistence. */
+var Memory = (function () {
   'use strict';
 
-  var STORAGE_KEY = 'keysig-flashcard-weights-v1';
-  var MISS_BUMP = 2;      // added to a key's weight for every wrong answer
-  var HIT_DECAY = 1;      // taken off when it is later answered right first time
-  var MIN = 1;
-  var MAX = 16;           // a much-missed key is ~16x as likely as a fresh one, not unbounded
+  var H0 = 3 * 60000, H_MIN = 2 * 60000, H_MAX = 60 * 86400000, EPS = 0.05, GAMMA = 1.5;
+  var LEARN_N = 3, LEARN_U = 0.5, LEARN_GAP = 2;      // answered fewer than 3 times: still being learned, at least 50% "forgotten" unless asked in the last 2 answers
+  var RELEARN = 6, RELEARN_U = 0.8;                  // after a miss: at least 80% "forgotten" for the next 6 answers
+  var TREF_DEFAULT = 3000, TREF_MIN = 1200, TREF_N = 100, TREF_NEED = 8, TIME_MAX = 20000, Q_NO_TIME = 0.7;
 
-  function ones() {
-    var a = [];
-    for (var i = 0; i < 12; i++) a.push(MIN);
-    return a;
+  function create() { return { p: {}, seq: 0, tm: {} }; }       // p: item -> { h, t, n, l, rs, ls }; tm: speed class -> the last correct first-try times
+  function recallOf(m, now) { return m ? Math.pow(2, -Math.max(0, now - m.t) / m.h) : 0; }       // never seen: 0
+  function recall(mem, key, now) { return recallOf(mem.p[key], now); }
+  function weight(mem, key, now) {
+    var m = mem.p[key], u = 1 - recallOf(m, now);
+    if (m && mem.seq - m.rs <= RELEARN) u = Math.max(u, RELEARN_U);
+    else if (m && m.n < LEARN_N && mem.seq - m.ls > LEARN_GAP) u = Math.max(u, LEARN_U);
+    return EPS + Math.pow(u, GAMMA);
   }
-
-  function fresh() { return { major: ones(), minor: ones() }; }
-
-  function valid(list) {
-    if (!Array.isArray(list) || list.length !== 12) return false;
-    return list.every(function (n) { return typeof n === 'number' && isFinite(n) && n >= MIN && n <= MAX; });
+  // one of `keys`, in proportion to its weight; `skip(key)` (optional) rules items out (when anything is left); `rng` returns [0, 1)
+  function pick(mem, keys, skip, rng, now) {
+    var pool = skip ? keys.filter(function (k) { return !skip(k); }) : keys;
+    if (!pool.length) pool = keys;
+    var ws = pool.map(function (k) { return weight(mem, k, now); }), total = ws.reduce(function (a, b) { return a + b; }, 0), x = rng() * total;
+    for (var i = 0; i < pool.length; i++) { x -= ws[i]; if (x < 0) return pool[i]; }
+    return pool[pool.length - 1];
   }
-
-  function getStorage() {
-    try { return (typeof window !== 'undefined' && window.localStorage) || null; } catch (e) { return null; }
+  function tRef(mem, cls) {                                      // the bar for "fast": your 20th-percentile correct time in this class
+    var a = mem.tm[cls];
+    if (!a || a.length < TREF_NEED) return TREF_DEFAULT;
+    var b = a.slice().sort(function (x, y) { return x - y; });
+    return Math.max(TREF_MIN, b[Math.floor(0.2 * (b.length - 1))]);
   }
-
-  function load(storage) {
-    storage = storage === undefined ? getStorage() : storage;
-    try {
-      var raw = storage && storage.getItem(STORAGE_KEY);
-      if (raw) {
-        var w = JSON.parse(raw);
-        if (w && valid(w.major) && valid(w.minor)) return { major: w.major, minor: w.minor };
-      }
-    } catch (e) { /* fall through to defaults */ }
-    return fresh();
-  }
-
-  function save(w, storage) {
-    storage = storage === undefined ? getStorage() : storage;
-    try { if (storage) storage.setItem(STORAGE_KEY, JSON.stringify(w)); } catch (e) { /* not persisted */ }
-  }
-
-  function miss(w, mode, pc) { w[mode][pc] = Math.min(MAX, w[mode][pc] + MISS_BUMP); }
-  function hit(w, mode, pc) { w[mode][pc] = Math.max(MIN, w[mode][pc] - HIT_DECAY); }
-
-  function reset(w) {
-    w.major = ones();
-    w.minor = ones();
-  }
-
-  // Weighted random pitch class, never `avoid` (so the same card isn't dealt twice in a row).
-  function pick(list, rng, avoid) {
-    var total = 0;
-    var i;
-    for (i = 0; i < 12; i++) if (i !== avoid) total += list[i];
-    var x = rng() * total;
-    for (i = 0; i < 12; i++) {
-      if (i === avoid) continue;
-      x -= list[i];
-      if (x < 0) return i;
+  function grade(t, ref) { var r = t / ref; return 1 - 0.5 * Math.max(0, Math.min(1, Math.log(r / 0.8) / Math.log(3.125))); }
+  // a first-try answer (`tMs` null when the time can't be trusted); returns what was predicted and what changed
+  function answer(mem, key, cls, correct, tMs, now) {
+    var m = mem.p[key];
+    var out = { R: m ? recallOf(m, now) : null, hBefore: m ? m.h : null, dt: m ? now - m.t : null, q: 0, cls: cls };
+    var timed = correct && tMs != null && tMs >= 0 && tMs <= TIME_MAX;
+    if (!m) m = { h: H0, t: now, n: 0, l: 0, rs: -99, ls: -99 };
+    if (!correct) { m.h = Math.max(H_MIN, 0.35 * m.h); m.l++; m.rs = mem.seq; out.q = 0; }
+    else {
+      out.q = timed ? grade(tMs, tRef(mem, cls)) : Q_NO_TIME;
+      var R = out.R == null ? 0 : out.R, dt = out.dt == null ? 0 : out.dt;
+      m.h = Math.min(H_MAX, Math.max(m.h * (1 + 1.5 * out.q * (1.5 - R)), 0.8 * out.q * dt));
     }
-    return avoid === 11 ? 10 : 11;        // floating-point edge: fall back to the last candidate
+    if (timed) { var a = mem.tm[cls] || (mem.tm[cls] = []); a.push(tMs); if (a.length > TREF_N) a.shift(); }
+    m.n++; m.t = now; m.ls = mem.seq; mem.p[key] = m; mem.seq++;
+    out.hAfter = m.h;
+    return out;
   }
+
+  function storage() { try { return (typeof window !== 'undefined' && window.localStorage) || null; } catch (e) { return null; } }
+  function load(storeKey, st) {
+    st = st === undefined ? storage() : st;
+    var mem = create();
+    try {
+      var o = JSON.parse(st && st.getItem(storeKey));
+      if (o && typeof o === 'object') {
+        if (Number.isInteger(o.seq) && o.seq >= 0) mem.seq = o.seq;
+        Object.keys(o.p || {}).forEach(function (k) {
+          var m = o.p[k];
+          if (m && isFinite(m.h) && isFinite(m.t) && m.h >= H_MIN && m.h <= H_MAX) mem.p[k] = { h: m.h, t: m.t, n: m.n | 0, l: m.l | 0, rs: Number.isInteger(m.rs) ? m.rs : -99, ls: Number.isInteger(m.ls) ? m.ls : -99 };
+        });
+        Object.keys(o.tm || {}).forEach(function (c) { if (Array.isArray(o.tm[c])) mem.tm[c] = o.tm[c].filter(function (x) { return isFinite(x) && x > 0 && x <= TIME_MAX; }).slice(-TREF_N); });
+      }
+    } catch (e) { /* defaults */ }
+    return mem;
+  }
+  function save(storeKey, mem, st) { st = st === undefined ? storage() : st; try { if (st) st.setItem(storeKey, JSON.stringify(mem)); } catch (e) { /* not persisted */ } }
+  function reset(mem) { mem.p = {}; mem.seq = 0; mem.tm = {}; }
 
   var api = {
-    STORAGE_KEY: STORAGE_KEY, MISS_BUMP: MISS_BUMP, HIT_DECAY: HIT_DECAY, MIN: MIN, MAX: MAX,
-    fresh: fresh, load: load, save: save, miss: miss, hit: hit, reset: reset, pick: pick
+    H0: H0, H_MIN: H_MIN, H_MAX: H_MAX, EPS: EPS, GAMMA: GAMMA, TREF_DEFAULT: TREF_DEFAULT,
+    create: create, recall: recall, weight: weight, pick: pick, tRef: tRef, grade: grade, answer: answer, load: load, save: save, reset: reset
   };
   if (typeof module !== 'undefined' && module.exports) { module.exports = api; }
   return api;
@@ -3696,7 +3705,25 @@ var KeyboardRender = (function () {
   var chordCleared = false;                           // user toggled the chord off while the panel is open
   var chordTypes_ = { full: 'triad', pentatonic: 'maj', wholetone: 'aug' };   // last chosen chord type per scale type
   var score = { ok: 0, bad: 0 };
-  var weights = Weights.load();                       // per-key odds; persisted in localStorage when possible
+  // study cards: each key / note (and, in Notes, each octave of a note) has its own memory: when it was last asked, how long it
+  // takes to fade, how fast you answered. The next card is drawn by how likely you are to have forgotten it (js/memory.js).
+  var CARD_MEM_KEY = 'music-theory-cards-mem-v1', OLD_WEIGHTS_KEY = 'keysig-flashcard-weights-v1';
+  var cardMem = Memory.load(CARD_MEM_KEY);
+  var cardT0 = null, cardTimed = false;               // when the card went up; false when the page was hidden meanwhile (the time can't be trusted)
+  function startCardClock(trusted) { cardT0 = performance.now(); cardTimed = trusted !== false && !document.hidden; }
+  document.addEventListener('visibilitychange', function () { if (document.hidden) cardTimed = false; });
+  function cardMemKey() {
+    var c = state.card;
+    if (noteOn()) return (state.cardMode === 'find' ? 'find|' : 'play|') + c.idx;
+    return (state.cardMode === 'sig' ? 'sig|' : 'key|') + state.mode + '|' + c.pc;
+  }
+  // the first try at a card counts (later tries at the same card don't)
+  function memRecord(correct) {
+    if (missedThisCard || !state.card) return;
+    var key = cardMemKey();
+    Memory.answer(cardMem, key, key.split('|')[0], correct, cardTimed && cardT0 != null ? performance.now() - cardT0 : null, Date.now());
+    Memory.save(CARD_MEM_KEY, cardMem);
+  }
   var missedThisCard = false;
   var lastResult = '';                                // for the screen-reader caption
 
@@ -5943,8 +5970,11 @@ var KeyboardRender = (function () {
   var noteSel = null;                                  // Notes, Explore: the key/note last clicked (0..24)
   var noteSpell = 0, noteLastSpell = 1;                // Explore's sharps(0)/flats(1) toggle; Study alternates, starting with sharps
   function newNoteCard() {
-    var avoid = state.card ? state.card.pc : -1, idx, pc;
-    do { idx = Math.floor(Math.random() * 25); pc = idx % 12; } while (pc === avoid);        // two octaves from middle C: 0..24
+    var avoid = state.card ? state.card.pc : -1, idx, pc, pre = state.cardMode === 'find' ? 'find|' : 'play|', keys = [];
+    for (var i = 0; i < 25; i++) keys.push(pre + i);                                        // two octaves from middle C: 0..24, each remembered on its own
+    idx = parseInt(Memory.pick(cardMem, keys, function (k) { return parseInt(k.slice(5), 10) % 12 === avoid; }, Math.random, Date.now()).slice(5), 10);
+    pc = idx % 12;
+    startCardClock(true);
     var flat = noteLastSpell === 0;                           // Study: sharps and flats take turns
     noteLastSpell = flat ? 1 : 0;
     state.card = { idx: idx, pc: pc, spell: flat ? 1 : 0, name: (flat ? NOTE_FLAT : NOTE_SHARP)[pc] };
@@ -5954,13 +5984,17 @@ var KeyboardRender = (function () {
   function newCard() {
     if (noteOn()) { newNoteCard(); return; }
     var avoid = state.card ? state.card.pc : -1;
-    var pc = Weights.pick(weights[state.mode], Math.random, avoid);
+    var pre = state.cardMode === 'sig' ? 'sig|' : 'key|', keys = [], i;
+    for (i = 0; i < 12; i++) keys.push(pre + state.mode + '|' + i);
+    var pc = parseInt(Memory.pick(cardMem, keys, function (k) { return parseInt(k.split('|')[2], 10) === avoid; }, Math.random, Date.now()).split('|')[2], 10);
+    startCardClock(true);
     missedThisCard = false;
     state.guess = null;
     // a two-spelling key shows one spelling on the cue (random), both once solved; the shown one is lit
     state.card = { pc: pc, spell: Math.floor(Math.random() * Theory.specsFor(state.mode, pc).length) };
     if (resumeQ && resumeQ.cardMode !== 'chord') {      // reloaded mid-question: the same card again
       state.card = { pc: resumeQ.pc, spell: resumeQ.spell };
+      startCardClock(false);                            // (the time away isn't an answer time)
       missedThisCard = !!resumeQ.missed;
     }
     resumeQ = null;
@@ -6016,9 +6050,8 @@ var KeyboardRender = (function () {
     if (state.answered) return;                 // already solved: press Next for the next card
     if (pc !== state.card.pc) {
       score.bad++;
+      memRecord(false);                         // this key will turn up more often
       missedThisCard = true;
-      Weights.miss(weights, state.mode, state.card.pc);    // this key will turn up more often
-      Weights.save(weights);
       state.guess = pc;                         // show what the pressed key's signature is (no rotation, no highlights)
       lastResult = 'Incorrect. That key is ' + Theory.specsFor(state.mode, pc).map(function (sp) {
         return Theory.keyTitle(sp, state.mode);
@@ -6031,7 +6064,7 @@ var KeyboardRender = (function () {
       return;
     }
     score.ok++;
-    if (!missedThisCard) { Weights.hit(weights, state.mode, pc); Weights.save(weights); }   // known: ease off
+    memRecord(true);                            // known: it fades more slowly now
     lastResult = 'Correct, ' + Theory.keyTitle(Theory.specsFor(state.mode, pc)[state.card.spell], state.mode) + '.';
     // rotate to the key just identified and light up its scale, then deal the next card
     var rotated = !(state.selected && fromS === state.root) && (pc !== state.root || fromS !== state.root);
@@ -6057,9 +6090,8 @@ var KeyboardRender = (function () {
     var sp = Theory.specsFor(state.mode, pick.pc)[pick.spell];
     if (pick.pc !== state.card.pc || pick.spell !== state.card.spell) {     // F#/Gb are separate answers
       score.bad++;
+      memRecord(false);
       missedThisCard = true;
-      Weights.miss(weights, state.mode, state.card.pc);
-      Weights.save(weights);
       state.guess = pick;
       lastResult = 'Incorrect. That signature is ' + Theory.keyTitle(sp, state.mode) + '.';
       updateScore();
@@ -6074,7 +6106,7 @@ var KeyboardRender = (function () {
       return;
     }
     score.ok++;
-    if (!missedThisCard) { Weights.hit(weights, state.mode, pick.pc); Weights.save(weights); }
+    memRecord(true);
     var notes = Theory.signatureNotes(sp);
     lastResult = 'Correct, ' + Theory.keyTitle(sp, state.mode) + ' has ' +
       (sp.n === 0 ? 'no sharps or flats' : sp.n + ' ' + sp.kind + (sp.n === 1 ? '' : 's') + ' (' + notes.join(' ') + ')') + '.';
@@ -6141,6 +6173,7 @@ var KeyboardRender = (function () {
     var find = state.cardMode === 'find', pc = val % 12;
     if (find ? val !== state.card.idx : pc !== state.card.pc) {
       score.bad++;
+      memRecord(false);                                           // (the octave counts: the same note up the keyboard is its own card)
       missedThisCard = true;
       var octave = find && pc === state.card.pc;                  // the right note name, the wrong octave
       state.guess = octave ? 'octave' : pc;
@@ -6151,6 +6184,7 @@ var KeyboardRender = (function () {
       return;
     }
     score.ok++;
+    memRecord(true);
     state.answered = true;
     lastResult = 'Correct, ' + state.card.name + (state.cardMode === 'play' && NOTE_SHARP[pc] !== NOTE_FLAT[pc] ? ' (also ' + (state.card.spell ? NOTE_SHARP[pc] : NOTE_FLAT[pc]) + ')' : '') + '.';
     updateScore();
@@ -6725,8 +6759,9 @@ var KeyboardRender = (function () {
     restoring = true;                                  // no saves while the sections snap shut
     setTimeout(function () { restoring = false; }, 300);
     if (state.flash) setView(false);
-    Weights.reset(weights);
-    Weights.save(weights);
+    Memory.reset(cardMem);
+    Memory.save(CARD_MEM_KEY, cardMem);
+    try { window.localStorage.removeItem(OLD_WEIGHTS_KEY); } catch (e) { /* storage unavailable */ }
     FindChord.resetMem(ftcMem);                       // (the practice log is kept)
     FindChord.saveMem(ftcMem);
     prog = [];

@@ -161,7 +161,25 @@
   var chordCleared = false;                           // user toggled the chord off while the panel is open
   var chordTypes_ = { full: 'triad', pentatonic: 'maj', wholetone: 'aug' };   // last chosen chord type per scale type
   var score = { ok: 0, bad: 0 };
-  var weights = Weights.load();                       // per-key odds; persisted in localStorage when possible
+  // study cards: each key / note (and, in Notes, each octave of a note) has its own memory: when it was last asked, how long it
+  // takes to fade, how fast you answered. The next card is drawn by how likely you are to have forgotten it (js/memory.js).
+  var CARD_MEM_KEY = 'music-theory-cards-mem-v1', OLD_WEIGHTS_KEY = 'keysig-flashcard-weights-v1';
+  var cardMem = Memory.load(CARD_MEM_KEY);
+  var cardT0 = null, cardTimed = false;               // when the card went up; false when the page was hidden meanwhile (the time can't be trusted)
+  function startCardClock(trusted) { cardT0 = performance.now(); cardTimed = trusted !== false && !document.hidden; }
+  document.addEventListener('visibilitychange', function () { if (document.hidden) cardTimed = false; });
+  function cardMemKey() {
+    var c = state.card;
+    if (noteOn()) return (state.cardMode === 'find' ? 'find|' : 'play|') + c.idx;
+    return (state.cardMode === 'sig' ? 'sig|' : 'key|') + state.mode + '|' + c.pc;
+  }
+  // the first try at a card counts (later tries at the same card don't)
+  function memRecord(correct) {
+    if (missedThisCard || !state.card) return;
+    var key = cardMemKey();
+    Memory.answer(cardMem, key, key.split('|')[0], correct, cardTimed && cardT0 != null ? performance.now() - cardT0 : null, Date.now());
+    Memory.save(CARD_MEM_KEY, cardMem);
+  }
   var missedThisCard = false;
   var lastResult = '';                                // for the screen-reader caption
 
@@ -2408,8 +2426,11 @@
   var noteSel = null;                                  // Notes, Explore: the key/note last clicked (0..24)
   var noteSpell = 0, noteLastSpell = 1;                // Explore's sharps(0)/flats(1) toggle; Study alternates, starting with sharps
   function newNoteCard() {
-    var avoid = state.card ? state.card.pc : -1, idx, pc;
-    do { idx = Math.floor(Math.random() * 25); pc = idx % 12; } while (pc === avoid);        // two octaves from middle C: 0..24
+    var avoid = state.card ? state.card.pc : -1, idx, pc, pre = state.cardMode === 'find' ? 'find|' : 'play|', keys = [];
+    for (var i = 0; i < 25; i++) keys.push(pre + i);                                        // two octaves from middle C: 0..24, each remembered on its own
+    idx = parseInt(Memory.pick(cardMem, keys, function (k) { return parseInt(k.slice(5), 10) % 12 === avoid; }, Math.random, Date.now()).slice(5), 10);
+    pc = idx % 12;
+    startCardClock(true);
     var flat = noteLastSpell === 0;                           // Study: sharps and flats take turns
     noteLastSpell = flat ? 1 : 0;
     state.card = { idx: idx, pc: pc, spell: flat ? 1 : 0, name: (flat ? NOTE_FLAT : NOTE_SHARP)[pc] };
@@ -2419,13 +2440,17 @@
   function newCard() {
     if (noteOn()) { newNoteCard(); return; }
     var avoid = state.card ? state.card.pc : -1;
-    var pc = Weights.pick(weights[state.mode], Math.random, avoid);
+    var pre = state.cardMode === 'sig' ? 'sig|' : 'key|', keys = [], i;
+    for (i = 0; i < 12; i++) keys.push(pre + state.mode + '|' + i);
+    var pc = parseInt(Memory.pick(cardMem, keys, function (k) { return parseInt(k.split('|')[2], 10) === avoid; }, Math.random, Date.now()).split('|')[2], 10);
+    startCardClock(true);
     missedThisCard = false;
     state.guess = null;
     // a two-spelling key shows one spelling on the cue (random), both once solved; the shown one is lit
     state.card = { pc: pc, spell: Math.floor(Math.random() * Theory.specsFor(state.mode, pc).length) };
     if (resumeQ && resumeQ.cardMode !== 'chord') {      // reloaded mid-question: the same card again
       state.card = { pc: resumeQ.pc, spell: resumeQ.spell };
+      startCardClock(false);                            // (the time away isn't an answer time)
       missedThisCard = !!resumeQ.missed;
     }
     resumeQ = null;
@@ -2481,9 +2506,8 @@
     if (state.answered) return;                 // already solved: press Next for the next card
     if (pc !== state.card.pc) {
       score.bad++;
+      memRecord(false);                         // this key will turn up more often
       missedThisCard = true;
-      Weights.miss(weights, state.mode, state.card.pc);    // this key will turn up more often
-      Weights.save(weights);
       state.guess = pc;                         // show what the pressed key's signature is (no rotation, no highlights)
       lastResult = 'Incorrect. That key is ' + Theory.specsFor(state.mode, pc).map(function (sp) {
         return Theory.keyTitle(sp, state.mode);
@@ -2496,7 +2520,7 @@
       return;
     }
     score.ok++;
-    if (!missedThisCard) { Weights.hit(weights, state.mode, pc); Weights.save(weights); }   // known: ease off
+    memRecord(true);                            // known: it fades more slowly now
     lastResult = 'Correct, ' + Theory.keyTitle(Theory.specsFor(state.mode, pc)[state.card.spell], state.mode) + '.';
     // rotate to the key just identified and light up its scale, then deal the next card
     var rotated = !(state.selected && fromS === state.root) && (pc !== state.root || fromS !== state.root);
@@ -2522,9 +2546,8 @@
     var sp = Theory.specsFor(state.mode, pick.pc)[pick.spell];
     if (pick.pc !== state.card.pc || pick.spell !== state.card.spell) {     // F#/Gb are separate answers
       score.bad++;
+      memRecord(false);
       missedThisCard = true;
-      Weights.miss(weights, state.mode, state.card.pc);
-      Weights.save(weights);
       state.guess = pick;
       lastResult = 'Incorrect. That signature is ' + Theory.keyTitle(sp, state.mode) + '.';
       updateScore();
@@ -2539,7 +2562,7 @@
       return;
     }
     score.ok++;
-    if (!missedThisCard) { Weights.hit(weights, state.mode, pick.pc); Weights.save(weights); }
+    memRecord(true);
     var notes = Theory.signatureNotes(sp);
     lastResult = 'Correct, ' + Theory.keyTitle(sp, state.mode) + ' has ' +
       (sp.n === 0 ? 'no sharps or flats' : sp.n + ' ' + sp.kind + (sp.n === 1 ? '' : 's') + ' (' + notes.join(' ') + ')') + '.';
@@ -2606,6 +2629,7 @@
     var find = state.cardMode === 'find', pc = val % 12;
     if (find ? val !== state.card.idx : pc !== state.card.pc) {
       score.bad++;
+      memRecord(false);                                           // (the octave counts: the same note up the keyboard is its own card)
       missedThisCard = true;
       var octave = find && pc === state.card.pc;                  // the right note name, the wrong octave
       state.guess = octave ? 'octave' : pc;
@@ -2616,6 +2640,7 @@
       return;
     }
     score.ok++;
+    memRecord(true);
     state.answered = true;
     lastResult = 'Correct, ' + state.card.name + (state.cardMode === 'play' && NOTE_SHARP[pc] !== NOTE_FLAT[pc] ? ' (also ' + (state.card.spell ? NOTE_SHARP[pc] : NOTE_FLAT[pc]) + ')' : '') + '.';
     updateScore();
@@ -3190,8 +3215,9 @@
     restoring = true;                                  // no saves while the sections snap shut
     setTimeout(function () { restoring = false; }, 300);
     if (state.flash) setView(false);
-    Weights.reset(weights);
-    Weights.save(weights);
+    Memory.reset(cardMem);
+    Memory.save(CARD_MEM_KEY, cardMem);
+    try { window.localStorage.removeItem(OLD_WEIGHTS_KEY); } catch (e) { /* storage unavailable */ }
     FindChord.resetMem(ftcMem);                       // (the practice log is kept)
     FindChord.saveMem(ftcMem);
     prog = [];

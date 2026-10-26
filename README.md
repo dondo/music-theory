@@ -91,10 +91,14 @@ No build tools or dependencies. Open `index.html` in a browser, or open the sing
   The keys carry no labels (only the notes of the scale light up and are named once you answer).
   After a correct answer a **Next** button sits beside the clef; the solved card slides out and the
   new one slides in.
-- **Weighted deal.** Every wrong answer makes that key more likely to come up again (+2 to its
-  weight, max 16, separately for major and minor); getting it right first time eases it back (-1).
-  Weights are saved in the browser's localStorage when available. The quiet "Reset app settings
-  weights" link in the footer clears them. (`js/weights.js`)
+- **Adaptive deal.** Every study card (Keys, Find the signature, Play the note, Find the note) uses
+  the same memory model as Find the Chord (`js/memory.js`). Each key, or each note, has a half-life:
+  how long until you'd probably have forgotten it. The next card is drawn in proportion to how likely
+  you are to have forgotten it, so time since you last saw it counts. A first-try answer lengthens the
+  half-life (more when you answer quickly), and a miss shrinks it. In Notes every one of the 25 notes
+  is tracked on its own, so a note you know in the lower octave but miss in the upper one comes up
+  more often in the upper. It is saved in the browser's localStorage when available; the quiet "Reset
+  app settings" link in the footer clears it.
 - **Keyboard accessible.** Tab to a key, Enter/Space to root, ← → to move between keys.
 
 - **Notation on the stave.** While the Chords or Progressions section is open, the signature boxes give way to one treble stave (the current key's signature) stretched across the keyboard. With Chords open and a chord selected it shows the chord in root position and each inversion, with the chord symbol (and slash bass) underneath. With Progressions open it ignores the chord selector and shows the progression as whole-note block chords, one per slot, using the same smooth left-hand voicings as the fingering plan, with Roman numeral and symbol underneath and the lit chord highlighted. With nothing to show the stave is empty, with a hint. Closing both sections brings the signature boxes back.

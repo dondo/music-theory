@@ -151,48 +151,59 @@ check('chords: every key, degree and type produces a well-formed chord', functio
   });
 });
 
-// ---- flashcard weights -------------------------------------------------------
-var Wt = require('../js/weights.js');
-check('weights: a miss raises the odds, a clean hit eases them, bounds hold', function () {
-  var w = Wt.fresh();
-  Wt.miss(w, 'major', 6);
-  assert.strictEqual(w.major[6], 1 + Wt.MISS_BUMP);
-  assert.strictEqual(w.minor[6], 1, 'minor deck unaffected');
-  Wt.hit(w, 'major', 6);
-  assert.strictEqual(w.major[6], 1 + Wt.MISS_BUMP - Wt.HIT_DECAY);
-  for (var i = 0; i < 50; i++) Wt.miss(w, 'major', 2);
-  assert.strictEqual(w.major[2], Wt.MAX);
-  for (i = 0; i < 50; i++) Wt.hit(w, 'major', 2);
-  assert.strictEqual(w.major[2], Wt.MIN);
+// ---- flashcard memory (Keys, Find the signature, Play / Find the note) ---------
+var Mem = require('../js/memory.js');
+function seededRng(seed) { return function () { seed = (seed * 1664525 + 1013904223) % 4294967296; return seed / 4294967296; }; }
+check('memory: an unseen item is fully "forgotten"; recall halves every half-life; a miss shrinks it', function () {
+  var mem = Mem.create(), now = 1e9;
+  assert.strictEqual(Mem.recall(mem, 'play|0', now), 0);
+  assert.ok(Math.abs(Mem.weight(mem, 'play|0', now) - (Mem.EPS + 1)) < 1e-9);
+  Mem.answer(mem, 'play|0', 'play', true, 1000, now);
+  var h = mem.p['play|0'].h;
+  assert.ok(Math.abs(Mem.recall(mem, 'play|0', now + h) - 0.5) < 1e-9, 'half-life');
+  Mem.answer(mem, 'play|0', 'play', false, null, now + 1000);
+  assert.ok(mem.p['play|0'].h < h, 'a miss shortens it');
+  assert.ok(mem.p['play|0'].h >= Mem.H_MIN);
 });
-check('weights: a missed key is dealt more often, never twice in a row', function () {
-  var w = Wt.fresh();
-  for (var i = 0; i < 4; i++) Wt.miss(w, 'major', 7);          // weight 9 vs 1
-  var seed = 12345;
-  function rng() { seed = (seed * 1664525 + 1013904223) % 4294967296; return seed / 4294967296; }
-  var counts = [];
-  for (i = 0; i < 12; i++) counts.push(0);
-  for (i = 0; i < 12000; i++) counts[Wt.pick(w.major, rng, -1)]++;
-  assert.ok(counts[7] > counts[0] * 6, 'heavy key dominates: ' + counts[7] + ' vs ' + counts[0]);
-  for (i = 0; i < 12; i++) assert.ok(counts[i] > 0, 'every key still appears');
-  for (i = 0; i < 2000; i++) assert.notStrictEqual(Wt.pick(w.major, rng, 7), 7, 'avoid is honoured');
-  assert.strictEqual(Wt.pick(w.major, function () { return 0.999999999; }, 11), 10, 'edge of the range');
+check('memory: quick answers earn longer half-lives than slow ones; an untimed answer sits between', function () {
+  var h = {};
+  [['fast', 800], ['slow', 9000], ['none', null]].forEach(function (c) {
+    var mem = Mem.create(); Mem.answer(mem, 'key|major|0', 'key', true, c[1], 5e8); h[c[0]] = mem.p['key|major|0'].h;
+  });
+  assert.ok(h.fast > h.none && h.none > h.slow, JSON.stringify(h));
 });
-check('weights: persistence round-trips; corrupt data falls back; reset clears', function () {
+check('memory: the upper octave missed, middle C known: the upper C comes up far more often', function () {
+  var mem = Mem.create(), now = 2e9, i;
+  for (i = 0; i < 4; i++) Mem.answer(mem, 'play|0', 'play', true, 1200, now + i * 1000);          // C4, always right
+  for (i = 0; i < 4; i++) Mem.answer(mem, 'play|12', 'play', false, null, now + 5000 + i * 1000);  // C5, always wrong
+  var keys = []; for (i = 0; i < 25; i++) keys.push('play|' + i);
+  var rng = seededRng(99), counts = {}; keys.forEach(function (k) { counts[k] = 0; });
+  for (i = 0; i < 6000; i++) counts[Mem.pick(mem, keys, null, rng, now + 60000)]++;
+  assert.ok(counts['play|12'] > counts['play|0'] * 3, 'C5 ' + counts['play|12'] + ' vs C4 ' + counts['play|0']);
+  assert.ok(counts['play|12'] > 0 && counts['play|0'] > 0, 'both still appear');
+});
+check('memory: the longer since an item was seen, the likelier it is; skip is honoured', function () {
+  var mem = Mem.create(), now = 3e9, i;
+  for (i = 0; i < 4; i++) { Mem.answer(mem, 'key|major|1', 'key', true, 1500, now + i); Mem.answer(mem, 'key|major|2', 'key', true, 1500, now + i); }
+  mem.p['key|major|2'].t -= 5 * 86400000;                              // item 2 was last seen five days ago
+  assert.ok(Mem.weight(mem, 'key|major|2', now + 60000) > 3 * Mem.weight(mem, 'key|major|1', now + 60000));
+  var rng = seededRng(5), keys = ['key|major|1', 'key|major|2', 'key|major|3'];
+  for (i = 0; i < 500; i++) assert.notStrictEqual(Mem.pick(mem, keys, function (k) { return k === 'key|major|2'; }, rng, now), 'key|major|2');
+  assert.strictEqual(Mem.pick(mem, ['a'], function () { return true; }, rng, now), 'a', 'nothing left to skip to: the skip is dropped');
+});
+check('memory: persistence round-trips; corrupt data falls back; reset clears', function () {
   var store = { data: {}, getItem: function (k) { return k in this.data ? this.data[k] : null; },
                 setItem: function (k, v) { this.data[k] = String(v); } };
-  var w = Wt.fresh();
-  Wt.miss(w, 'minor', 3);
-  Wt.save(w, store);
-  assert.strictEqual(Wt.load(store).minor[3], 1 + Wt.MISS_BUMP);
-  store.data[Wt.STORAGE_KEY] = '{nope';
-  assert.deepStrictEqual(Wt.load(store), Wt.fresh());
-  store.data[Wt.STORAGE_KEY] = JSON.stringify({ major: [1, 2], minor: [] });
-  assert.deepStrictEqual(Wt.load(store), Wt.fresh());
-  assert.deepStrictEqual(Wt.load(null), Wt.fresh(), 'no storage at all is fine');
-  Wt.reset(w);
-  assert.deepStrictEqual(w, Wt.fresh());
-  Wt.save(w, { setItem: function () { throw new Error('quota'); } });       // must not throw
+  var mem = Mem.create();
+  Mem.answer(mem, 'sig|minor|3', 'sig', true, 2000, 4e9);
+  Mem.save('k', mem, store);
+  assert.deepStrictEqual(Mem.load('k', store), mem);
+  store.data.k = '{nope'; assert.deepStrictEqual(Mem.load('k', store), Mem.create());
+  store.data.k = JSON.stringify({ seq: -3, p: { a: { h: 5, t: 1 }, b: 'x' }, tm: { c: ['q', 5] } });
+  var back = Mem.load('k', store); assert.deepStrictEqual(back.p, {}); assert.deepStrictEqual(back.tm.c, [5]);
+  assert.deepStrictEqual(Mem.load('k', null), Mem.create(), 'no storage at all is fine');
+  Mem.reset(mem); assert.deepStrictEqual(mem, Mem.create());
+  Mem.save('k', mem, { setItem: function () { throw new Error('quota'); } });       // must not throw
 });
 
 // ---- rendering sanity (no browser needed) ----------------------------------
