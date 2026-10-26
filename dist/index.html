@@ -3390,7 +3390,7 @@ var KeyboardRender = (function () {
     var noKeys = flash && !noteMode && state.cardMode === 'chord';                  // Find the chord: just the staff card, no keyboard
     var opened = noKeys && !!state.answered && !!state.quizStave;      // answered: the card opens out into the big stave
     var svgH = noteMode ? HEIGHT : sig ? HEIGHT_SIG : (opened ? 304 : (noKeys ? 276 : (flash ? HEIGHT_FLASH : HEIGHT)));
-    var cut = noteMode ? 30 : (sig || flash) ? 0 : (state.staff && selected ? 30 : TOP_CUT);   // explore: no empty strip above the boxes; the big stave needs headroom for high chords
+    var cut = noteMode ? 0 : (sig || flash) ? 0 : (state.staff && selected ? 30 : TOP_CUT);   // explore: no empty strip above the boxes; the big stave needs headroom for high chords
     parts.push('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 ' + cut + ' ' + WIDTH + ' ' + (svgH - cut) + '" width="' + WIDTH +
       '" height="' + (svgH - cut) + '" class="kb-svg' + (sig ? ' sig' : '') + '" role="group" aria-label="Piano keyboard with key signatures" ' +
       'font-family="-apple-system, \'Segoe UI\', Roboto, \'Helvetica Neue\', \'DejaVu Sans\', Arial, sans-serif">');
@@ -3414,9 +3414,9 @@ var KeyboardRender = (function () {
     if (noteMode) {
       parts.push(bigStave(state.staff || { kind: 'empty', clef: 'treble', chords: [] }, winL, winR, rootSpec, mode));
       if (noteStudy) {
-        parts.push('<text class="fb-nope" x="' + f(WIDTH / 2) + '" y="86" text-anchor="middle" font-size="34" font-weight="bold" fill="#dc2626" opacity="0" pointer-events="none">\u2717 ' + (typeof state.guess === 'number' ? 'That was ' + ['C', 'C\u266F/D\u266D', 'D', 'D\u266F/E\u266D', 'E', 'F', 'F\u266F/G\u266D', 'G', 'G\u266F/A\u266D', 'A', 'A\u266F/B\u266D', 'B'][state.guess] : 'Nope') + '</text>' +
-          '<text class="fb-yes" x="' + f(WIDTH / 2) + '" y="86" text-anchor="middle" font-size="34" font-weight="bold" fill="#16a34a" opacity="0" pointer-events="none">\u2713 Yes!</text>');
-        if (state.answered) parts.push(nextButton(winR - 150, 70));
+        parts.push('<text class="fb-nope" x="' + f(WIDTH / 2) + '" y="50" text-anchor="middle" font-size="34" font-weight="bold" fill="#dc2626" opacity="0" pointer-events="none">\u2717 ' + (typeof state.guess === 'number' ? 'That was ' + ['C', 'C\u266F/D\u266D', 'D', 'D\u266F/E\u266D', 'E', 'F', 'F\u266F/G\u266D', 'G', 'G\u266F/A\u266D', 'A', 'A\u266F/B\u266D', 'B'][state.guess] : 'Nope') + '</text>' +
+          '<text class="fb-yes" x="' + f(WIDTH / 2) + '" y="50" text-anchor="middle" font-size="34" font-weight="bold" fill="#16a34a" opacity="0" pointer-events="none">\u2713 Yes!</text>');
+        if (state.answered) parts.push(nextButton(winR - 150, 36));
       }
     } else if (sig) {
       parts.push(sigGrid(state, mode));
