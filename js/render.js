@@ -739,6 +739,7 @@ var KeyboardRender = (function () {
     return out.join('');
   }
 
+  var staveSeq = 0;
   function bigStave(data, winL, winR, rootSpec, mode) {
     var out = ['<g class="stave" aria-label="Notation">'];
     var under = [];
@@ -746,6 +747,7 @@ var KeyboardRender = (function () {
     var pal = PAL[sp.kind];
     var k = KB.toFixed(5);
     var x0 = winL + 6;
+    out.push('<g class="stave-lines">');      // (the parts are grouped so a key change can animate them separately)
     for (var i = 0; i < 5; i++) {
       out.push('<line x1="' + f(x0) + '" y1="' + f(YB - i * SB) + '" x2="' + f(winR - 6) + '" y2="' + f(YB - i * SB) + '" stroke="' + INK + '" stroke-width="1"/>');
     }
@@ -753,6 +755,7 @@ var KeyboardRender = (function () {
     // final barline: a thin line, then a thick one
     out.push('<line x1="' + f(winR - 11) + '" y1="' + f(YB - 4 * SB) + '" x2="' + f(winR - 11) + '" y2="' + f(YB) + '" stroke="' + INK + '" stroke-width="1.2"/>');
     out.push('<rect x="' + f(winR - 8.5) + '" y="' + f(YB - 4 * SB - 0.5) + '" width="3.5" height="' + f(4 * SB + 1) + '" fill="' + INK + '"/>');
+    out.push('</g><g class="stave-sig">');
     var clef = clefDef(data.clef);
     var clefX = x0 + 8;
     out.push('<use href="#' + clef.glyph + '" transform="translate(' + f(clefX) + ',' + f(YB - clef.line * SB) + ') scale(' + k + ',-' + k + ')" fill="' + INK + '"/>');
@@ -768,12 +771,16 @@ var KeyboardRender = (function () {
       out.push('<use href="#' + sp.kind + '" transform="translate(' + f(ax + i * adv) + ',' + f(YB - steps[i] * SB / 2) + ') scale(' + k + ',-' + k + ')" fill="' + INK + '"/>');
     }
     out.push('<text x="' + f(x0 + 8) + '" y="' + f(YB - 4 * SB - 14 - (clef.glyph === 'gclef8va' ? 13 : 0)) + '" font-size="14" font-weight="bold" fill="' + pal[1] + '">' + esc(T.keyTitle(sp, mode)) + '</text>');
+    out.push('</g>');
     var sigVal = {};
     (sp.kind === 'sharp' ? SHARP_ORDER : FLAT_ORDER).slice(0, sp.n).forEach(function (l) { sigVal[l] = sp.kind === 'sharp' ? 1 : -1; });
 
     var startX = ax + Math.max(sp.n, 1) * adv + 26;
     var endX = winR - 18;
     var chords = data.chords || [];
+    var clipId = 'stc' + (++staveSeq);
+    out.push('<clipPath id="' + clipId + '"><rect x="' + f(startX - 8) + '" y="0" width="' + WIDTH + '" height="' + (HEIGHT + 200) + '"/></clipPath>' +
+      '<g class="stave-notes-wrap" clip-path="url(#' + clipId + ')"><g class="stave-notes">');
     if (!chords.length) {
       out.push('<text x="' + f((startX + endX) / 2) + '" y="' + f(YB - 2 * SB + 5) + '" text-anchor="middle" font-size="15" fill="#7b8294" pointer-events="none">' +
         esc(data.hint || '') + '</text>');
@@ -827,6 +834,8 @@ var KeyboardRender = (function () {
         }
       });
     }
+    out.push('</g></g>');
+    if (under.length) under = ['<g class="stave-under">'].concat(under, ['</g>']);
     out.splice.apply(out, [1, 0].concat(under));
     out.push('</g>');
     return out.join('');

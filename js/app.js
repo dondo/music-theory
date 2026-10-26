@@ -1222,13 +1222,20 @@
     }
     var extra = [], lastAnim = a2;
     if (tail) {
-      newSvg.style.overflow = 'visible'; oldSvg.style.overflow = 'visible';      // (the staves sit outside their sliding drawings' own boxes)
+      newSvg.style.overflow = 'visible'; oldSvg.style.overflow = 'visible';      // (the old staff sits outside its sliding drawing's own box)
       var u2 = KeyboardRender.WIDTH / rect.width, fade = { duration: tail, delay: SLIDE_MS, fill: 'both', easing: 'ease-in-out' };
-      extra.push(oldStave.animate([{ transform: 'translateX(0)' }, { transform: 'translateX(' + (dx * u2) + 'px)' }], opts));        // (undoing each drawing's own slide)
-      extra.push(newStave.animate([{ transform: 'translateX(' + (-dx * u2) + 'px)' }, { transform: 'translateX(0)' }], opts));
-      extra.push(oldStave.animate([{ opacity: 1 }, { opacity: 0 }], fade));
-      lastAnim = newStave.animate([{ opacity: 0 }, { opacity: 1 }], fade);
-      extra.push(lastAnim);
+      var counter = [{ transform: 'translateX(0)' }, { transform: 'translateX(' + (dx * u2) + 'px)' }];
+      var q = function (svg, sel) { return Array.prototype.slice.call(svg.querySelectorAll(sel)); };
+      // the old staff (lines, clef, key signature) stays exactly where it is while the drawing slides under it
+      q(oldSvg, '.stave-lines, .stave-sig').forEach(function (g) { extra.push(g.animate(counter, opts)); });
+      // its notes slide along with the keyboard, but the window they show through stays put, so they vanish at the key signature
+      q(oldSvg, '.stave-notes-wrap').forEach(function (g) { extra.push(g.animate(counter, opts)); });
+      q(oldSvg, '.stave-notes').forEach(function (g) { extra.push(g.animate([{ transform: 'translateX(0)' }, { transform: 'translateX(' + (-dx * u2) + 'px)' }], opts)); });   // (so net they travel with the keyboard)
+      q(oldSvg, '.stave-under').forEach(function (g) { g.style.display = 'none'; });
+      // then the old key and notes fade out as the new ones fade in
+      q(oldSvg, '.stave-sig, .stave-notes-wrap').forEach(function (g) { extra.push(g.animate([{ opacity: 1 }, { opacity: 0 }], fade)); });
+      q(newSvg, '.stave-sig, .stave-notes-wrap, .stave-under').forEach(function (g) { lastAnim = g.animate([{ opacity: 0 }, { opacity: 1 }], fade); extra.push(lastAnim); });
+      q(newSvg, '.stave-lines').forEach(function (g) { extra.push(g.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 1, delay: SLIDE_MS, fill: 'both' })); });   // (the same lines as the old staff's)
     }
     var finished = false;
     function done() {
