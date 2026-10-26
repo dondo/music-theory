@@ -91,6 +91,13 @@
         <input type="radio" name="chordview" id="cv-quality" value="quality">
         <label for="cv-quality">Chord quality</label>
       </fieldset>
+      <fieldset class="segmented" id="notespell-group" hidden>
+        <legend class="sr-only">Spelling</legend>
+        <input type="radio" name="notespell" id="ns-sharp" value="sharp" checked>
+        <label for="ns-sharp">♯ Sharps</label>
+        <input type="radio" name="notespell" id="ns-flat" value="flat">
+        <label for="ns-flat">♭ Flats</label>
+      </fieldset>
       <button type="button" id="reset" class="btn-reset" hidden>Reset view</button>
       <div id="score" class="score" hidden aria-label="Score">
         <span class="score-ok"><span aria-hidden="true">✓</span> <b id="n-ok">0</b> correct</span>

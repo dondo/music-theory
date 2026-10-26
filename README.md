@@ -156,7 +156,7 @@ One list replaces the Pop/Jazz and Major/Minor switches (they remain as hidden s
 
 ## Notes
 
-The keyboard with a full staff in the key of C. **Explore** shows the run from middle C up two octaves, a half step at a time (sharps going up); click a key or a note to light it in both places. **Study** has **Play the note** (a note from the two octaves appears on the staff, with sharp or flat spelling for black keys, and you press the matching piano key, any octave) and **Find the note** (a key is lit on the keyboard and you click its note on the staff run, in the right octave). The wrong-guess message names the pressed note. In Play the note, type A-G to answer (Shift = sharp, Alt = flat); Enter or the right arrow goes on. Find the key takes the same keystrokes.
+The keyboard with a full staff in the key of C. **Explore** shows the run from middle C up two octaves, a half step at a time (sharps by default; the **♯ Sharps / ♭ Flats** switch beside Explore/Study re-spells the run); click a key or a note to light it in both places. **Study** has **Play the note** (a note from the two octaves appears on the staff, spelled with sharps and flats on alternate questions, and you press the matching piano key, any octave) and **Find the note** (a key is lit on the keyboard and you click its note on the staff run, spelled the same way as the question, in the right octave). The wrong-guess message names the pressed note. In Play the note, type A-G to answer (Shift = sharp, Alt = flat); Enter or the right arrow goes on. Find the key takes the same keystrokes.
 
 ## Explore: Chord quality
 

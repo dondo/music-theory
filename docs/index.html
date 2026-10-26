@@ -850,6 +850,13 @@ html.is-local .ftc-local { display: inline-flex; }
         <input type="radio" name="chordview" id="cv-quality" value="quality">
         <label for="cv-quality">Chord quality</label>
       </fieldset>
+      <fieldset class="segmented" id="notespell-group" hidden>
+        <legend class="sr-only">Spelling</legend>
+        <input type="radio" name="notespell" id="ns-sharp" value="sharp" checked>
+        <label for="ns-sharp">♯ Sharps</label>
+        <input type="radio" name="notespell" id="ns-flat" value="flat">
+        <label for="ns-flat">♭ Flats</label>
+      </fieldset>
       <button type="button" id="reset" class="btn-reset" hidden>Reset view</button>
       <div id="score" class="score" hidden aria-label="Score">
         <span class="score-ok"><span aria-hidden="true">✓</span> <b id="n-ok">0</b> correct</span>
@@ -3694,7 +3701,7 @@ var KeyboardRender = (function () {
     caption.textContent = '';
     if (noteOn()) {
       var t;
-      if (!state.flash) t = 'Two octaves from middle C, a half step at a time (in the key of C, so black keys are sharps). Click a key or a note to light it up.';
+      if (!state.flash) t = 'Two octaves from middle C, a half step at a time, spelled with ' + (noteSpell ? 'flats' : 'sharps') + ' (switch above). Click a key or a note to light it up.';
       else if (state.answered) t = lastResult + ' Press Next for another note.';
       else if (state.cardMode === 'play') t = (lastResult ? lastResult + ' ' : '') + 'Study: play the note shown on the staff, in any octave.';
       else t = (lastResult ? lastResult + ' ' : '') + 'Study: one key is lit on the keyboard. Click its note on the staff.';
@@ -4102,7 +4109,7 @@ var KeyboardRender = (function () {
           root: state.root, spell: state.spell, selected: state.selected, mode: state.mode, level: level,
           scaleKind: state.scaleKind, chord: state.chord, chordTypes: chordTypes_, typePicked: typePicked,
           chordsOpen: chordsDetails.open, progOpen: progDetails.open, progIndex: progIndex, progRevealed: progRevealed, clef: state.clef,
-          layout: state.layout, chordView: state.chordView, appMode: appMode
+          layout: state.layout, chordView: state.chordView, appMode: appMode, noteSpell: noteSpell
         };
       }
       o.flash = !!state.flash;
@@ -4142,6 +4149,7 @@ var KeyboardRender = (function () {
     var kinds = { full: 'sk-full', pentatonic: 'sk-pent', wholetone: 'sk-whole' };
     if (level === 'jazz' && kinds[s.scaleKind]) { state.scaleKind = s.scaleKind; document.getElementById(kinds[s.scaleKind]).checked = true; }
     if (s.chordView === 'quality') state.chordView = 'quality';
+    if (s.noteSpell === 1) noteSpell = 1;
     if (s.chordTypes && typeof s.chordTypes === 'object') {
       ['full', 'pentatonic', 'wholetone'].forEach(function (k) {
         if (typeof s.chordTypes[k] === 'string' && typeIds(k).indexOf(s.chordTypes[k]) >= 0) chordTypes_[k] = s.chordTypes[k];
@@ -4756,9 +4764,9 @@ var KeyboardRender = (function () {
       if (!card) return { kind: 'empty', clef: clefId, chords: [] };
       return { kind: 'notes', clef: clefId, slot: 260, chords: [{ notes: [{ midi: base + card.idx, name: card.name }], top: answered ? card.name : '', sub: '', lit: false }] };
     }
-    var chords = [];
+    var chords = [], sp = flash ? (card ? card.spell : 0) : noteSpell;
     for (var i = 0; i <= 24; i++) {
-      var nm = NOTE_SHARP[i % 12];
+      var nm = (sp ? NOTE_FLAT : NOTE_SHARP)[i % 12];
       var lit = flash ? (answered && card && i === card.idx) : (noteSel != null && i === noteSel);
       var show = !flash || answered;                    // find the note: the names stay hidden until it is solved
       chords.push({ notes: [{ midi: base + i, name: nm }], top: show || lit ? nm : '', sub: '', lit: lit });
@@ -4877,6 +4885,8 @@ var KeyboardRender = (function () {
     state.picked = findOn ? picks : null;
     state.rootFirst = findActive();
     state.noteMode = noteOn();
+    document.getElementById('notespell-group').hidden = !(noteOn() && !state.flash);
+    document.getElementById(noteSpell ? 'ns-flat' : 'ns-sharp').checked = true;
     state.noteLit = null;
     if (noteOn()) {
       state.mode = 'major'; state.root = 0; state.spell = 0;
@@ -5817,11 +5827,13 @@ var KeyboardRender = (function () {
   // Notes: a pitch class and a spelling (black keys: sharp or flat); 'find' answers on the staff run, which spells with sharps
   var NOTE_SHARP = ['C', 'C\u266F', 'D', 'D\u266F', 'E', 'F', 'F\u266F', 'G', 'G\u266F', 'A', 'A\u266F', 'B'];
   var NOTE_FLAT = ['C', 'D\u266D', 'D', 'E\u266D', 'E', 'F', 'G\u266D', 'G', 'A\u266D', 'A', 'B\u266D', 'B'];
-  var noteSel = null;                                  // Notes, Explore: the pitch class last clicked
+  var noteSel = null;                                  // Notes, Explore: the key/note last clicked (0..24)
+  var noteSpell = 0, noteLastSpell = 1;                // Explore's sharps(0)/flats(1) toggle; Study alternates, starting with sharps
   function newNoteCard() {
     var avoid = state.card ? state.card.pc : -1, idx, pc;
     do { idx = Math.floor(Math.random() * 25); pc = idx % 12; } while (pc === avoid);        // two octaves from middle C: 0..24
-    var flat = state.cardMode === 'play' && Math.random() < 0.5;
+    var flat = noteLastSpell === 0;                           // Study: sharps and flats take turns
+    noteLastSpell = flat ? 1 : 0;
     state.card = { idx: idx, pc: pc, spell: flat ? 1 : 0, name: (flat ? NOTE_FLAT : NOTE_SHARP)[pc] };
     missedThisCard = false;
     state.guess = null;
@@ -6467,6 +6479,9 @@ var KeyboardRender = (function () {
     updateScore();
     draw(false, false);
   }
+  Array.prototype.forEach.call(document.querySelectorAll('input[name="notespell"]'), function (input) {
+    input.addEventListener('change', function () { if (input.checked) { noteSpell = input.value === 'flat' ? 1 : 0; draw(false, false); } });
+  });
   Array.prototype.forEach.call(document.querySelectorAll('input[name="appmode"]'), function (input) {
     input.addEventListener('change', function () { if (input.checked) applyAppMode(input.value); });
   });
@@ -6568,6 +6583,7 @@ var KeyboardRender = (function () {
     armed = null;
     try { window.localStorage.removeItem(PROG_KEY); window.localStorage.removeItem(SAVED_KEY); window.localStorage.removeItem(STATE_KEY); } catch (e) { /* storage unavailable */ }
     state.clef = 'treble';
+    noteSpell = 0; noteSel = null;
     level = 'pop'; appMode = 'key';
     document.getElementById('level-pop').checked = true;
     document.getElementById('am-key').checked = true;
