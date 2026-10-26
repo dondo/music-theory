@@ -1213,7 +1213,7 @@
     if (tail) {
       // With a staff, the drawings themselves stay put and their parts move: the keyboard slides, the old notes ride with it
       // (through a window that does not move, so they vanish at the key signature), and the staff frame never moves at all.
-      var u2 = KeyboardRender.WIDTH / rect.width, fade = { duration: SLIDE_MS, fill: 'both', easing: EASE };          // (the cross-fade runs exactly with the slide: same start, same end, same curve)
+      var u2 = KeyboardRender.WIDTH / rect.width, fade = { duration: Math.round(SLIDE_MS * 0.85), fill: 'both', easing: EASE };          // (the cross-fade starts with the slide and completes just before it ends, on the same curve; notes and key signature share it)
       var q = function (svg, sel) { return Array.prototype.slice.call(svg.querySelectorAll(sel)); };
       var move = function (g, from, to) { return g.animate([{ transform: 'translateX(' + from * u2 + 'px)' }, { transform: 'translateX(' + to * u2 + 'px)' }], opts); };
       q(oldSvg, '.keys-slide').forEach(function (g) { a1 = move(g, 0, -dx); extra.push(a1); });
@@ -1235,8 +1235,9 @@
       q(oldSvg, '.stave-notes-wrap').forEach(function (g) { extra.push(g.animate([{ opacity: 1 }, { opacity: 0 }], fadeNotes)); });
       q(newSvg, '.stave-notes-wrap, .stave-under').forEach(function (g) { extra.push(g.animate([{ opacity: 0 }, { opacity: 1 }], fadeNotes)); });
       q(oldSvg, '.stave-sig').forEach(function (g) { extra.push(g.animate([{ opacity: 1 }, { opacity: 0 }], fade)); });
-      q(newSvg, '.stave-sig').forEach(function (g) { lastAnim = g.animate([{ opacity: 0 }, { opacity: 1 }], fade); extra.push(lastAnim); });
+      q(newSvg, '.stave-sig').forEach(function (g) { var sa = g.animate([{ opacity: 0 }, { opacity: 1 }], fade); extra.push(sa); lastAnim = lastAnim || sa; });
       q(newSvg, '.stave-lines').forEach(function (g) { extra.push(g.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 1, delay: SLIDE_MS, fill: 'both' })); });   // (the same lines as the old staff's)
+      lastAnim = a2 || lastAnim;                                    // (the slide itself ends the whole thing)
       a1 = a1 || { cancel: function () {} }; a2 = a2 || { cancel: function () {} };
     } else {
       a1 = oldSvg.animate([{ transform: 'translateX(0)' }, { transform: 'translateX(' + (-dx) + 'px)' }], opts);
