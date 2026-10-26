@@ -3275,7 +3275,7 @@ var KeyboardRender = (function () {
     // the clef is a button: clicking it opens the clef picker
     if (!data.fixedClef) out.push('<path d="M' + f(x0 - 15) + ',' + f(YB - 2 * SB - 3) + 'h10l-5,7z" fill="#5b6478" pointer-events="none"/>');
     if (!data.fixedClef) out.push('<rect class="clef-hit" data-clef="' + clef.id + '" tabindex="0" role="button" aria-haspopup="true" aria-label="Clef: ' + clef.name +
-      '. Press to change." x="' + f(x0 - 18) + '" y=""' + f(YB - 4 * SB - 1.6 * SB) + '" width="' + f(clef.w * KB + 30) + '" height="' + f(4 * SB + 6.2 * SB) +
+      '. Press to change." x="' + f(x0 - 18) + '" y="' + f(YB - 4 * SB - 1.6 * SB) + '" width="' + f(clef.w * KB + 30) + '" height="' + f(4 * SB + 6.2 * SB) +
       '" rx="5"><title>Clef: ' + esc(clef.name) + ' (click to change)</title></rect>');
     var steps = sp.kind === 'sharp' ? clef.sharp : clef.flat;
     var ax = clefX + clef.w * KB + 8;
