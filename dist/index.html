@@ -6822,6 +6822,7 @@ var KeyboardRender = (function () {
   // the top-level topic: Note | Key | Pop Chord | Minor key | Jazz Chord (drives the hidden level and mode switches)
   function applyAppMode(am) {
     if (am === appMode) return;
+    if (state.flash) { setView(false); var er = document.querySelector('input[name="view"][value="explore"]'); if (er) er.checked = true; }      // a new topic always opens in Explore
     appMode = am;
     var wantLevel = theoryMode() ? 'jazz' : 'pop';
     var wantMode = appIsMinor() ? 'minor' : 'major';
