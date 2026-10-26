@@ -4895,7 +4895,7 @@ var KeyboardRender = (function () {
   // what the big stave shows: the progression (Progressions open), else the selected chord and its inversions (Chords open)
   // Notes: the run from middle C up an octave, a half step at a time (explore, find the note), or one note (play the note)
   function buildNoteStaff() {
-    var clefId = state.flash ? cardClefId() : (clefAllowed(state.clef) ? state.clef : 'treble'), fixedClef = state.flash && cardStepNo() >= 2;
+    var clefId = state.flash ? cardClefId() : (clefAllowed(state.clef) ? state.clef : 'treble'), fixedClef = state.flash;      // Study: the level sets the clef, so no picker
     var base = 60 + 12 * Math.round((KeyboardRender.CLEFS.filter(function (c) { return c.id === clefId; })[0].mid - 72) / 12);            // the two-octave run sits around the middle of the clef (middle C up in treble); the notation only, the keyboard stays put
     var flash = state.flash, card = state.card, answered = !!state.answered;
     if (flash && state.cardMode === 'play') {
