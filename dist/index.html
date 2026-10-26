@@ -769,13 +769,13 @@ html.is-local .ftc-local { display: inline-flex; }
 .mode-caret { font-size: 12px; color: var(--muted); }
 #appmode-group { position: absolute; z-index: 20; top: calc(100% + 6px); left: 0; display: block; padding: 8px 18px 8px 10px; border-radius: 16px; background: #fff; border: 1.5px solid #b4bccf; box-shadow: 0 8px 24px rgba(20,30,60,.18); white-space: nowrap; }
 #appmode-group[hidden] { display: none; }
-#appmode-group::before { content: ''; position: absolute; left: 25px; top: 26px; bottom: 26px; width: 3px; margin-left: -1.5px; background: #4a7bec; border-radius: 2px; }
-#appmode-group label { position: relative; display: flex; align-items: center; gap: 14px; padding: 0 14px 0 6px; height: 36px; border-radius: 10px; background: transparent; border: 0; box-shadow: none; color: var(--ink); }
-#appmode-group label::before { content: ''; flex: none; box-sizing: border-box; width: 18px; height: 18px; border-radius: 50%; border: 3px solid #4a7bec; background: #fff; position: relative; z-index: 1; }
-#appmode-group label:hover { background: #f3f5fa; }
-#appmode-group input:checked + label { background: #e6edff; box-shadow: none; }
-#appmode-group input:checked + label::before { background: #4a7bec; box-shadow: 0 0 0 3px #fff inset; }
-#appmode-group input:focus-visible + label { outline: 3px solid var(--accent); outline-offset: -2px; }
+#appmode-group .knots { position: absolute; left: 0; top: 0; pointer-events: none; overflow: visible; }
+#appmode-group label { position: relative; display: flex; align-items: center; gap: 14px; padding: 0 14px 0 6px; height: 36px; border-radius: 0; background: transparent; border: 0; box-shadow: none; color: var(--ink); }
+#appmode-group label::before { content: ''; flex: none; width: 18px; height: 18px; background: radial-gradient(circle, #fff 0 5px, transparent 5.5px); }
+#appmode-group label:hover { background: linear-gradient(#f3f5fa,#f3f5fa) right / calc(100% - 34px) 100% no-repeat; }
+#appmode-group input:checked + label { background: linear-gradient(#e6edff,#e6edff) right / calc(100% - 34px) 100% no-repeat; box-shadow: none; }
+#appmode-group input:checked + label::before { background: radial-gradient(circle, #4a7bec 0 2.6px, #fff 3.2px 5px, transparent 5.5px); }
+#appmode-group input:focus-visible + label { outline: 3px solid var(--accent); outline-offset: -2px; border-radius: 10px; }
 /* Chords and Progressions no longer collapse */
 .chords summary { cursor: default; list-style: none; }
 .chords summary::-webkit-details-marker { display: none; }
@@ -6499,6 +6499,15 @@ var KeyboardRender = (function () {
     var r = document.getElementById('am-' + appMode);
     document.getElementById('mode-btn-label').textContent = document.querySelector('label[for="' + r.id + '"]').textContent;
   }
+  (function buildKnots() {                          // one blob: a string whose knots swell out of it smoothly
+    var n = document.querySelectorAll('input[name="appmode"]').length, ys = [], i, g = '';
+    for (i = 0; i < n; i++) ys.push(8 + 18 + 36 * i);
+    for (i = 0; i < n; i++) g += '<circle cx="25" cy="' + ys[i] + '" r="9.5"/>';
+    var svg = '<svg class="knots" width="50" height="' + (16 + 36 * n) + '" aria-hidden="true"><defs><filter id="goo" x="-50%" y="-5%" width="200%" height="110%">' +
+      '<feGaussianBlur in="SourceGraphic" stdDeviation="2.6" result="b"/><feColorMatrix in="b" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 14 -5.5"/></filter></defs>' +
+      '<g filter="url(#goo)" fill="#4a7bec"><rect x="21.5" y="' + ys[0] + '" width="7" height="' + (ys[n - 1] - ys[0]) + '"/>' + g + '</g></svg>';
+    document.getElementById('appmode-group').insertAdjacentHTML('afterbegin', svg);
+  })();
   function modeMenu(open) {
     document.getElementById('appmode-group').hidden = !open;
     document.getElementById('mode-btn').setAttribute('aria-expanded', open ? 'true' : 'false');

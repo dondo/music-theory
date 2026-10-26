@@ -2983,6 +2983,15 @@
     var r = document.getElementById('am-' + appMode);
     document.getElementById('mode-btn-label').textContent = document.querySelector('label[for="' + r.id + '"]').textContent;
   }
+  (function buildKnots() {                          // one blob: a string whose knots swell out of it smoothly
+    var n = document.querySelectorAll('input[name="appmode"]').length, ys = [], i, g = '';
+    for (i = 0; i < n; i++) ys.push(8 + 18 + 36 * i);
+    for (i = 0; i < n; i++) g += '<circle cx="25" cy="' + ys[i] + '" r="9.5"/>';
+    var svg = '<svg class="knots" width="50" height="' + (16 + 36 * n) + '" aria-hidden="true"><defs><filter id="goo" x="-50%" y="-5%" width="200%" height="110%">' +
+      '<feGaussianBlur in="SourceGraphic" stdDeviation="2.6" result="b"/><feColorMatrix in="b" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 14 -5.5"/></filter></defs>' +
+      '<g filter="url(#goo)" fill="#4a7bec"><rect x="21.5" y="' + ys[0] + '" width="7" height="' + (ys[n - 1] - ys[0]) + '"/>' + g + '</g></svg>';
+    document.getElementById('appmode-group').insertAdjacentHTML('afterbegin', svg);
+  })();
   function modeMenu(open) {
     document.getElementById('appmode-group').hidden = !open;
     document.getElementById('mode-btn').setAttribute('aria-expanded', open ? 'true' : 'false');
