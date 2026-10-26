@@ -2,6 +2,17 @@
 (function () {
   'use strict';
 
+  // what kind of device: a Mac names the key Option; a touch-only device (phone, tablet) has no keyboard to advertise shortcuts for
+  var IS_MAC = (function () {
+    try {
+      var p = (navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || '';
+      return /^mac/i.test(p) && !(navigator.maxTouchPoints > 1);          // (an iPad says "MacIntel" too, but has a touch screen)
+    } catch (e) { return false; }
+  })();
+  var HAS_KEYBOARD = (function () {
+    try { return !(window.matchMedia && window.matchMedia('(any-pointer: fine)').matches === false); } catch (e) { return true; }
+  })();
+  var ALT_NAME = IS_MAC ? 'Option' : 'Alt';
   var state = { chordView: 'scale', root: 0, mode: 'major', spell: 0, selected: false,
                 flash: false, cardMode: 'key', card: null, answered: false, guess: null,
                 chord: null,
@@ -511,7 +522,7 @@
       b.setAttribute('aria-pressed', ftcSel.root === k[0] ? 'true' : 'false');
       rootBox.appendChild(b);
     });
-    if (!rootBox.nextElementSibling) rootBox.parentNode.appendChild(el('p', 'rootkeys-note', 'Keyboard: A\u2013G for the root; Shift for sharp, Alt for flat.'));
+    if (HAS_KEYBOARD && !rootBox.nextElementSibling) rootBox.parentNode.appendChild(el('p', 'rootkeys-note', 'Keyboard: A\u2013G for the root; Shift for sharp, ' + ALT_NAME + ' for flat.'));
     document.getElementById('root-row').hidden = false;
     var needSev = ['7', '9', '11', '13'].indexOf(ftcSel.type) >= 0;           // (shown as soon as a seventh-or-more type is chosen; only a major or augmented chord needs the answer)
     sevBox.textContent = '';
@@ -1687,9 +1698,9 @@
   var WELCOME_KEY = 'music-theory-ftc-welcomed';
   var STUDY_WELCOME_KEY = 'music-theory-study-welcomed';          // the other study activities, each welcomed once
   var STUDY_WELCOMES = {
-    key: ['Find the Key', 'You\u2019ll be shown a key signature on the staff. Press the piano key it belongs to \u2014 click it, or type its letter (Shift for a sharp, Alt for a flat). Keys you miss come back more often.'],
+    key: ['Find the Key', 'You\u2019ll be shown a key signature on the staff. Press the piano key it belongs to' + (HAS_KEYBOARD ? ' \u2014 click it, or type its letter (Shift for a sharp, ' + ALT_NAME + ' for a flat)' : '') + '. Keys you miss come back more often.'],
     sig: ['Find the Signature', 'A key is lit on the keyboard, and the key signatures are laid out above it. Click the signature that belongs to the lit key. F\u266F and G\u266D are separate boxes: the lit key says which one is asked for.'],
-    play: ['Play the Note', 'A note appears on the staff. Press the matching piano key (any octave), or type its letter A\u2013G (Shift for a sharp, Alt for a flat). Sharps and flats take turns.'],
+    play: ['Play the Note', 'A note appears on the staff. Press the matching piano key (any octave)' + (HAS_KEYBOARD ? ', or type its letter A\u2013G (Shift for a sharp, ' + ALT_NAME + ' for a flat)' : '') + '. Sharps and flats take turns.'],
     find: ['Find the Note', 'A key is lit on the keyboard. Click its note on the staff, in the right octave. Sharps and flats take turns.']
   };
   function dismissWelcome() {
