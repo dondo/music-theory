@@ -152,7 +152,11 @@ Two difficulty dials (no longer adjustable by hand; the local ▲▼ buttons ste
 
 ## Topics
 
-One list replaces the Pop/Jazz and Major/Minor switches (they remain as hidden state): **Notes** (coming soon), **Keys**, **Minor keys** (no chord or progression sections; Study offers Find the key and Find the signature), **Chords**, **Minor chords** (the Chords section, pop style; Study offers Find the chord only) and **Chord theory**, **Minor chord theory** (the jazz level: roman numerals, 11ths and 13ths, scale types, and the progression section). The choice is saved (`appMode`); older saves map Pop to Chords and Jazz to Chord theory. The first visit opens in Keys.
+One list replaces the Pop/Jazz and Major/Minor switches (they remain as hidden state): **Notes**, **Keys**, **Minor keys** (no chord or progression sections; Study offers Find the key and Find the signature), **Chords**, **Minor chords** (the Chords section, pop style; Study offers Find the chord only) and **Chord theory**, **Minor chord theory** (the jazz level: roman numerals, 11ths and 13ths, scale types, and the progression section). The choice is saved (`appMode`); older saves map Pop to Chords and Jazz to Chord theory. The first visit opens in Keys.
+
+## Notes
+
+The keyboard with a full staff in the key of C. **Explore** shows the run from middle C up an octave, a half step at a time (sharps going up); click a key or a note to light it in both places. **Study** has **Play the note** (a note appears on the staff, with sharp or flat spelling for black keys, and you press the matching piano key, any octave) and **Find the note** (a key is lit on the keyboard and you click its note on the staff run). The wrong-guess message names the pressed note.
 
 ## Explore: Chord quality
 

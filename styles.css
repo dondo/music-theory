@@ -754,3 +754,5 @@ html.is-local .ftc-local { display: inline-flex; }
 .chords summary { cursor: default; list-style: none; }
 .chords summary::-webkit-details-marker { display: none; }
 .chords summary::marker { content: ''; }
+.note-hit { cursor: pointer; outline: none; }
+.note-hit:hover, .note-hit:focus-visible { fill-opacity: .14; }

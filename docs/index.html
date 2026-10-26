@@ -771,6 +771,8 @@ html.is-local .ftc-local { display: inline-flex; }
 .chords summary { cursor: default; list-style: none; }
 .chords summary::-webkit-details-marker { display: none; }
 .chords summary::marker { content: ''; }
+.note-hit { cursor: pointer; outline: none; }
+.note-hit:hover, .note-hit:focus-visible { fill-opacity: .14; }
 </style>
 </head>
 <body>
@@ -836,6 +838,10 @@ html.is-local .ftc-local { display: inline-flex; }
         <label for="fm-sig">Find the signature</label>
         <input type="radio" name="flashmode" id="fm-chord" value="chord">
         <label for="fm-chord">Find the chord</label>
+        <input type="radio" name="flashmode" id="fm-play" value="play">
+        <label for="fm-play">Play the note</label>
+        <input type="radio" name="flashmode" id="fm-find" value="find">
+        <label for="fm-find">Find the note</label>
       </fieldset>
       <fieldset class="segmented chordview" id="chordview-group" hidden>
         <legend class="sr-only">Chord view</legend>
@@ -875,7 +881,6 @@ html.is-local .ftc-local { display: inline-flex; }
         </button>
       </div>
       <div id="stage" class="stage"></div>
-      <p id="note-soon" class="note-soon" hidden>Note mode is coming soon.</p>
     <div id="quality-view" class="quality-view" hidden></div>
     </section>
 
@@ -2749,7 +2754,7 @@ var KeyboardRender = (function () {
   function whiteKey(k, ctx) {
     var sp = T.specsFor(ctx.mode, k.pc)[0];
     var d = degreeOf(k.off, ctx.scale);
-    var type = (ctx.rootFirst && k.off < 0) ? null : keyType(d, ctx, k.pc);
+    var type = ctx.litS != null ? (k.s === ctx.litS ? 'croot' : null) : (ctx.rootFirst && k.off < 0) ? null : keyType(d, ctx, k.pc);
     var fill = type ? HL.white[type] : '#ffffff';
     var stroke = '#333';
     var sw = 1.5;
@@ -2783,7 +2788,7 @@ var KeyboardRender = (function () {
     var specs = T.specsFor(ctx.mode, k.pc);
     var single = specs.length === 1;
     var d = degreeOf(k.off, ctx.scale);
-    var type = (ctx.rootFirst && k.off < 0) ? null : keyType(d, ctx, k.pc);
+    var type = ctx.litS != null ? (k.s === ctx.litS ? 'croot' : null) : (ctx.rootFirst && k.off < 0) ? null : keyType(d, ctx, k.pc);
     var x = k.cx - BW / 2;
     var fill = type ? HL.black[type] : '#222';
     var stroke = '#111';
@@ -3284,6 +3289,10 @@ var KeyboardRender = (function () {
           under.push('<rect class="lit-box" x="' + f(left + slot / 2 - boxW / 2) + '" y="' + f(YB - 4 * SB - 5.5 * SB) + '" width="' + f(boxW) + '" height="' + f(14.5 * SB + 40) + '" rx="8" fill="' + pal[0] + '" stroke="' + pal[1] + '" stroke-width="1.2"/>');
         }
         out.push(chordOnStave(cx, c.notes, sigVal, ink, clef));
+        if (data.hits) {                          // Notes: each note is a button
+          out.push('<rect class="note-hit" data-ni="' + j + '" tabindex="0" role="button" aria-label="Note ' + (j + 1) + '" x="' + f(left + 2) + '" y="' + f(YB - 4 * SB - 4 * SB) +
+            '" width="' + f(slot - 4) + '" height="' + f(4 * SB + 8 * SB) + '" rx="6" fill="#2563eb" fill-opacity="0" />');
+        }
         var yTop = YB + 2.5 * SB + 24, ySub = YB + 2.5 * SB + 41;
         if (stagger) { yTop = j % 2 ? YB + 61 : YB + 30; ySub = yTop + 14; }
         out.push('<text x="' + f(cx) + '" y="' + f(yTop) + '" text-anchor="middle" font-size="' + fsTop + '" font-weight="bold" fill="' + (c.lit ? PAL_DARK[sp.kind] : '#333') + '" pointer-events="none">' + esc(c.top) + '</text>');
@@ -3318,12 +3327,14 @@ var KeyboardRender = (function () {
   function render(state) {
     var mode = state.mode === 'minor' ? 'minor' : 'major';
     var r = T.mod12(state.root || 0);
-    var selected = !!state.selected;
+    var noteMode = !!state.noteMode;                           // Notes: the keyboard and a stave of single notes, in C
+    var noteStudy = noteMode && !!state.flash;                 // Study: play the note / find the note
+    var selected = !!state.selected || noteMode;
     var specs = T.specsFor(mode, r);
     var spellIdx = state.spell >= 0 && state.spell < specs.length ? state.spell : 0;
     var rootSpec = specs[spellIdx];
     var altKind = (!state.flash && (state.scaleKind === 'pentatonic' || state.scaleKind === 'wholetone')) ? state.scaleKind : null;
-    var scale = selected ? (altKind ? T.spellAlt(rootSpec.name, mode, altKind) : T.spellScale(rootSpec.name, mode)) : null;
+    var scale = (selected && !noteMode) ? (altKind ? T.spellAlt(rootSpec.name, mode, altKind) : T.spellScale(rootSpec.name, mode)) : null;
 
     var flash = !!state.flash;
     var vertical = state.layout === 'vertical';                 // Explore boxes: every key of both octaves has its signature
@@ -3332,9 +3343,10 @@ var KeyboardRender = (function () {
     var shift = (WIDTH - geo.width) / 2 - geo.left;
     var winL = geo.left + shift;
     var winR = geo.right + shift;
-    var sig = flash && state.cardMode === 'sig' && !!state.card;       // flashcards, "find the signature" direction
+    var sig = flash && !noteMode && state.cardMode === 'sig' && !!state.card;       // flashcards, "find the signature" direction
     var ctx = { mode: mode, scale: scale, flash: flash, sig: sig, flashRoot: (sig && !state.answered) ? r : null,
                 flashName: sig ? (T.specsFor(mode, state.card.pc)[state.card.spell] || rootSpec).name : '' };
+    if (noteMode && state.noteLit != null) ctx.litS = (T.mod12(state.noteLit) + 0) + windowGeom(0, 2).startSemitone;   // one key lit
     ctx.rootFirst = !!state.rootFirst;                          // Find a chord: keys below the root stay dark, so the root is the leftmost lit key
     if (scale && !flash && state.chord) {                       // Explore: a chord on a degree of the scale
       var pcOffs = null;
@@ -3375,10 +3387,10 @@ var KeyboardRender = (function () {
     var allKeys = whites.concat(blacks);
 
     var parts = [];
-    var noKeys = flash && state.cardMode === 'chord';                  // Find the chord: just the staff card, no keyboard
+    var noKeys = flash && !noteMode && state.cardMode === 'chord';                  // Find the chord: just the staff card, no keyboard
     var opened = noKeys && !!state.answered && !!state.quizStave;      // answered: the card opens out into the big stave
-    var svgH = sig ? HEIGHT_SIG : (opened ? 304 : (noKeys ? 276 : (flash ? HEIGHT_FLASH : HEIGHT)));
-    var cut = (sig || flash) ? 0 : (state.staff && selected ? 30 : TOP_CUT);   // explore: no empty strip above the boxes; the big stave needs headroom for high chords
+    var svgH = noteMode ? HEIGHT : sig ? HEIGHT_SIG : (opened ? 304 : (noKeys ? 276 : (flash ? HEIGHT_FLASH : HEIGHT)));
+    var cut = noteMode ? 30 : (sig || flash) ? 0 : (state.staff && selected ? 30 : TOP_CUT);   // explore: no empty strip above the boxes; the big stave needs headroom for high chords
     parts.push('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 ' + cut + ' ' + WIDTH + ' ' + (svgH - cut) + '" width="' + WIDTH +
       '" height="' + (svgH - cut) + '" class="kb-svg' + (sig ? ' sig' : '') + '" role="group" aria-label="Piano keyboard with key signatures" ' +
       'font-family="-apple-system, \'Segoe UI\', Roboto, \'Helvetica Neue\', \'DejaVu Sans\', Arial, sans-serif">');
@@ -3399,7 +3411,14 @@ var KeyboardRender = (function () {
       if (state.picked && state.picked.length) parts.push(pickedOverlay(whites, blacks, state.picked));
     }
 
-    if (sig) {
+    if (noteMode) {
+      parts.push(bigStave(state.staff || { kind: 'empty', clef: 'treble', chords: [] }, winL, winR, rootSpec, mode));
+      if (noteStudy) {
+        parts.push('<text class="fb-nope" x="' + f(WIDTH / 2) + '" y="86" text-anchor="middle" font-size="34" font-weight="bold" fill="#dc2626" opacity="0" pointer-events="none">\u2717 ' + (typeof state.guess === 'number' ? 'That was ' + ['C', 'C\u266F/D\u266D', 'D', 'D\u266F/E\u266D', 'E', 'F', 'F\u266F/G\u266D', 'G', 'G\u266F/A\u266D', 'A', 'A\u266F/B\u266D', 'B'][state.guess] : 'Nope') + '</text>' +
+          '<text class="fb-yes" x="' + f(WIDTH / 2) + '" y="86" text-anchor="middle" font-size="34" font-weight="bold" fill="#16a34a" opacity="0" pointer-events="none">\u2713 Yes!</text>');
+        if (state.answered) parts.push(nextButton(winR - 150, 70));
+      }
+    } else if (sig) {
       parts.push(sigGrid(state, mode));
     } else if (flash) {
       parts.push(state.cardMode === 'chord' ? (opened ? chordAnswer(state.card, state.quizStave, rootSpec, mode) : chordCard(state.card, mode, !!state.answered)) : flashCard(state.card, mode, !!state.answered));
@@ -3448,7 +3467,7 @@ var KeyboardRender = (function () {
     }
 
     // hint until a key has been picked (no degree badges once a key is selected)
-    if (!scale && !flash) {
+    if (!scale && !flash && !noteMode) {
       parts.push('<text x="' + (WIDTH / 2) + '" y="' + (DEG_Y + 5) + '" text-anchor="middle" font-size="15" ' +
         'fill="#7b8294" pointer-events="none">↑ Click any key to root the keyboard there and light up its scale</text>');
     }
@@ -3611,6 +3630,8 @@ var KeyboardRender = (function () {
   var APP_MODES = ['note', 'key', 'minor', 'chords', 'minorchords', 'theory', 'minortheory'];
   var appMode = 'key';                                 // note | key | minor | chords | minorchords | theory | minortheory
   function chordy() { return appMode.indexOf('chords') >= 0 || appMode.indexOf('theory') >= 0; }
+  function noteOn() { return appMode === 'note'; }
+  function noteCardOn() { return noteOn() && state.flash && (state.cardMode === 'play' || state.cardMode === 'find'); }
   function theoryMode() { return appMode.indexOf('theory') >= 0; }          // Jazz level: roman numerals, 11ths/13ths, scale types, and the progression builder
   function appIsMinor() { return appMode.indexOf('minor') === 0; }
   var level = 'pop';                                  // pop | jazz: pop hides the advanced theory
@@ -3671,6 +3692,15 @@ var KeyboardRender = (function () {
 
   function updateCaption() {
     caption.textContent = '';
+    if (noteOn()) {
+      var t;
+      if (!state.flash) t = 'Middle C and the twelve half steps above it, up to the next C (in the key of C, so black keys are sharps). Click a key or a note to light it up.';
+      else if (state.answered) t = lastResult + ' Press Next for another note.';
+      else if (state.cardMode === 'play') t = (lastResult ? lastResult + ' ' : '') + 'Study: play the note shown on the staff, in any octave.';
+      else t = (lastResult ? lastResult + ' ' : '') + 'Study: one key is lit on the keyboard. Click its note on the staff.';
+      caption.appendChild(el('p', 'cap-hint', t));
+      return;
+    }
     if (quizOn() && state.card) {
       caption.appendChild(el('p', 'cap-hint', 'Study: find the chord shown on the staff, in the key of ' + Theory.keyTitle(currentSpec(), state.mode) +
         ftcHintTail()));
@@ -3762,10 +3792,8 @@ var KeyboardRender = (function () {
     var qOn = qualityOn();
     cvGroup.hidden = !(show && !state.flash && chordsDetails.open && !isAlt());
     document.getElementById(state.chordView === 'quality' ? 'cv-quality' : 'cv-scale').checked = true;
-    stage.classList.toggle('chords-open', !!(show && chordsDetails.open));
-    var noteOn = appMode === 'note';
-    document.getElementById('note-soon').hidden = !noteOn;
-    stage.hidden = qOn || noteOn; qualityView.hidden = !qOn; caption.hidden = qOn || noteOn;
+    stage.classList.toggle('chords-open', !!(show && chordsDetails.open) || noteOn());
+    stage.hidden = qOn; qualityView.hidden = !qOn; caption.hidden = qOn;
     if (qOn) { layoutBar.hidden = true; resetBtn.hidden = true; var qt = curType(); if (qualityShown !== qt) { qualityView.innerHTML = Quality.table(qt); qualityShown = qt; }
       updateQMore(); }
     else qualityShown = null;
@@ -4129,8 +4157,10 @@ var KeyboardRender = (function () {
         state.chord = { deg: c.deg, type: c.type };
       }
     }
-    if (s.flash && FM_IDS[s.cardMode]) pendingStudy = chordy() ? 'chord' : (s.cardMode === 'chord' ? 'key' : s.cardMode);
-    if (appMode === 'note') pendingStudy = null;
+    if (s.flash && FM_IDS[s.cardMode]) {
+      var pm = s.cardMode;
+      pendingStudy = chordy() ? 'chord' : noteOn() ? (pm === 'find' ? 'find' : 'play') : (pm === 'sig' ? 'sig' : 'key');
+    }
     var rq = s.q;
     if (pendingStudy && rq && rq.cardMode === pendingStudy && rq.mode === state.mode && Number.isInteger(rq.pc) && rq.pc >= 0 && rq.pc < 12 &&
         Number.isInteger(rq.spell) && rq.spell >= 0 && rq.spell < Theory.specsFor(state.mode, rq.pc).length &&
@@ -4718,6 +4748,24 @@ var KeyboardRender = (function () {
   }
 
   // what the big stave shows: the progression (Progressions open), else the selected chord and its inversions (Chords open)
+  // Notes: the run from middle C up an octave, a half step at a time (explore, find the note), or one note (play the note)
+  function buildNoteStaff() {
+    var clefId = clefAllowed(state.clef) ? state.clef : 'treble';
+    var base = 60, flash = state.flash, card = state.card, answered = !!state.answered;
+    if (flash && state.cardMode === 'play') {
+      if (!card) return { kind: 'empty', clef: clefId, chords: [] };
+      return { kind: 'notes', clef: clefId, slot: 260, chords: [{ notes: [{ midi: base + card.pc, name: card.name }], top: answered ? card.name : '', sub: '', lit: false }] };
+    }
+    var chords = [];
+    for (var i = 0; i <= 12; i++) {
+      var nm = i === 12 ? 'C' : NOTE_SHARP[i];
+      var lit = flash ? (answered && card && i % 12 === card.pc) : (noteSel != null && i % 12 === noteSel);
+      var show = !flash || answered;                    // find the note: the names stay hidden until it is solved
+      chords.push({ notes: [{ midi: base + i, name: nm }], top: show || lit ? nm : '', sub: '', lit: lit });
+    }
+    return { kind: 'notes', clef: clefId, chords: chords, hits: true };
+  }
+
   function buildStaff() {
     if (!state.selected || state.flash) return null;
     var progOpen = progDetails.open;          // (the sections are visible whenever a key is selected outside the flashcards)
@@ -4828,14 +4876,20 @@ var KeyboardRender = (function () {
     if (findOn && picks.length) syncPicks();
     state.picked = findOn ? picks : null;
     state.rootFirst = findActive();
-    state.staff = buildStaff();
-    layoutBar.hidden = !!state.flash || !!(state.staff && state.selected);       // the signature boxes only show when no stave replaces them
+    state.noteMode = noteOn();
+    state.noteLit = null;
+    if (noteOn()) {
+      state.mode = 'major'; state.root = 0; state.spell = 0;
+      state.noteLit = state.flash ? (state.cardMode === 'find' && state.card ? state.card.pc : null) : noteSel;
+      state.staff = buildNoteStaff();
+    } else state.staff = buildStaff();
+    layoutBar.hidden = !!state.flash || noteOn() || !!(state.staff && state.selected);       // the signature boxes only show when no stave replaces them
     state.quizStave = quizOn() && state.answered && state.card && state.card.chord ? buildQuizStave() : null;
     var ghosts = pendingLayout === 'out' && oldSvg ? Array.prototype.map.call(oldSvg.querySelectorAll('.xbox'), function (g) { return g.outerHTML; }).join('') : '';
     stage.innerHTML = KeyboardRender.render(quizOn() ? Object.assign({}, state, { selected: false }) : state);
     if (ftcTrial && ftcTrial.view) ftcTrial.view();                       // (a countdown or the trial results fills the stage)
     if (!(quizOn() && state.answered) && !bannerHold) levelBanner.hidden = true;        // the level-up note stays until the next question
-    resetBtn.hidden = !state.selected || (state.flash && state.cardMode === 'sig') || quizOn();
+    resetBtn.hidden = noteOn() || !state.selected || (state.flash && state.cardMode === 'sig') || quizOn();
     updateCaption();
     updateChordPanel();
     updateFtc();
@@ -4893,7 +4947,7 @@ var KeyboardRender = (function () {
   // Two dials set the difficulty (how many keys, how many chord groups); they climb by themselves after a
   // run of first-try answers unless that is switched off, and can always be moved by hand.
   var FTC_KEY = 'music-theory-ftc-v1';
-  var FM_IDS = { key: 'fm-key', sig: 'fm-sig', chord: 'fm-chord' };
+  var FM_IDS = { key: 'fm-key', sig: 'fm-sig', chord: 'fm-chord', play: 'fm-play', find: 'fm-find' };
   var ftcLv = {};                                                  // the level number for each of 'major|pop', 'major|jazz', 'minor|pop', 'minor|jazz'
   function ftcLvKey() { return state.mode + (level === 'pop' ? '|pop' : '|jazz'); }
   function ftcLevelNo() { return ftcTrial ? ftcTrial.level : FindChord.clamp(ftcLv[ftcLvKey()] || 1, 1, FindChord.levelCount(state.mode, level === 'pop')); }
@@ -5694,7 +5748,9 @@ var KeyboardRender = (function () {
     });
     var fc = document.getElementById('fm-chord');
     fc.hidden = !chordy(); fc.nextElementSibling.hidden = !chordy();
-    viewGroup.hidden = appMode === 'note';
+    ['fm-play', 'fm-find'].forEach(function (id) { var x = document.getElementById(id); x.hidden = !noteOn(); x.nextElementSibling.hidden = !noteOn(); });
+    ['fm-key', 'fm-sig'].forEach(function (id) { var x = document.getElementById(id); x.hidden = chordy() || noteOn(); x.nextElementSibling.hidden = chordy() || noteOn(); });
+    viewGroup.hidden = false;
     document.getElementById('mode-group').hidden = true;
   }
 
@@ -5758,7 +5814,20 @@ var KeyboardRender = (function () {
   });
 
   // ---- flashcards -------------------------------------------------------------
+  // Notes: a pitch class and a spelling (black keys: sharp or flat); 'find' answers on the staff run, which spells with sharps
+  var NOTE_SHARP = ['C', 'C\u266F', 'D', 'D\u266F', 'E', 'F', 'F\u266F', 'G', 'G\u266F', 'A', 'A\u266F', 'B'];
+  var NOTE_FLAT = ['C', 'D\u266D', 'D', 'E\u266D', 'E', 'F', 'G\u266D', 'G', 'A\u266D', 'A', 'B\u266D', 'B'];
+  var noteSel = null;                                  // Notes, Explore: the pitch class last clicked
+  function newNoteCard() {
+    var avoid = state.card ? state.card.pc : -1, pc;
+    do { pc = Math.floor(Math.random() * 12); } while (pc === avoid);
+    var flat = state.cardMode === 'play' && Math.random() < 0.5;
+    state.card = { pc: pc, spell: flat ? 1 : 0, name: (flat ? NOTE_FLAT : NOTE_SHARP)[pc] };
+    missedThisCard = false;
+    state.guess = null;
+  }
   function newCard() {
+    if (noteOn()) { newNoteCard(); return; }
     var avoid = state.card ? state.card.pc : -1;
     var pc = Weights.pick(weights[state.mode], Math.random, avoid);
     missedThisCard = false;
@@ -5915,6 +5984,7 @@ var KeyboardRender = (function () {
   function nextCard(viaKeyboard) {
     if (!state.flash || !state.answered) return;
     if (quizOn()) { ftcNextQuestion(viaKeyboard); return; }
+    if (noteOn()) { state.answered = false; lastResult = ''; newNoteCard(); updateScore(); draw(false, false); return; }
     if (state.cardMode === 'sig') { nextSigCard(viaKeyboard); return; }
     var oldSvg = stage.firstElementChild;
     var oldCard = oldSvg && oldSvg.querySelector('.flashcard');
@@ -5939,7 +6009,31 @@ var KeyboardRender = (function () {
     card.animate([{ transform: 'translateX(' + d + 'px)', opacity: 0 }, { transform: 'translateX(0)', opacity: 1 }], opts);
   }
 
+  function noteAnswer(pc) {                              // play the note / find the note: pc is the pitch class given
+    if (state.answered || !state.card) return;
+    if (pc !== state.card.pc) {
+      score.bad++;
+      missedThisCard = true;
+      state.guess = pc;
+      lastResult = 'Incorrect. That is ' + NOTE_SHARP[pc] + (NOTE_SHARP[pc] !== NOTE_FLAT[pc] ? ' / ' + NOTE_FLAT[pc] : '') + '.';
+      updateScore();
+      draw(false, false);
+      feedback('nope', null);
+      return;
+    }
+    score.ok++;
+    state.answered = true;
+    lastResult = 'Correct, ' + state.card.name + (state.cardMode === 'play' && NOTE_SHARP[pc] !== NOTE_FLAT[pc] ? ' (also ' + (state.card.spell ? NOTE_SHARP[pc] : NOTE_FLAT[pc]) + ')' : '') + '.';
+    updateScore();
+    draw(false, false);
+    feedback('yes');
+  }
   function press(pc, spell, viaKeyboard, fromS, keyEl) {
+    if (noteOn()) {
+      if (!state.flash) { noteSel = noteSel === pc ? null : pc; draw(false, false); }
+      else if (state.cardMode === 'play') noteAnswer(pc);
+      return;
+    }
     if (quizOn()) return;                                  // Find the chord: the key is the question's, not the player's
     if (findOn && state.selected && keyEl && fromS != null) { togglePick(fromS); return; }   // Find a chord: keys are picked, not rooted
     if (state.flash && state.card) { if (state.cardMode !== 'sig') answer(pc, viaKeyboard, fromS, keyEl); }
@@ -5959,7 +6053,8 @@ var KeyboardRender = (function () {
     chordCleared = false;
     if (flash) {
       if (chordy() && state.cardMode !== 'chord') setCardMode('chord');     // the chord modes study chords only; the others never do
-      else if (!chordy() && state.cardMode === 'chord') setCardMode('key');
+      else if (noteOn() && state.cardMode !== 'play' && state.cardMode !== 'find') setCardMode('play');
+      else if (!chordy() && !noteOn() && (state.cardMode === 'chord' || state.cardMode === 'play' || state.cardMode === 'find')) setCardMode('key');
       if (quizOn()) enterQuiz(); else newCard();
     } else { exitQuiz(); state.card = null; }
     updateScore();
@@ -6088,6 +6183,13 @@ var KeyboardRender = (function () {
     if (iz) { moveInversion(parseInt(iz.getAttribute('data-chord'), 10), iz.getAttribute('data-dir')); return; }
     if (e.target.closest && e.target.closest('.next-btn')) { nextCard(e.detail === 0); return; }
     if (e.target.closest && e.target.closest('.giveup-btn')) { ftcGiveUp(e.detail === 0); return; }
+    var nh = e.target.closest('.note-hit');
+    if (nh) {
+      var ni = parseInt(nh.getAttribute('data-ni'), 10) % 12;
+      if (!state.flash) { noteSel = noteSel === ni ? null : ni; draw(false, false); }
+      else if (state.cardMode === 'find') noteAnswer(ni);
+      return;
+    }
     var sb = e.target.closest('.sigbox');
     if (sb && stage.contains(sb)) { if (e.detail === 0) sb.setAttribute('data-kbd', '1'); answerSig(sb); return; }
     var t = e.target.closest('[data-pc]');
@@ -6327,16 +6429,16 @@ var KeyboardRender = (function () {
     appMode = am;
     var wantLevel = theoryMode() ? 'jazz' : 'pop';
     var wantMode = appIsMinor() ? 'minor' : 'major';
-    if (am === 'note' && state.flash) { document.getElementById('view-explore').checked = true; setView(false); }
     var lr = document.getElementById('level-' + wantLevel);
     if (!lr.checked) { lr.checked = true; lr.dispatchEvent(new Event('change')); } else { level = wantLevel; }
     var mr = document.getElementById('mode-' + wantMode);
     mr.checked = true; setMode(wantMode);
     syncStudyOptions();
-    var wantCard = chordy() ? 'chord' : (state.cardMode === 'chord' ? 'key' : state.cardMode);
+    var wantCard = chordy() ? 'chord' : noteOn() ? ((state.cardMode === 'play' || state.cardMode === 'find') ? state.cardMode : 'play') : ((state.cardMode === 'sig') ? 'sig' : 'key');
     if (wantCard !== state.cardMode) { if (state.flash) setFlashMode(wantCard); else setCardMode(wantCard); }
     state.chord = null;
     if (!state.flash) {
+      noteSel = null;
       if (!chordy()) { state.selected = false; state.root = 0; state.spell = 0; }      // the key-signature panel, nothing picked
       else if (!state.selected) { selectRoot(0, 0, false, null); }                       // the chord modes need a key: C
     }

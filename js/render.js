@@ -257,7 +257,7 @@ var KeyboardRender = (function () {
   function whiteKey(k, ctx) {
     var sp = T.specsFor(ctx.mode, k.pc)[0];
     var d = degreeOf(k.off, ctx.scale);
-    var type = (ctx.rootFirst && k.off < 0) ? null : keyType(d, ctx, k.pc);
+    var type = ctx.litS != null ? (k.s === ctx.litS ? 'croot' : null) : (ctx.rootFirst && k.off < 0) ? null : keyType(d, ctx, k.pc);
     var fill = type ? HL.white[type] : '#ffffff';
     var stroke = '#333';
     var sw = 1.5;
@@ -291,7 +291,7 @@ var KeyboardRender = (function () {
     var specs = T.specsFor(ctx.mode, k.pc);
     var single = specs.length === 1;
     var d = degreeOf(k.off, ctx.scale);
-    var type = (ctx.rootFirst && k.off < 0) ? null : keyType(d, ctx, k.pc);
+    var type = ctx.litS != null ? (k.s === ctx.litS ? 'croot' : null) : (ctx.rootFirst && k.off < 0) ? null : keyType(d, ctx, k.pc);
     var x = k.cx - BW / 2;
     var fill = type ? HL.black[type] : '#222';
     var stroke = '#111';
@@ -792,6 +792,10 @@ var KeyboardRender = (function () {
           under.push('<rect class="lit-box" x="' + f(left + slot / 2 - boxW / 2) + '" y="' + f(YB - 4 * SB - 5.5 * SB) + '" width="' + f(boxW) + '" height="' + f(14.5 * SB + 40) + '" rx="8" fill="' + pal[0] + '" stroke="' + pal[1] + '" stroke-width="1.2"/>');
         }
         out.push(chordOnStave(cx, c.notes, sigVal, ink, clef));
+        if (data.hits) {                          // Notes: each note is a button
+          out.push('<rect class="note-hit" data-ni="' + j + '" tabindex="0" role="button" aria-label="Note ' + (j + 1) + '" x="' + f(left + 2) + '" y="' + f(YB - 4 * SB - 4 * SB) +
+            '" width="' + f(slot - 4) + '" height="' + f(4 * SB + 8 * SB) + '" rx="6" fill="#2563eb" fill-opacity="0" />');
+        }
         var yTop = YB + 2.5 * SB + 24, ySub = YB + 2.5 * SB + 41;
         if (stagger) { yTop = j % 2 ? YB + 61 : YB + 30; ySub = yTop + 14; }
         out.push('<text x="' + f(cx) + '" y="' + f(yTop) + '" text-anchor="middle" font-size="' + fsTop + '" font-weight="bold" fill="' + (c.lit ? PAL_DARK[sp.kind] : '#333') + '" pointer-events="none">' + esc(c.top) + '</text>');
@@ -826,12 +830,14 @@ var KeyboardRender = (function () {
   function render(state) {
     var mode = state.mode === 'minor' ? 'minor' : 'major';
     var r = T.mod12(state.root || 0);
-    var selected = !!state.selected;
+    var noteMode = !!state.noteMode;                           // Notes: the keyboard and a stave of single notes, in C
+    var noteStudy = noteMode && !!state.flash;                 // Study: play the note / find the note
+    var selected = !!state.selected || noteMode;
     var specs = T.specsFor(mode, r);
     var spellIdx = state.spell >= 0 && state.spell < specs.length ? state.spell : 0;
     var rootSpec = specs[spellIdx];
     var altKind = (!state.flash && (state.scaleKind === 'pentatonic' || state.scaleKind === 'wholetone')) ? state.scaleKind : null;
-    var scale = selected ? (altKind ? T.spellAlt(rootSpec.name, mode, altKind) : T.spellScale(rootSpec.name, mode)) : null;
+    var scale = (selected && !noteMode) ? (altKind ? T.spellAlt(rootSpec.name, mode, altKind) : T.spellScale(rootSpec.name, mode)) : null;
 
     var flash = !!state.flash;
     var vertical = state.layout === 'vertical';                 // Explore boxes: every key of both octaves has its signature
@@ -840,9 +846,10 @@ var KeyboardRender = (function () {
     var shift = (WIDTH - geo.width) / 2 - geo.left;
     var winL = geo.left + shift;
     var winR = geo.right + shift;
-    var sig = flash && state.cardMode === 'sig' && !!state.card;       // flashcards, "find the signature" direction
+    var sig = flash && !noteMode && state.cardMode === 'sig' && !!state.card;       // flashcards, "find the signature" direction
     var ctx = { mode: mode, scale: scale, flash: flash, sig: sig, flashRoot: (sig && !state.answered) ? r : null,
                 flashName: sig ? (T.specsFor(mode, state.card.pc)[state.card.spell] || rootSpec).name : '' };
+    if (noteMode && state.noteLit != null) ctx.litS = (T.mod12(state.noteLit) + 0) + windowGeom(0, 2).startSemitone;   // one key lit
     ctx.rootFirst = !!state.rootFirst;                          // Find a chord: keys below the root stay dark, so the root is the leftmost lit key
     if (scale && !flash && state.chord) {                       // Explore: a chord on a degree of the scale
       var pcOffs = null;
@@ -883,10 +890,10 @@ var KeyboardRender = (function () {
     var allKeys = whites.concat(blacks);
 
     var parts = [];
-    var noKeys = flash && state.cardMode === 'chord';                  // Find the chord: just the staff card, no keyboard
+    var noKeys = flash && !noteMode && state.cardMode === 'chord';                  // Find the chord: just the staff card, no keyboard
     var opened = noKeys && !!state.answered && !!state.quizStave;      // answered: the card opens out into the big stave
-    var svgH = sig ? HEIGHT_SIG : (opened ? 304 : (noKeys ? 276 : (flash ? HEIGHT_FLASH : HEIGHT)));
-    var cut = (sig || flash) ? 0 : (state.staff && selected ? 30 : TOP_CUT);   // explore: no empty strip above the boxes; the big stave needs headroom for high chords
+    var svgH = noteMode ? HEIGHT : sig ? HEIGHT_SIG : (opened ? 304 : (noKeys ? 276 : (flash ? HEIGHT_FLASH : HEIGHT)));
+    var cut = noteMode ? 30 : (sig || flash) ? 0 : (state.staff && selected ? 30 : TOP_CUT);   // explore: no empty strip above the boxes; the big stave needs headroom for high chords
     parts.push('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 ' + cut + ' ' + WIDTH + ' ' + (svgH - cut) + '" width="' + WIDTH +
       '" height="' + (svgH - cut) + '" class="kb-svg' + (sig ? ' sig' : '') + '" role="group" aria-label="Piano keyboard with key signatures" ' +
       'font-family="-apple-system, \'Segoe UI\', Roboto, \'Helvetica Neue\', \'DejaVu Sans\', Arial, sans-serif">');
@@ -907,7 +914,14 @@ var KeyboardRender = (function () {
       if (state.picked && state.picked.length) parts.push(pickedOverlay(whites, blacks, state.picked));
     }
 
-    if (sig) {
+    if (noteMode) {
+      parts.push(bigStave(state.staff || { kind: 'empty', clef: 'treble', chords: [] }, winL, winR, rootSpec, mode));
+      if (noteStudy) {
+        parts.push('<text class="fb-nope" x="' + f(WIDTH / 2) + '" y="86" text-anchor="middle" font-size="34" font-weight="bold" fill="#dc2626" opacity="0" pointer-events="none">\u2717 ' + (typeof state.guess === 'number' ? 'That was ' + ['C', 'C\u266F/D\u266D', 'D', 'D\u266F/E\u266D', 'E', 'F', 'F\u266F/G\u266D', 'G', 'G\u266F/A\u266D', 'A', 'A\u266F/B\u266D', 'B'][state.guess] : 'Nope') + '</text>' +
+          '<text class="fb-yes" x="' + f(WIDTH / 2) + '" y="86" text-anchor="middle" font-size="34" font-weight="bold" fill="#16a34a" opacity="0" pointer-events="none">\u2713 Yes!</text>');
+        if (state.answered) parts.push(nextButton(winR - 150, 70));
+      }
+    } else if (sig) {
       parts.push(sigGrid(state, mode));
     } else if (flash) {
       parts.push(state.cardMode === 'chord' ? (opened ? chordAnswer(state.card, state.quizStave, rootSpec, mode) : chordCard(state.card, mode, !!state.answered)) : flashCard(state.card, mode, !!state.answered));
@@ -956,7 +970,7 @@ var KeyboardRender = (function () {
     }
 
     // hint until a key has been picked (no degree badges once a key is selected)
-    if (!scale && !flash) {
+    if (!scale && !flash && !noteMode) {
       parts.push('<text x="' + (WIDTH / 2) + '" y="' + (DEG_Y + 5) + '" text-anchor="middle" font-size="15" ' +
         'fill="#7b8294" pointer-events="none">↑ Click any key to root the keyboard there and light up its scale</text>');
     }
