@@ -3898,7 +3898,7 @@ var KeyboardRender = (function () {
     if (qOn) { layoutBar.hidden = true; resetBtn.hidden = true; var qt = curType(); if (qualityShown !== qt) { qualityView.innerHTML = Quality.table(qt); qualityShown = qt; }
       updateQMore(); }
     else qualityShown = null;
-    chordInfo.hidden = qOn;
+    chordInfo.hidden = qOn || (progsMode() && !!state.chord);
     var canFind = show && !state.flash && chordsDetails.open && !qOn;          // "Find a chord" lives in the open selector
     findBtn.hidden = !canFind;
     if (!canFind && findOn) { findOn = false; picks = []; }
