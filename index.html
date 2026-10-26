@@ -25,12 +25,12 @@
 
     <section class="controls" aria-label="Controls">
       <div class="mode-menu" id="mode-menu">
-      <button type="button" id="mode-btn" class="mode-btn" aria-haspopup="true" aria-expanded="false"><span class="mode-caret" aria-hidden="true">▾</span><span id="mode-btn-label">Keys</span></button>
+      <button type="button" id="mode-btn" class="mode-btn" aria-haspopup="true" aria-expanded="false"><span class="mode-caret" aria-hidden="true">▾</span><span id="mode-btn-label">Notes</span></button>
       <fieldset class="segmented" id="appmode-group" hidden>
         <legend class="sr-only">Topic</legend>
-        <input type="radio" name="appmode" id="am-note" value="note">
+        <input type="radio" name="appmode" id="am-note" value="note" checked>
         <label for="am-note">Notes</label>
-        <input type="radio" name="appmode" id="am-key" value="key" checked>
+        <input type="radio" name="appmode" id="am-key" value="key">
         <label for="am-key">Keys</label>
         <input type="radio" name="appmode" id="am-minor" value="minor">
         <label for="am-minor">Minor keys</label>
@@ -76,13 +76,13 @@
       </fieldset>
       <fieldset class="segmented" id="flashmode-group" hidden>
         <legend class="sr-only">Study direction</legend>
-        <input type="radio" name="flashmode" id="fm-key" value="key" checked>
+        <input type="radio" name="flashmode" id="fm-key" value="key">
         <label for="fm-key">Find the key</label>
         <input type="radio" name="flashmode" id="fm-sig" value="sig">
         <label for="fm-sig">Find the signature</label>
         <input type="radio" name="flashmode" id="fm-chord" value="chord">
         <label for="fm-chord">Find the chord</label>
-        <input type="radio" name="flashmode" id="fm-play" value="play">
+        <input type="radio" name="flashmode" id="fm-play" value="play" checked>
         <label for="fm-play">Play the note</label>
         <input type="radio" name="flashmode" id="fm-find" value="find">
         <label for="fm-find">Find the note</label>

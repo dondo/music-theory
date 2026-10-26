@@ -152,7 +152,7 @@ Two difficulty dials (no longer adjustable by hand; the local ▲▼ buttons ste
 
 ## Topics
 
-One list replaces the Pop/Jazz and Major/Minor switches (they remain as hidden state): **Notes**, **Keys**, **Minor keys** (no chord or progression sections; Study offers Find the key and Find the signature), **Chords**, **Minor chords** (the Chords section, pop style; Study offers Find the chord only) and **Chord theory**, **Minor chord theory** (the jazz level: roman numerals, 11ths and 13ths, scale types, and the progression section). The choice is saved (`appMode`); older saves map Pop to Chords and Jazz to Chord theory. The first visit opens in Keys.
+The topic is a dropdown showing only the current one; opening it shows a vertical "string of knots" menu (radio knots joined by a line, current topic highlighted; Esc or an outside click closes it). One list replaces the Pop/Jazz and Major/Minor switches (they remain as hidden state): **Notes**, **Keys**, **Minor keys** (no chord or progression sections; Study offers Find the key and Find the signature), **Chords**, **Minor chords** (the Chords section, pop style; Study offers Find the chord only) and **Chord theory**, **Minor chord theory** (the jazz level: roman numerals, 11ths and 13ths, scale types, and the progression section). The choice is saved (`appMode`); older saves map Pop to Chords and Jazz to Chord theory. The first visit (and Reset view / Reset app settings) opens in Notes, Explore. Each topic shows an introduction paragraph in place of the opening text the first time you visit it (marked seen when you leave it; Reset app settings brings them back).
 
 ## Notes
 

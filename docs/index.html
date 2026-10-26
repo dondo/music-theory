@@ -793,12 +793,12 @@ html.is-local .ftc-local { display: inline-flex; }
 
     <section class="controls" aria-label="Controls">
       <div class="mode-menu" id="mode-menu">
-      <button type="button" id="mode-btn" class="mode-btn" aria-haspopup="true" aria-expanded="false"><span class="mode-caret" aria-hidden="true">▾</span><span id="mode-btn-label">Keys</span></button>
+      <button type="button" id="mode-btn" class="mode-btn" aria-haspopup="true" aria-expanded="false"><span class="mode-caret" aria-hidden="true">▾</span><span id="mode-btn-label">Notes</span></button>
       <fieldset class="segmented" id="appmode-group" hidden>
         <legend class="sr-only">Topic</legend>
-        <input type="radio" name="appmode" id="am-note" value="note">
+        <input type="radio" name="appmode" id="am-note" value="note" checked>
         <label for="am-note">Notes</label>
-        <input type="radio" name="appmode" id="am-key" value="key" checked>
+        <input type="radio" name="appmode" id="am-key" value="key">
         <label for="am-key">Keys</label>
         <input type="radio" name="appmode" id="am-minor" value="minor">
         <label for="am-minor">Minor keys</label>
@@ -844,13 +844,13 @@ html.is-local .ftc-local { display: inline-flex; }
       </fieldset>
       <fieldset class="segmented" id="flashmode-group" hidden>
         <legend class="sr-only">Study direction</legend>
-        <input type="radio" name="flashmode" id="fm-key" value="key" checked>
+        <input type="radio" name="flashmode" id="fm-key" value="key">
         <label for="fm-key">Find the key</label>
         <input type="radio" name="flashmode" id="fm-sig" value="sig">
         <label for="fm-sig">Find the signature</label>
         <input type="radio" name="flashmode" id="fm-chord" value="chord">
         <label for="fm-chord">Find the chord</label>
-        <input type="radio" name="flashmode" id="fm-play" value="play">
+        <input type="radio" name="flashmode" id="fm-play" value="play" checked>
         <label for="fm-play">Play the note</label>
         <input type="radio" name="flashmode" id="fm-find" value="find">
         <label for="fm-find">Find the note</label>
@@ -3654,7 +3654,7 @@ var KeyboardRender = (function () {
   var flashModeGroup = document.getElementById('flashmode-group');
   var flashModeInputs = document.querySelectorAll('input[name="flashmode"]');
   var APP_MODES = ['note', 'key', 'minor', 'chords', 'minorchords', 'theory', 'minortheory'];
-  var appMode = 'key';                                 // note | key | minor | chords | minorchords | theory | minortheory
+  var appMode = 'note';                                // note | key | minor | chords | minorchords | theory | minortheory
   function chordy() { return appMode.indexOf('chords') >= 0 || appMode.indexOf('theory') >= 0; }
   function noteOn() { return appMode === 'note'; }
   function noteCardOn() { return noteOn() && state.flash && (state.cardMode === 'play' || state.cardMode === 'find'); }
@@ -6130,6 +6130,8 @@ var KeyboardRender = (function () {
   }
 
   function reset() {
+    if (state.flash) setView(false);
+    if (appMode !== 'note') { document.getElementById('am-note').checked = true; applyAppMode('note'); syncModeBtn(); }
     typePicked = false;
     progRevealed = false;                  // the Progressions section waits for the first chord again
     state.chord = null;
@@ -6481,7 +6483,9 @@ var KeyboardRender = (function () {
   // the top-level topic: Note | Key | Pop Chord | Minor key | Jazz Chord (drives the hidden level and mode switches)
   function applyAppMode(am) {
     if (am === appMode) return;
+    markIntroSeen(appMode);
     appMode = am;
+    syncIntro();
     var wantLevel = theoryMode() ? 'jazz' : 'pop';
     var wantMode = appIsMinor() ? 'minor' : 'major';
     var lr = document.getElementById('level-' + wantLevel);
@@ -6516,6 +6520,31 @@ var KeyboardRender = (function () {
       '<g filter="url(#goo)" fill="#4a7bec"><rect x="21.5" y="' + ys[0] + '" width="7" height="' + (ys[n - 1] - ys[0]) + '"/>' + g + '</g></svg>';
     document.getElementById('appmode-group').insertAdjacentHTML('afterbegin', svg);
   })();
+  // ---- the introduction: each topic explains itself the first time you visit it ----
+  var INTRO_KEY = 'music-theory-intros';
+  var INTROS = {
+    note: 'Notes: the keyboard and the staff side by side. Explore climbs two octaves from middle C, a half step at a time \u2014 click a key or a note to light it up, and choose sharps or flats with the switch. Study quizzes you: Play the note shows a note on the staff and you play it; Find the note lights a key and you find its note on the staff.',
+    key: 'Each box shows the key signature of the key below it: the sharp keys share one octave and the flat keys the other, and signatures with an odd number of accidentals sit on the lower row, an even number on the upper. Click any key, black or white, to move the keyboard to that root and light up its scale.',
+    minor: 'Each box shows the key signature of the natural minor key below it. Every minor key shares its signature with the major key three half steps above it (its relative major). Click any key to move the keyboard to that root and light up its minor scale.',
+    chords: 'Chords: pick a key, then choose a chord built on any note of its scale to see it on the keyboard and the staff. \u201CChords in scale\u201D shows what the key gives you; \u201CChord quality\u201D compares how triads, sevenths, sus and extended chords are built. Study quizzes you with Find the chord, in stages.',
+    minorchords: 'Minor chords: pick a minor key, then choose a chord built on any note of its natural minor scale to see it on the keyboard and the staff. \u201CChords in scale\u201D shows what the key gives you; \u201CChord quality\u201D compares how chords are built. Study quizzes you with Find the chord, in stages.',
+    theory: 'Chord theory goes further: roman numerals, ninths, 11ths and 13ths, other scale types, and a progression section where you string chords together. Pick a key, then explore the chords it gives you.',
+    minortheory: 'Minor chord theory goes further: roman numerals, ninths, 11ths and 13ths, other scale types, and a progression section where you string chords together. Pick a minor key, then explore the chords it gives you.'
+  };
+  function introsSeen() { try { var a = JSON.parse(window.localStorage.getItem(INTRO_KEY)); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
+  function markIntroSeen(m) {
+    var a = introsSeen(); if (a.indexOf(m) >= 0) return; a.push(m);
+    try { window.localStorage.setItem(INTRO_KEY, JSON.stringify(a)); } catch (e) { /* storage unavailable */ }
+  }
+  function syncIntro() {
+    var p = document.querySelector('.lede');
+    if (introsSeen().indexOf(appMode) >= 0) { p.hidden = true; return; }
+    p.textContent = INTROS[appMode]; p.hidden = false;
+  }
+  function initCardMode() {                              // a first visit opens in Notes, whose study cards are not the Keys ones
+    var want = chordy() ? 'chord' : noteOn() ? ((state.cardMode === 'play' || state.cardMode === 'find') ? state.cardMode : 'play') : ((state.cardMode === 'sig') ? 'sig' : 'key');
+    state.cardMode = want; document.getElementById('fm-' + want).checked = true;
+  }
   function modeMenu(open) {
     document.getElementById('appmode-group').hidden = !open;
     document.getElementById('mode-btn').setAttribute('aria-expanded', open ? 'true' : 'false');
@@ -6531,6 +6560,9 @@ var KeyboardRender = (function () {
     input.addEventListener('change', function () { if (input.checked) { applyAppMode(input.value); syncModeBtn(); modeMenu(false); } });
   });
   syncModeBtn();
+  document.getElementById('am-' + appMode).checked = true;
+  initCardMode();
+  syncIntro();
 
   Array.prototype.forEach.call(levelInputs, function (input) {
     input.addEventListener('change', function () {
@@ -6630,9 +6662,10 @@ var KeyboardRender = (function () {
     try { window.localStorage.removeItem(PROG_KEY); window.localStorage.removeItem(SAVED_KEY); window.localStorage.removeItem(STATE_KEY); } catch (e) { /* storage unavailable */ }
     state.clef = 'treble';
     noteSpell = 0; noteSel = null;
-    level = 'pop'; appMode = 'key';
+    level = 'pop'; appMode = 'note';
+    try { window.localStorage.removeItem(INTRO_KEY); } catch (e) { /* storage unavailable */ }
     document.getElementById('level-pop').checked = true;
-    document.getElementById('am-key').checked = true;
+    document.getElementById('am-note').checked = true; syncModeBtn(); syncIntro();
     state.layout = 'horizontal'; syncDial();
     syncStudyOptions();
     resetFtc();
@@ -6640,8 +6673,8 @@ var KeyboardRender = (function () {
     document.getElementById('mode-major').checked = true;
     state.scaleKind = 'full';
     document.getElementById('sk-full').checked = true;
-    state.cardMode = 'key';
-    document.getElementById('fm-key').checked = true;
+    state.cardMode = 'play';
+    document.getElementById('fm-play').checked = true;
     document.getElementById('view-explore').checked = true;
     sortBy = 'scale';
     typeSortBy = 'frequency';
