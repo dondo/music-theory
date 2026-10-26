@@ -329,10 +329,15 @@ var KeyboardRender = (function () {
         'font-weight="bold" fill="' + HL_INK + '" pointer-events="none">' + esc(ctx.flashName) + '</text>');
     } else if (!ctx.flash) {
       var n = BLACK_NAMES[k.pc];
-      out.push('<text x="' + f(k.cx) + '" y="' + (KEY_TOP + BH - 22) + '" text-anchor="middle" font-size="12" ' +
-        'fill="#e8e8e8" pointer-events="none">' + esc(n[0]) + '</text>');
-      out.push('<text x="' + f(k.cx) + '" y="' + (KEY_TOP + BH - 8) + '" text-anchor="middle" font-size="12" ' +
-        'fill="#e8e8e8" pointer-events="none">' + esc(n[1]) + '</text>');
+      if (ctx.oneSpell != null) {
+        out.push('<text x="' + f(k.cx) + '" y="' + (KEY_TOP + BH - 14) + '" text-anchor="middle" font-size="13" ' +
+          'fill="#e8e8e8" pointer-events="none">' + esc(n[ctx.oneSpell]) + '</text>');
+      } else {
+        out.push('<text x="' + f(k.cx) + '" y="' + (KEY_TOP + BH - 22) + '" text-anchor="middle" font-size="12" ' +
+          'fill="#e8e8e8" pointer-events="none">' + esc(n[0]) + '</text>');
+        out.push('<text x="' + f(k.cx) + '" y="' + (KEY_TOP + BH - 8) + '" text-anchor="middle" font-size="12" ' +
+          'fill="#e8e8e8" pointer-events="none">' + esc(n[1]) + '</text>');
+      }
     }
     var label = d ? d.name : BLACK_NAMES[k.pc].join(' / ');
     return '<g class="key key-black' + (type ? ' hl hl-' + type : '') + '" data-pc="' + k.pc + '" data-s="' + k.s +
@@ -752,8 +757,9 @@ var KeyboardRender = (function () {
     var clefX = x0 + 8;
     out.push('<use href="#' + clef.glyph + '" transform="translate(' + f(clefX) + ',' + f(YB - clef.line * SB) + ') scale(' + k + ',-' + k + ')" fill="' + INK + '"/>');
     // the clef is a button: clicking it opens the clef picker
+    if (!data.fixedClef) out.push('<path d="M' + f(x0 - 15) + ',' + f(YB - 2 * SB - 3) + 'h10l-5,7z" fill="#5b6478" pointer-events="none"/>');
     if (!data.fixedClef) out.push('<rect class="clef-hit" data-clef="' + clef.id + '" tabindex="0" role="button" aria-haspopup="true" aria-label="Clef: ' + clef.name +
-      '. Press to change." x="' + f(x0 + 2) + '" y="' + f(YB - 4 * SB - 1.6 * SB) + '" width="' + f(clef.w * KB + 14) + '" height="' + f(4 * SB + 6.2 * SB) +
+      '. Press to change." x="' + f(x0 - 18) + '" y=""' + f(YB - 4 * SB - 1.6 * SB) + '" width="' + f(clef.w * KB + 30) + '" height="' + f(4 * SB + 6.2 * SB) +
       '" rx="5"><title>Clef: ' + esc(clef.name) + ' (click to change)</title></rect>');
     var steps = sp.kind === 'sharp' ? clef.sharp : clef.flat;
     var ax = clefX + clef.w * KB + 8;
@@ -849,6 +855,7 @@ var KeyboardRender = (function () {
     var sig = flash && !noteMode && state.cardMode === 'sig' && !!state.card;       // flashcards, "find the signature" direction
     var ctx = { mode: mode, scale: scale, flash: flash, sig: sig, flashRoot: (sig && !state.answered) ? r : null,
                 flashName: sig ? (T.specsFor(mode, state.card.pc)[state.card.spell] || rootSpec).name : '' };
+    if (noteMode && !noteStudy) ctx.oneSpell = state.noteSpell ? 1 : 0;       // Notes, Explore: black keys carry only the chosen spelling
     if (noteMode && state.noteLit != null) ctx.litS = state.noteLit + windowGeom(0, 2).startSemitone;   // one key lit
     ctx.rootFirst = !!state.rootFirst;                          // Find a chord: keys below the root stay dark, so the root is the leftmost lit key
     if (scale && !flash && state.chord) {                       // Explore: a chord on a degree of the scale

@@ -747,9 +747,9 @@ html.is-local .ftc-local { display: inline-flex; }
 .note-soon[hidden] { display: none; }
 /* the topic list: each choice is its own outlined button */
 .mode-menu { position: relative; }
-.mode-btn { font: inherit; font-weight: 600; color: var(--ink); background: #fff; border: 1.5px solid var(--accent); border-radius: 22px; padding: 8px 16px 8px 20px; cursor: pointer; display: inline-flex; gap: 10px; align-items: center; }
+.mode-btn { font: inherit; font-weight: 600; color: var(--ink); background: #fff; border: 1.5px solid var(--accent); border-radius: 22px; padding: 8px 20px 8px 14px; cursor: pointer; display: inline-flex; gap: 10px; align-items: center; }
 .mode-btn:hover { background: #f3f5fa; }
-.mode-caret { font-size: 12px; color: var(--muted); }
+.mode-caret { font-size: 16px; line-height: 1; color: var(--muted); }
 #appmode-group { position: absolute; z-index: 20; top: calc(100% + 6px); left: 0; display: block; padding: 8px 18px 8px 10px; border-radius: 16px; background: #fff; border: 1.5px solid #b4bccf; box-shadow: 0 8px 24px rgba(20,30,60,.18); white-space: nowrap; }
 #appmode-group[hidden] { display: none; }
 #appmode-group .knots { position: absolute; left: 0; top: 0; pointer-events: none; overflow: visible; }

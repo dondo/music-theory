@@ -1382,6 +1382,7 @@
     state.picked = findOn ? picks : null;
     state.rootFirst = findActive();
     state.noteMode = noteOn();
+    state.noteSpell = noteSpell;
     document.getElementById('notespell-group').hidden = !(noteOn() && !state.flash);
     document.getElementById(noteSpell ? 'ns-flat' : 'ns-sharp').checked = true;
     state.noteLit = null;
