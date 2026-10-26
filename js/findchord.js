@@ -1,5 +1,9 @@
 /* "Find the chord": the difficulty ladder and the question picker. Pure functions, no DOM.
  *
+ * TERMINOLOGY: the UI now says a STAGE is made of LEVELS ("Stage 2: Level 3"). This file keeps the older names: what the UI calls a level is
+ * a "step" here (levelInfo().step, stageSteps, stepAdds), while "level" in this file is the flat index into the whole ladder (levelAt, levelCount).
+ * See the note at the top of app.js.
+ *
  * The ladder is a list of levels. Each level has a number of keys (the first k of a fixed order) and a number of
  * chords (the first c of a fixed list), so a level is { keys: k, chords: c }; Pop and Jazz, major and minor each have their own order.
  * The ladder is made of STAGES, each introducing a few new keys or a few new chords (never both): up to two early on, then one at a time,

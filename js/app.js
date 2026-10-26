@@ -1,4 +1,14 @@
-/* Page wiring: state, events, caption. */
+/* Page wiring: state, events, caption.
+ *
+ * TERMINOLOGY (what the player sees vs. what the code calls it). The UI says: a STAGE (a group of added keys or chords) is made of LEVELS,
+ * shown as "Stage 1: Level 2" in Find the chord and "Level 2" in the other study activities. The code is older and still uses the
+ * previous words, and was deliberately not renamed:
+ *   - a UI "level" is a code "step": FindChord.levelInfo(...).step, FindChord.stageSteps, stepAdds, stepNote(), and in the clef ladder
+ *     of Play/Find the note and Find the key / signature (STUDY_STEPS, stepLv, stepNo, cardStepNo, stepProgress, celebrateStep, STEP_CLEFS, slots, step-card CSS);
+ *   - the code's "level" is the flat position in the whole ladder: FindChord.levelAt / levelCount, ftcLevelNo, ftcLv, ftcSetLevel (so
+ *     "Stage 3: Level 2" is the code's level n, step 2 of stage 3). The older Pop/Jazz switch is also called `level` here (hidden state);
+ *   - saved data keeps old names too (the 'step-' / 'note-' prefixes of Time Trial best keys); only the practice-log CSV header was changed to say `level`.
+ * Only user-visible text (labels, banners, menus, README) uses the new words. */
 (function () {
   'use strict';
 
