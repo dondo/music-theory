@@ -1216,11 +1216,20 @@
       var units = KeyboardRender.WIDTH / rect.width;          // screen px -> SVG user units
       a3 = newCard.animate([{ transform: 'translateX(' + (-dx * units) + 'px)' }, { transform: 'translateX(0)' }], opts);
     }
+    // the staff does not travel with the keyboard: the old key's staff stays put and fades out, then the new key's fades in
+    var extra = [], newStave = newSvg.querySelector('.stave'), oldStave = oldSvg.querySelector('.stave');
+    if (newStave && oldStave) {
+      var u2 = KeyboardRender.WIDTH / rect.width;
+      extra.push(oldStave.animate([{ transform: 'translateX(0)' }, { transform: 'translateX(' + (dx * u2) + 'px)' }], opts));        // (undoing the drawing's own slide)
+      extra.push(newStave.animate([{ transform: 'translateX(' + (-dx * u2) + 'px)' }, { transform: 'translateX(0)' }], opts));
+      extra.push(oldStave.animate([{ opacity: 1 }, { opacity: 0, offset: 0.45 }, { opacity: 0 }], opts));
+      extra.push(newStave.animate([{ opacity: 0 }, { opacity: 0, offset: 0.55 }, { opacity: 1 }], opts));
+    }
     var finished = false;
     function done() {
       if (finished) return;
       finished = true;
-      a1.cancel(); a2.cancel(); if (a3) a3.cancel();
+      a1.cancel(); a2.cancel(); if (a3) a3.cancel(); extra.forEach(function (x) { x.cancel(); });
       if (oldSvg.parentNode === stage) stage.removeChild(oldSvg);
       stage.classList.remove('sliding');
       stage.style.clipPath = '';
