@@ -1194,7 +1194,7 @@
     var newRoot = newSvg.querySelector('.key[data-s="' + state.root + '"]');
     if (oldKeyLeft == null || !newRoot || !oldSvg.animate) return;
     var dx = oldKeyLeft - newRoot.getBoundingClientRect().left;
-    if (Math.abs(dx) < 1) return;
+    if (Math.abs(dx) < 1 && !(oldSvg.querySelector('.stave') && newSvg.querySelector('.stave'))) return;      // (with a staff the key still changes: the same cross-fade, the keyboard just stays)
     var rect = newSvg.getBoundingClientRect();
     var pad = rect.width * (KeyboardRender.PAD / KeyboardRender.WIDTH);
 
@@ -1225,7 +1225,7 @@
         var slotU = +ow.getAttribute('data-slot'), base = +ow.getAttribute('data-startx') - +nw.getAttribute('data-startx');
         var mm = (D - base) / slotU, kk = mm >= 0 ? Math.floor(mm) : Math.ceil(mm);
         S = base + kk * slotU;
-        if (S * D < 0 || Math.abs(S) > Math.abs(D)) S = 0;
+        if (Math.abs(D) >= 1 && (S * D < 0 || Math.abs(S) > Math.abs(D))) S = 0;
       }
       q(oldSvg, '.stave-notes').forEach(function (g) { extra.push(move(g, 0, -S / u2)); });
       q(newSvg, '.stave-notes').forEach(function (g) { extra.push(move(g, S / u2, 0)); });   // the new notes slide in alongside the old ones, in step with them throughout   // (the same easing over the same time, just a shorter way: they arrive together)
