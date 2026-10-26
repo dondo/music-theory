@@ -1180,6 +1180,7 @@
 
   // ---- drawing --------------------------------------------------------------
   var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var STAFF_FADE_MS = 350;
   var SLIDE_MS = 520;
   var EASE = 'cubic-bezier(0.45, 0, 0.2, 1)';
   var slideDone = null;                       // cancels a slide in progress
@@ -1204,7 +1205,10 @@
     stage.classList.add('sliding');
     stage.style.clipPath = 'inset(0 ' + pad + 'px 0 ' + pad + 'px)';
 
-    var opts = { duration: SLIDE_MS, easing: EASE, fill: 'both' };
+    // with a staff: first the old key's staff fades out as the new one fades in (the keyboard waits), then the keyboard slides
+    var newStave = newSvg.querySelector('.stave'), oldStave = oldSvg.querySelector('.stave');
+    var lead = newStave && oldStave ? STAFF_FADE_MS : 0, total = lead + SLIDE_MS, f0 = lead / total;
+    var opts = { duration: SLIDE_MS, delay: lead, easing: EASE, fill: 'both' };
     var a1 = oldSvg.animate([{ transform: 'translateX(0)' }, { transform: 'translateX(' + (-dx) + 'px)' }], opts);
     var a2 = newSvg.animate([{ transform: 'translateX(' + dx + 'px)' }, { transform: 'translateX(0)' }], opts);
     // flashcard: the signature card stays put while the keyboard slides under it
@@ -1216,14 +1220,19 @@
       var units = KeyboardRender.WIDTH / rect.width;          // screen px -> SVG user units
       a3 = newCard.animate([{ transform: 'translateX(' + (-dx * units) + 'px)' }, { transform: 'translateX(0)' }], opts);
     }
-    // the staff does not travel with the keyboard: the old key's staff stays put and fades out, then the new key's fades in
-    var extra = [], newStave = newSvg.querySelector('.stave'), oldStave = oldSvg.querySelector('.stave');
-    if (newStave && oldStave) {
-      var u2 = KeyboardRender.WIDTH / rect.width;
-      extra.push(oldStave.animate([{ transform: 'translateX(0)' }, { transform: 'translateX(' + (dx * u2) + 'px)' }], opts));        // (undoing the drawing's own slide)
-      extra.push(newStave.animate([{ transform: 'translateX(' + (-dx * u2) + 'px)' }, { transform: 'translateX(0)' }], opts));
-      extra.push(oldStave.animate([{ opacity: 1 }, { opacity: 0, offset: 0.45 }, { opacity: 0 }], opts));
-      extra.push(newStave.animate([{ opacity: 0 }, { opacity: 0, offset: 0.55 }, { opacity: 1 }], opts));
+    var extra = [];
+    if (lead) {
+      newSvg.style.overflow = 'visible';                      // (the staff sits outside the sliding drawing's own box while it waits)
+      var u2 = KeyboardRender.WIDTH / rect.width, tl = { duration: total, fill: 'both' };
+      extra.push(oldStave.animate([{ opacity: 1 }, { opacity: 0 }], { duration: lead, fill: 'forwards', easing: 'ease-in-out' }));
+      extra.push(newStave.animate([{ opacity: 0 }, { opacity: 1 }], { duration: lead, fill: 'both', easing: 'ease-in-out' }));
+      // the new staff stays where it is while the drawing around it slides in
+      extra.push(newStave.animate([{ transform: 'translateX(' + (-dx * u2) + 'px)', offset: 0 }, { transform: 'translateX(' + (-dx * u2) + 'px)', offset: f0, easing: EASE }, { transform: 'translateX(0)', offset: 1 }], tl));
+      // the rest of the new drawing (keyboard, boxes) stays hidden until its slide starts
+      Array.prototype.forEach.call(newSvg.children, function (c) {
+        if (c === newStave || /^(defs|title|desc|style)$/i.test(c.tagName)) return;
+        extra.push(c.animate([{ opacity: 0, offset: 0 }, { opacity: 0, offset: f0 }, { opacity: 1, offset: Math.min(1, f0 + 0.002) }, { opacity: 1, offset: 1 }], tl));
+      });
     }
     var finished = false;
     function done() {
@@ -1232,6 +1241,7 @@
       a1.cancel(); a2.cancel(); if (a3) a3.cancel(); extra.forEach(function (x) { x.cancel(); });
       if (oldSvg.parentNode === stage) stage.removeChild(oldSvg);
       stage.classList.remove('sliding');
+      newSvg.style.overflow = '';
       stage.style.clipPath = '';
     }
     slideDone = done;
