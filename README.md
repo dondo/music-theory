@@ -150,9 +150,9 @@ Study > "Find the chord" shows a staff card like Find the key (clef and key sign
 
 Two difficulty dials (no longer adjustable by hand; the local ▲▼ buttons step the level): **Keys** (1-12, most familiar first: C G F D B♭ ...; A E D B G ... in minor) and **Chords** (groups: I IV V V7, then vi ii, then the sevenths, iii and vii°, then sus4, sus2, add9, 9ths, and in Jazz 11ths and 13ths). "Level up automatically" adds a key, then a chord group, alternately, after ten first-try answers in a row (five in the local copy). Beside "Level n" a row of bubbles (ten, or five locally) shows the latest first-try answers, newest on the left: green when right, a red X when wrong. A full green row is a level-up: the row stays up until Next, then starts empty at the new level. Levels are remembered. The ladder lives in `js/findchord.js`. When a level-up adds a key, the first question in that level is the new key's home triad (I, or i in minor).
 
-## Topics: Note, Key, Pop Chord, Minor key, Jazz Chord
+## Topics
 
-The Pop/Jazz and Major/Minor selectors are replaced by one list (the old switches remain as hidden state). **Note**: coming soon (a placeholder). **Key**: the major keyboard with no chord or progression sections; Study offers Find the key and Find the signature. **Minor key**: the same in minor. **Pop Chord** and **Jazz Chord**: reveal the Chords and progression sections and a Major/Minor toggle (remembered between the two); Study offers Find the chord only. The first visit opens in Key. The choice is saved (`appMode`).
+One list replaces the Pop/Jazz and Major/Minor switches (they remain as hidden state): **Notes** (coming soon), **Keys**, **Minor keys** (no chord or progression sections; Study offers Find the key and Find the signature), **Chords**, **Minor chords** (the Chords section, pop style; Study offers Find the chord only) and **Chord theory**, **Minor chord theory** (the jazz level: roman numerals, 11ths and 13ths, scale types, and the progression section). The choice is saved (`appMode`); older saves map Pop to Chords and Jazz to Chord theory. The first visit opens in Keys.
 
 ## Explore: Chord quality
 
