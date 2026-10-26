@@ -3084,11 +3084,11 @@ var KeyboardRender = (function () {
   // low: lowest bass note of the inversions shown in Chords mode; sharp/flat: key signature positions.
   var CLEF_ORDER = ['treble', 'treble8va', 'treble8', 'tenor', 'alto', 'bass'];
   var CLEFS = [
-    { id: 'treble', mid: 71,  name: 'Treble',     note: 'G clef: right hand, melody, most instruments', more: "The clef is a stylized G, curling around the G line (possibly with an 's' superposed).", glyph: 'gclef',    w: 671, line: 1, bottom: 30, trans: 0,  low: 60,
+    { id: 'treble', mid: 71,  name: 'Treble',     note: 'G clef: right hand, melody, most instruments.', more: "The clef is a stylized G, curling around the G line (possibly with an 's' superposed).", glyph: 'gclef',    w: 671, line: 1, bottom: 30, trans: 0,  low: 60,
       sharp: [8, 5, 9, 6, 3, 7, 4], flat: [4, 7, 3, 6, 2, 5, 1] },
-    { id: 'bass', mid: 50,    name: 'Bass',       note: 'F clef: left hand, bass instruments', more: 'The clef is a heavily altered F, with its two dots on either side of the F line.', glyph: 'fclef',    w: 684, line: 3, bottom: 18, trans: 0,  low: 36,
+    { id: 'bass', mid: 50,    name: 'Bass',       note: 'F clef: left hand, bass instruments.', more: 'The clef is a heavily altered F, with its two dots on either side of the F line.', glyph: 'fclef',    w: 684, line: 3, bottom: 18, trans: 0,  low: 36,
       sharp: [6, 3, 7, 4, 1, 5, 2], flat: [2, 5, 1, 4, 0, 3, -1] },
-    { id: 'alto', mid: 60,    name: 'Alto',       note: "The Alto clef may be a heavily styled letter C; its center places middle C (C4) on the middle line. This is used primarily by the viola, and I included it mostly because that's what my older sister plays. If you're playing piano, you can probably ignore this.", glyph: 'cclef',    w: 699, line: 2, bottom: 24, trans: 0,  low: 48,
+    { id: 'alto', mid: 60,    name: 'Alto',       note: 'C clef: mostly the viola.', more: "The clef is purportedly a distorted letter C; its center places middle C (C4) on the middle line. I included it for my older sister; if you're not her, you can probably ignore this.", glyph: 'cclef',    w: 699, line: 2, bottom: 24, trans: 0,  low: 48,
       sharp: [7, 4, 8, 5, 2, 6, 3], flat: [3, 6, 2, 5, 1, 4, 0] },
     { id: 'tenor', mid: 57,   name: 'Tenor',      note: 'C clef on the fourth line: cello, bassoon, trombone', glyph: 'cclef', w: 699, line: 3, bottom: 22, trans: 0, low: 48,
       sharp: [2, 6, 3, 7, 4, 8, 5], flat: [5, 8, 4, 7, 3, 6, 2] },
