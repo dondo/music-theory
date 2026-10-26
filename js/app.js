@@ -2518,8 +2518,9 @@
     if (find ? val !== state.card.idx : pc !== state.card.pc) {
       score.bad++;
       missedThisCard = true;
-      state.guess = pc;
-      lastResult = 'Incorrect. That is ' + NOTE_SHARP[pc] + (NOTE_SHARP[pc] !== NOTE_FLAT[pc] ? ' / ' + NOTE_FLAT[pc] : '') + '.';
+      var octave = find && pc === state.card.pc;                  // the right note name, the wrong octave
+      state.guess = octave ? 'octave' : pc;
+      lastResult = octave ? 'Right note, wrong octave: pick the one that matches the lit key.' : 'Incorrect. That is ' + NOTE_SHARP[pc] + (NOTE_SHARP[pc] !== NOTE_FLAT[pc] ? ' / ' + NOTE_FLAT[pc] : '') + '.';
       updateScore();
       draw(false, false);
       feedback('nope', null);

@@ -917,7 +917,7 @@ var KeyboardRender = (function () {
     if (noteMode) {
       parts.push(bigStave(state.staff || { kind: 'empty', clef: 'treble', chords: [] }, winL, winR, rootSpec, mode));
       if (noteStudy) {
-        parts.push('<text class="fb-nope" x="' + f(WIDTH / 2) + '" y="50" text-anchor="middle" font-size="34" font-weight="bold" fill="#dc2626" opacity="0" pointer-events="none">\u2717 ' + (typeof state.guess === 'number' ? 'That was ' + ['C', 'C\u266F/D\u266D', 'D', 'D\u266F/E\u266D', 'E', 'F', 'F\u266F/G\u266D', 'G', 'G\u266F/A\u266D', 'A', 'A\u266F/B\u266D', 'B'][state.guess] : 'Nope') + '</text>' +
+        parts.push('<text class="fb-nope" x="' + f(WIDTH / 2) + '" y="50" text-anchor="middle" font-size="34" font-weight="bold" fill="#dc2626" opacity="0" pointer-events="none">\u2717 ' + (state.guess === 'octave' ? 'Right note, wrong octave' : typeof state.guess === 'number' ? 'That was ' + ['C', 'C\u266F/D\u266D', 'D', 'D\u266F/E\u266D', 'E', 'F', 'F\u266F/G\u266D', 'G', 'G\u266F/A\u266D', 'A', 'A\u266F/B\u266D', 'B'][state.guess] : 'Nope') + '</text>' +
           '<text class="fb-yes" x="' + f(WIDTH / 2) + '" y="50" text-anchor="middle" font-size="34" font-weight="bold" fill="#16a34a" opacity="0" pointer-events="none">\u2713 Yes!</text>');
         if (state.answered) parts.push(nextButton(winR - 150, 36));
       }
