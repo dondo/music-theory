@@ -750,3 +750,7 @@ html.is-local .ftc-local { display: inline-flex; }
 #appmode-group label { border: 1.5px solid #b4bccf; background: #f3f5fa; padding: 6px 18px; }
 #appmode-group label:hover { background: #fff; }
 #appmode-group input:checked + label { border-color: var(--accent); background: #fff; }
+/* Chords and Progressions no longer collapse */
+.chords summary { cursor: default; list-style: none; }
+.chords summary::-webkit-details-marker { display: none; }
+.chords summary::marker { content: ''; }

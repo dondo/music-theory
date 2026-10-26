@@ -561,6 +561,8 @@
     draw(false, false);
   });
 
+  // the Chords and Progressions sections no longer collapse
+  [chordsDetails, progDetails].forEach(function (d) { d.querySelector('summary').addEventListener('click', function (e) { if (!e.target.closest('select, button, input, a')) e.preventDefault(); }); });
   // The chord highlight only shows while the panel is open; opening it picks the I chord (Ionian in major).
   chordsDetails.addEventListener('toggle', function () {
     if (restoring) return;
@@ -658,8 +660,8 @@
     typePicked = !!s.typePicked;
     progRevealed = !!s.progRevealed;
     if (Number.isInteger(s.progIndex) && s.progIndex >= 0 && s.progIndex < prog.length) progIndex = s.progIndex;
-    chordsDetails.open = !!s.chordsOpen;
-    progDetails.open = !!s.progOpen;
+    chordsDetails.open = true;                        // (these two sections no longer collapse)
+    progDetails.open = true;
   }
 
   // ---- progression helpers ---------------------------------------------------
@@ -1059,7 +1061,7 @@
   function updateProgPanel() {
     syncProgIndex();
     if (state.chord && chordsDetails.open && state.selected && !state.flash && !isAlt()) progRevealed = true;
-    var visible = theoryMode() && state.selected && !state.flash && !isAlt() && !qualityOn() && (progRevealed || prog.length > 0 || saved.items.length > 0);   // a saved progression shows as soon as a key is picked
+    var visible = theoryMode() && state.selected && !state.flash && !isAlt() && !qualityOn();   // Chord theory: the section is simply there once a key is picked
     progSection.hidden = !visible;
     syncHints();
     if (!visible) return;
@@ -2856,6 +2858,10 @@
     var wantCard = chordy() ? 'chord' : (state.cardMode === 'chord' ? 'key' : state.cardMode);
     if (wantCard !== state.cardMode) { if (state.flash) setFlashMode(wantCard); else setCardMode(wantCard); }
     state.chord = null;
+    if (!state.flash) {
+      if (!chordy()) { state.selected = false; state.root = 0; state.spell = 0; }      // the key-signature panel, nothing picked
+      else if (!state.selected) { selectRoot(0, 0, false, null); }                       // the chord modes need a key: C
+    }
     updateScore();
     draw(false, false);
   }
@@ -2976,8 +2982,8 @@
     sortBy = 'scale';
     typeSortBy = 'frequency';
     chordTypes_ = { full: 'triad', pentatonic: 'maj', wholetone: 'aug' };
-    chordsDetails.open = false;
-    progDetails.open = false;
+    chordsDetails.open = true;
+    progDetails.open = true;
     state.root = 0;
     state.spell = 0;
     state.selected = false;
@@ -3013,6 +3019,7 @@
   window.addEventListener('orientationchange', recentre);
 
   restoreState();
+  if (chordy() && !state.selected && !state.flash && !pendingStudy) { state.selected = true; state.root = 0; state.spell = 0; }
   syncStudyOptions();
   updateScore();
   if (pendingStudy) {                                   // reload in Study: back to the same Study mode

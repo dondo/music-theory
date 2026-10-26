@@ -767,6 +767,10 @@ html.is-local .ftc-local { display: inline-flex; }
 #appmode-group label { border: 1.5px solid #b4bccf; background: #f3f5fa; padding: 6px 18px; }
 #appmode-group label:hover { background: #fff; }
 #appmode-group input:checked + label { border-color: var(--accent); background: #fff; }
+/* Chords and Progressions no longer collapse */
+.chords summary { cursor: default; list-style: none; }
+.chords summary::-webkit-details-marker { display: none; }
+.chords summary::marker { content: ''; }
 </style>
 </head>
 <body>
@@ -890,7 +894,7 @@ html.is-local .ftc-local { display: inline-flex; }
     <section id="chords" class="chords" aria-label="Chords in this key" hidden>
       <button type="button" id="find-chord-btn" class="btn-reset find-chord-btn" aria-pressed="false" hidden
               title="Click notes on the keyboard (click again to unselect); when they name a chord in this key it lights up here and on the staff.">Find a chord</button>
-      <details id="chords-details">
+      <details id="chords-details" open>
       <summary id="chords-summary">Chords in this key</summary>
       <div class="chord-row">
         <div class="chord-head">
@@ -963,7 +967,7 @@ html.is-local .ftc-local { display: inline-flex; }
     <p id="sound-note" class="sound-note" role="status" hidden>Your browser is holding the sound back. Click anywhere on the page once, then try again.</p>
 
     <section id="progressions" class="chords prog" aria-label="Progressions" hidden>
-      <details id="prog-details">
+      <details id="prog-details" open>
         <summary class="prog-head">
           <span id="prog-summary">Progressions</span>
           <span id="prog-menus" class="prog-menus" hidden>
@@ -4035,6 +4039,8 @@ var KeyboardRender = (function () {
     draw(false, false);
   });
 
+  // the Chords and Progressions sections no longer collapse
+  [chordsDetails, progDetails].forEach(function (d) { d.querySelector('summary').addEventListener('click', function (e) { if (!e.target.closest('select, button, input, a')) e.preventDefault(); }); });
   // The chord highlight only shows while the panel is open; opening it picks the I chord (Ionian in major).
   chordsDetails.addEventListener('toggle', function () {
     if (restoring) return;
@@ -4132,8 +4138,8 @@ var KeyboardRender = (function () {
     typePicked = !!s.typePicked;
     progRevealed = !!s.progRevealed;
     if (Number.isInteger(s.progIndex) && s.progIndex >= 0 && s.progIndex < prog.length) progIndex = s.progIndex;
-    chordsDetails.open = !!s.chordsOpen;
-    progDetails.open = !!s.progOpen;
+    chordsDetails.open = true;                        // (these two sections no longer collapse)
+    progDetails.open = true;
   }
 
   // ---- progression helpers ---------------------------------------------------
@@ -4533,7 +4539,7 @@ var KeyboardRender = (function () {
   function updateProgPanel() {
     syncProgIndex();
     if (state.chord && chordsDetails.open && state.selected && !state.flash && !isAlt()) progRevealed = true;
-    var visible = theoryMode() && state.selected && !state.flash && !isAlt() && !qualityOn() && (progRevealed || prog.length > 0 || saved.items.length > 0);   // a saved progression shows as soon as a key is picked
+    var visible = theoryMode() && state.selected && !state.flash && !isAlt() && !qualityOn();   // Chord theory: the section is simply there once a key is picked
     progSection.hidden = !visible;
     syncHints();
     if (!visible) return;
@@ -6330,6 +6336,10 @@ var KeyboardRender = (function () {
     var wantCard = chordy() ? 'chord' : (state.cardMode === 'chord' ? 'key' : state.cardMode);
     if (wantCard !== state.cardMode) { if (state.flash) setFlashMode(wantCard); else setCardMode(wantCard); }
     state.chord = null;
+    if (!state.flash) {
+      if (!chordy()) { state.selected = false; state.root = 0; state.spell = 0; }      // the key-signature panel, nothing picked
+      else if (!state.selected) { selectRoot(0, 0, false, null); }                       // the chord modes need a key: C
+    }
     updateScore();
     draw(false, false);
   }
@@ -6450,8 +6460,8 @@ var KeyboardRender = (function () {
     sortBy = 'scale';
     typeSortBy = 'frequency';
     chordTypes_ = { full: 'triad', pentatonic: 'maj', wholetone: 'aug' };
-    chordsDetails.open = false;
-    progDetails.open = false;
+    chordsDetails.open = true;
+    progDetails.open = true;
     state.root = 0;
     state.spell = 0;
     state.selected = false;
@@ -6487,6 +6497,7 @@ var KeyboardRender = (function () {
   window.addEventListener('orientationchange', recentre);
 
   restoreState();
+  if (chordy() && !state.selected && !state.flash && !pendingStudy) { state.selected = true; state.root = 0; state.spell = 0; }
   syncStudyOptions();
   updateScore();
   if (pendingStudy) {                                   // reload in Study: back to the same Study mode
