@@ -782,6 +782,10 @@ html.is-local .ftc-local { display: inline-flex; }
 .chords summary::marker { content: ''; }
 .note-hit { cursor: pointer; outline: none; }
 .note-hit:hover, .note-hit:focus-visible { fill-opacity: .14; }
+
+/* Play / Find the note: the progress row under the keyboard, like Find the chord's */
+.note-card[hidden] { display: none; }
+.note-card .chord-info { margin: 0; }
 </style>
 </head>
 <body>
@@ -4865,12 +4869,12 @@ var KeyboardRender = (function () {
   // what the big stave shows: the progression (Progressions open), else the selected chord and its inversions (Chords open)
   // Notes: the run from middle C up an octave, a half step at a time (explore, find the note), or one note (play the note)
   function buildNoteStaff() {
-    var clefId = clefAllowed(state.clef) ? state.clef : 'treble';
-    var base = 60 + 12 * Math.round((clefConfig().mid - 72) / 12);            // the two-octave run sits around the middle of the clef (middle C up in treble); the notation only, the keyboard stays put
+    var clefId = state.flash ? noteClefId() : (clefAllowed(state.clef) ? state.clef : 'treble'), fixedClef = state.flash && noteStaffLevel() >= 2;
+    var base = 60 + 12 * Math.round((KeyboardRender.CLEFS.filter(function (c) { return c.id === clefId; })[0].mid - 72) / 12);            // the two-octave run sits around the middle of the clef (middle C up in treble); the notation only, the keyboard stays put
     var flash = state.flash, card = state.card, answered = !!state.answered;
     if (flash && state.cardMode === 'play') {
       if (!card) return { kind: 'empty', clef: clefId, chords: [] };
-      return { kind: 'notes', clef: clefId, slot: 260, chords: [{ notes: [{ midi: base + card.idx, name: card.name }], top: answered ? card.name : '', sub: '', lit: false }] };
+      return { kind: 'notes', clef: clefId, fixedClef: fixedClef, slot: 260, chords: [{ notes: [{ midi: base + card.idx, name: card.name }], top: answered ? card.name : '', sub: '', lit: false }] };
     }
     var chords = [], sp = flash ? (card ? card.spell : 0) : noteSpell;
     for (var i = 0; i <= 24; i++) {
@@ -4879,7 +4883,7 @@ var KeyboardRender = (function () {
       var show = !flash || answered;                    // find the note: the names stay hidden until it is solved
       chords.push({ notes: [{ midi: base + i, name: nm }], top: show || lit ? nm : '', sub: '', lit: lit });
     }
-    return { kind: 'notes', clef: clefId, chords: chords, hits: true };
+    return { kind: 'notes', clef: clefId, fixedClef: fixedClef, chords: chords, hits: true };
   }
 
   function buildStaff() {
@@ -4971,6 +4975,7 @@ var KeyboardRender = (function () {
 
   // anim: false | 'fade' | { oldKeyS: absolute semitone of the clicked key in the current drawing }
   function draw(anim, focusRoot) {
+    syncSlot();
     endSlide();
     var oldSvg = stage.firstElementChild;
     var oldKeyLeft = null;                    // measured while the old drawing is still in the page
@@ -5011,7 +5016,7 @@ var KeyboardRender = (function () {
       var wk = levelBanner.getAttribute('data-welcome');
       if (!state.flash || state.cardMode !== (wk === '1' ? 'chord' : wk)) dismissWelcome();
     }
-    if (!(quizOn() && state.answered) && !bannerHold) levelBanner.hidden = true;        // the level-up note stays until the next question
+    if (!((quizOn() || noteQuizOn()) && state.answered) && !bannerHold) levelBanner.hidden = true;        // the level-up note stays until the next question
     if (!quizOn()) maybeStudyWelcome();
     resetBtn.hidden = noteOn() || !state.selected || (state.flash && state.cardMode === 'sig') || quizOn();
     updateCaption();
@@ -5082,6 +5087,28 @@ var KeyboardRender = (function () {
   var TRIAL_LEN = 10, TRIAL_PENALTY = 10000;                   // a time trial: ten questions, ten seconds for each wrong answer
   var ftcBub = null, bubFull = false;
   var ftcTrial = null;                                          // a time trial in progress (see below)
+  // Play the note and Find the note have their own steps, bubbles and Time Trial, apart from Find the chord's and from each other.
+  // The progress variables above and below belong to whichever activity is showing ('chord' | 'play' | 'find'); the others wait in `slots`.
+  var NOTE_STEPS = 3, NOTE_KEY = 'music-theory-notes-v1';
+  var NOTE_CLEFS = ['treble', 'bass', 'alto', 'tenor'];         // step 3 changes clef from question to question
+  var noteLv = { play: 1, find: 1 };
+  var slots = {}, curSlot = 'chord';
+  function slotSnap() { return { bub: ftcBub, bubFull: bubFull, streak: ftcStreak, tried: ftcTried, right: ftcRight, unlocked: trialUnlocked, ever: trialEver }; }
+  function slotLoad(o) {
+    o = o || {};
+    ftcBub = o.bub || null; bubFull = !!o.bubFull; ftcStreak = o.streak | 0; ftcTried = o.tried | 0; ftcRight = o.right | 0;
+    trialUnlocked = !!o.unlocked; trialEver = !!o.ever;
+  }
+  function slotWanted() { return quizOn() ? 'chord' : noteQuizOn() ? (state.cardMode === 'find' ? 'find' : 'play') : null; }
+  function syncSlot() {
+    var want = slotWanted(), tk = ftcTrial ? (ftcTrial.note || 'chord') : null;
+    if (tk && tk !== want) abortTrial();                        // a time trial ends when its activity is left
+    if (!want || want === curSlot) return;
+    slots[curSlot] = slotSnap();
+    slotLoad(slots[want]);
+    curSlot = want;
+    if (typeof syncTrialBox === 'function') syncTrialBox();
+  }
   function bubN() { return ftcTrial ? TRIAL_LEN : streakNeed(); }
   function bubbles() {
     var n = bubN();
@@ -5194,13 +5221,34 @@ var KeyboardRender = (function () {
   }
   function saveFtc() {
     if (ftcTrial) return;                                        // (a trial is never saved: the normal state stays as it was)
-    try { window.localStorage.setItem(FTC_KEY, JSON.stringify({ lvl: ftcLv, auto: ftcAuto, streak: ftcStreak, bub: bubbles(), trial: trialUnlocked, ever: trialEver, fresh: ftcFresh })); } catch (e) { /* storage unavailable */ }
+    slots[curSlot] = slotSnap();
+    var c = slots.chord || slotSnap();
+    try { window.localStorage.setItem(FTC_KEY, JSON.stringify({ lvl: ftcLv, auto: ftcAuto, streak: c.streak, bub: c.bub || [], trial: c.unlocked, ever: c.ever, fresh: ftcFresh })); } catch (e) { /* storage unavailable */ }
+    var no = {};
+    ['play', 'find'].forEach(function (m) { var q = slots[m] || {}; no[m] = { lv: noteLv[m], streak: q.streak | 0, bub: q.bub || [], trial: !!q.unlocked, ever: !!q.ever }; });
+    try { window.localStorage.setItem(NOTE_KEY, JSON.stringify(no)); } catch (e) { /* storage unavailable */ }
+  }
+  function loadNotes() {
+    try {
+      var o = JSON.parse(window.localStorage.getItem(NOTE_KEY));
+      if (!o || typeof o !== 'object') return;
+      ['play', 'find'].forEach(function (m) {
+        var q = o[m];
+        if (!q || typeof q !== 'object') return;
+        noteLv[m] = FindChord.clamp(q.lv || 1, 1, NOTE_STEPS);
+        var b = Array.isArray(q.bub) ? q.bub.slice(0, 40).map(function (r) { return r === 'ok' || r === 'bad' ? r : null; }) : null, need = streakNeed();
+        var st = Number.isInteger(q.streak) ? Math.max(0, Math.min(need - 1, q.streak)) : 0;
+        slots[m] = { bub: b, bubFull: !!b && b.length >= need && b.slice(0, need).every(function (r) { return r === 'ok'; }), streak: st, tried: st, right: st, unlocked: q.trial === true, ever: q.ever === true || q.trial === true };
+      });
+    } catch (e) { /* defaults */ }
   }
   function resetFtc() {
     abortTrial();
     ftcLv = {};
     trialUnlocked = trialEver = false; ftcAuto = true; ftcStreak = 0; ftcTried = 0; ftcRight = 0; ftcBub = null; bubFull = false; ftcFresh = { asked: 0, fresh: 0 };
     ftcAutoBox.checked = true;
+    noteLv = { play: 1, find: 1 }; slots = {}; slots[curSlot] = slotSnap(); if (curSlot !== 'chord') slots.chord = slotSnap();
+    try { window.localStorage.removeItem(NOTE_KEY); } catch (e) { /* storage unavailable */ }
     try { window.localStorage.removeItem(FTC_KEY); window.localStorage.removeItem(TRIALS_KEY); window.localStorage.removeItem(WELCOME_KEY); window.localStorage.removeItem(STUDY_WELCOME_KEY); } catch (e) { /* storage unavailable */ }   // (the time trial bests go too)
   }
   // the levels in force: the chord dial is capped by what this level (Pop / Jazz) offers
@@ -5294,6 +5342,22 @@ var KeyboardRender = (function () {
     var r = levelBanner.getBoundingClientRect();
     confetti(r.left + r.width / 2, Math.max(60, r.top + r.height / 2));
   }
+  // Play / Find the note: a level-up (n: the step just reached)
+  function celebrateNote(n) {
+    levelBanner.removeAttribute('data-welcome');
+    var html = 'You\u2019ve completed Step ' + (n - 1) + ' (of ' + NOTE_STEPS + '). On to step ' + n + ', ' +
+      (n === 2 ? 'the <strong>bass clef</strong>!' : 'where the clef changes from question to question: <strong>treble, bass, alto and tenor</strong>!') +
+      '<span class="levelup-go-row"><button type="button" class="btn-reset levelup-go">Go \u2192</button></span>';
+    if (levelBanner.parentNode !== ftcSection) ftcSection.appendChild(levelBanner);
+    document.getElementById('ftc-levelup-icon').textContent = '\u{1F389}';
+    document.getElementById('ftc-levelup-title').textContent = 'Nice work!';
+    levelText.innerHTML = html;
+    levelBanner.hidden = false;
+    levelBanner.style.animation = 'none'; void levelBanner.offsetWidth; levelBanner.style.animation = '';
+    if (reduceMotion) return;
+    var r = levelBanner.getBoundingClientRect();
+    confetti(r.left + r.width / 2, Math.max(60, r.top + r.height / 2));
+  }
   // the first time Find the chord is opened: how it works (the banner sits over the clef; "Go" or the first answer dismisses it)
   var WELCOME_KEY = 'music-theory-ftc-welcomed';
   var STUDY_WELCOME_KEY = 'music-theory-study-welcomed';          // the other study activities, each welcomed once
@@ -5365,7 +5429,7 @@ var KeyboardRender = (function () {
   }
   levelBanner.addEventListener('click', function (e) {
     if (levelBanner.hasAttribute('data-welcome') && e.target.closest && e.target.closest('.levelup-go')) { bannerHold = false; levelBanner.hidden = true; levelBanner.removeAttribute('data-welcome'); return; }
-    if (e.target.closest && e.target.closest('.levelup-go') && quizOn() && state.answered) nextCard(false);
+    if (e.target.closest && e.target.closest('.levelup-go') && (quizOn() || noteQuizOn()) && state.answered) nextCard(false);
   });
   function confetti(ox, oy) {
     var cv = document.createElement('canvas');
@@ -5564,7 +5628,7 @@ var KeyboardRender = (function () {
   trialClock.hidden = true;
   trialBtn.hidden = !trialEver;
   trialBox.appendChild(trialBtn); trialBox.appendChild(trialClock); trialBox.appendChild(trialList);
-  function trialKey(n) { return state.mode + ':' + (ftcPop() ? 'pop' : 'jazz') + ':' + n; }
+  function trialKey(n) { return noteQuizOn() ? 'note-' + noteSlotName() + ':' + n : state.mode + ':' + (ftcPop() ? 'pop' : 'jazz') + ':' + n; }
   // best per level: { ms, wrong } (older saves held just the time)
   function trialBests() {
     var o; try { o = JSON.parse(window.localStorage.getItem(TRIALS_KEY)) || {}; } catch (e) { o = {}; }
@@ -5596,10 +5660,22 @@ var KeyboardRender = (function () {
   function closeTrialList() { if (trialListOpen) { trialListOpen = false; syncTrialBox(); } }
   document.addEventListener('click', function (e) { if (trialListOpen && !trialBox.contains(e.target) && !(e.target.closest && e.target.closest('.tr-menu'))) closeTrialList(); });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && trialListOpen) { closeTrialList(); trialBtn.focus(); } });
-  function stageLabel(n) { var i = FindChord.levelInfo(state.mode, ftcPop(), n); return 'Stage ' + i.stage + ': Step ' + i.step; }
+  function stageLabel(n) { if (noteQuizOn()) return 'Step ' + n; var i = FindChord.levelInfo(state.mode, ftcPop(), n); return 'Stage ' + i.stage + ': Step ' + i.step; }
   // two levels: the stages (newest first; only the current one open to start with), and under each the steps reached so far
   function buildTrialList() {
     trialList.textContent = '';
+    if (noteQuizOn()) {                                              // one stage only: the steps reached so far, newest first
+      var ncur = noteLevelNo(), nb = trialBests();
+      for (var k = ncur; k >= 1; k--) {
+        var nbtn = el('button', 'btn-reset trial-lvl'), nbest = nb[trialKey(k)], nlocked = k === ncur && !trialUnlocked;
+        nbtn.type = 'button'; nbtn.setAttribute('data-level', k); nbtn.setAttribute('role', 'menuitem');
+        if (nlocked) { nbtn.disabled = true; nbtn.classList.add('locked'); nbtn.title = 'Answer ' + (window.MUSIC_THEORY_LOCAL ? '3 of the last 5' : '7 of the last 10') + ' right to unlock'; }
+        nbtn.appendChild(el('span', 'tl-n', 'Step ' + k));
+        nbtn.appendChild(el('span', 'tl-best', nlocked ? 'play it first' : nbest ? fmtTime(nbest.ms) + (nbest.wrong == null ? '' : ' \u00b7 ' + nbest.wrong + ' wrong') : 'no time yet'));
+        trialList.appendChild(nbtn);
+      }
+      return;
+    }
     var cur = FindChord.clamp(ftcLv[ftcLvKey()] || 1, 1, FindChord.levelCount(state.mode, ftcPop())), bests = trialBests(), curStage = FindChord.levelInfo(state.mode, ftcPop(), cur).stage, groups = {}, order = [];
     for (var n = cur; n >= 1; n--) {
       var st = FindChord.levelInfo(state.mode, ftcPop(), n).stage;
@@ -5646,15 +5722,18 @@ var KeyboardRender = (function () {
     if (b) startTrial(parseInt(b.getAttribute('data-level'), 10));
   });
   trialStop.addEventListener('click', function () { abortTrial(); ftcNewQuestionDraw(); });
-  function ftcNewQuestionDraw() { var anim = ftcNewQuestion(false); updateScore(); draw(anim, false); }
+  function ftcNewQuestionDraw() {
+    if (noteQuizOn()) { state.answered = false; lastResult = ''; newNoteCard(); updateScore(); draw(false, false); return; }
+    var anim = ftcNewQuestion(false); updateScore(); draw(anim, false); }
   function startTrial(n) {
-    if (!quizOn() || (ftcTrial && !ftcTrial.done)) return;
-    var lv = FindChord.levelAt(state.mode, ftcPop(), n);
+    var nq = noteQuizOn();
+    if (!(quizOn() || nq) || (ftcTrial && !ftcTrial.done)) return;
+    var lv = nq ? null : FindChord.levelAt(state.mode, ftcPop(), n);
     trialListOpen = false;
     var snap = ftcTrial ? ftcTrial.snap                                   // ("Try again": the state from before the first trial is still the one to return to)
       : { bub: ftcBub, bubFull: bubFull, streak: ftcStreak, tried: ftcTried, right: ftcRight, home: ftcHomeNext };
     clearInterval(trialTick); trialTick = null;
-    ftcTrial = { level: n, keys: lv.keys, chords: lv.chords, inv: lv.inv, n: 0, wrongs: 0, t0: 0, qStart: 0, penalty: 0, times: [], snap: snap, counting: true, done: false, view: null };
+    ftcTrial = { level: n, note: nq ? noteSlotName() : null, keys: lv && lv.keys, chords: lv && lv.chords, inv: lv && lv.inv, n: 0, wrongs: 0, t0: 0, qStart: 0, penalty: 0, times: [], snap: snap, counting: true, done: false, view: null };
     ftcBub = null; bubFull = false; ftcStreak = 0; ftcTried = 0; ftcRight = 0; ftcHomeNext = false;
     bannerHold = false; levelBanner.hidden = true;
     syncTrialBox(); drawClock(); updateFtc(); updateScore(); updateChordPanel();
@@ -5689,7 +5768,7 @@ var KeyboardRender = (function () {
   }
   function trialAnswer(ok) {
     var now = performance.now(), t = ftcTrial;
-    ftcRecord(ok, ftcT0 == null ? null : now - ftcT0, false, true);
+    if (!t.note) ftcRecord(ok, ftcT0 == null ? null : now - ftcT0, false, true);
     t.times.push(now - t.qStart + (ok ? 0 : TRIAL_PENALTY));
     if (!ok) {
       t.penalty += TRIAL_PENALTY; t.wrongs++;
@@ -5856,9 +5935,10 @@ var KeyboardRender = (function () {
     draw(anim, false);
   }
   function updateFtc() {
-    var on = quizOn();
-    ftcSection.hidden = !on;
+    var on = quizOn(), non = noteQuizOn();
+    ftcSection.hidden = !(on || non);
     chordsPanel.classList.toggle('quizzing', on);
+    if (non) { updateNoteHead(); return; }
     if (!on || !ftcQ) return;
     var li = FindChord.levelInfo(state.mode, ftcPop(), ftcLevelNo());
     document.getElementById('ftc-level').textContent = (ftcTrial ? 'Trial \u00b7 ' : '') + 'Stage ' + li.stage + ': Step ' + li.step;
@@ -5870,6 +5950,7 @@ var KeyboardRender = (function () {
   // local testing: the same one-step-at-a-time moves the automatic level-up makes, up or back down
   function ftcDifficulty(dir) {
     if (ftcTrial) return;
+    if (noteQuizOn()) { noteDifficulty(dir); return; }
     var n = ftcLevelNo(), to = n + dir;
     if (to < 1 || to > FindChord.levelCount(state.mode, ftcPop())) return;
     ftcSetLevel(to);
@@ -5883,6 +5964,8 @@ var KeyboardRender = (function () {
   document.getElementById('ftc-easier').addEventListener('click', function () { ftcDifficulty(-1); });
   ftcAutoBox.addEventListener('change', function () { ftcAuto = ftcAutoBox.checked; ftcStreak = 0; ftcTried = 0; ftcRight = 0; ftcBub = null; bubFull = false; saveFtc(); updateFtc(); });
   loadFtc();
+  slots.chord = slotSnap();                         // (what loadFtc restored belongs to Find the chord)
+  loadNotes();
   ftcAutoBox.checked = ftcAuto;
 
   function setCardMode(m) {
@@ -5968,9 +6051,70 @@ var KeyboardRender = (function () {
   // Notes: a pitch class and a spelling (black keys: sharp or flat); 'find' answers on the staff run, which spells with sharps
   var NOTE_SHARP = ['C', 'C\u266F', 'D', 'D\u266F', 'E', 'F', 'F\u266F', 'G', 'G\u266F', 'A', 'A\u266F', 'B'];
   var NOTE_FLAT = ['C', 'D\u266D', 'D', 'E\u266D', 'E', 'F', 'G\u266D', 'G', 'A\u266D', 'A', 'B\u266D', 'B'];
+  // Play / Find the note have three steps: 1 the clef of your choice, 2 the bass clef, 3 a different clef each question
+  function noteQuizOn() { return noteOn() && state.flash && (state.cardMode === 'play' || state.cardMode === 'find'); }
+  function noteSlotName() { return state.cardMode === 'find' ? 'find' : 'play'; }
+  function noteLevelNo() { return ftcTrial && ftcTrial.note ? ftcTrial.level : FindChord.clamp(noteLv[noteSlotName()] || 1, 1, NOTE_STEPS); }
+  function noteStaffLevel() { return state.card && state.card.lv ? state.card.lv : noteLevelNo(); }       // (a card keeps the step it was dealt in)
+  function noteClefId() {
+    var n = noteStaffLevel();
+    if (n === 2) return 'bass';
+    if (n >= 3 && state.card && state.card.clef) return state.card.clef;
+    return clefAllowed(state.clef) ? state.clef : 'treble';
+  }
+  // the first try at a card counts toward the streak; returns the step just reached when the streak lifted it
+  function noteProgress(ok) {
+    syncSlot();
+    if (!ok) { if (!missedThisCard) { ftcTried++; pushBub('bad'); } ftcStreak = 0; saveFtc(); return 0; }
+    var up = 0;
+    if (missedThisCard) ftcStreak = 0;
+    else {
+      ftcStreak++; ftcTried++; ftcRight++; pushBub('ok');
+      if (ftcAuto && ftcStreak >= streakNeed()) {
+        var n0 = noteLevelNo(), can = n0 < NOTE_STEPS;
+        if (can) { noteLv[noteSlotName()] = n0 + 1; trialUnlocked = false; syncTrialBox(); up = n0 + 1; }       // (a level-up locks Time Trial again)
+        ftcStreak = 0; ftcTried = 0; ftcRight = 0;
+        if (can) bubFull = true; else { ftcBub = null; bubFull = false; }
+      }
+    }
+    saveFtc();
+    return up;
+  }
+  // local testing: the same one-step moves the streak makes
+  function noteDifficulty(dir) {
+    var n = noteLevelNo(), to = n + dir;
+    if (to < 1 || to > NOTE_STEPS) return;
+    noteLv[noteSlotName()] = to;
+    if (dir > 0) { trialUnlocked = false; syncTrialBox(); }
+    ftcStreak = 0; ftcTried = 0; ftcRight = 0; ftcBub = null; bubFull = false;
+    saveFtc();
+    state.answered = false; lastResult = ''; newNoteCard(); updateScore(); draw(false, false);
+  }
+  // the progress row under the keyboard: step, bubbles, Time Trial, Advance automatically (as in Find the chord)
+  var noteCard = el('section', 'chords note-card'), noteInfo = el('div', 'chord-info quiz note-info');
+  noteCard.hidden = true;
+  noteCard.appendChild(noteInfo);
+  ftcSection.parentNode.insertBefore(noteCard, ftcSection.nextSibling);
+  function updateNoteHead() {
+    var on = noteQuizOn();
+    noteCard.hidden = !on;
+    if (!on) return;
+    syncSlot();
+    levelTag.textContent = (ftcTrial ? 'Trial \u00b7 ' : '') + 'Step ' + noteLevelNo();
+    levelTag.title = 'Step ' + noteLevelNo() + ' of ' + NOTE_STEPS;
+    quizHead.appendChild(levelTag);
+    quizHead.appendChild(scoreBox); scoreBox.hidden = false;
+    quizHead.appendChild(trialBox);
+    quizHead.appendChild(autoRow);
+    autoRow.hidden = !!ftcTrial;
+    if (quizHead.parentNode !== noteInfo) noteInfo.appendChild(quizHead);
+    showStreak();
+  }
   var noteSel = null;                                  // Notes, Explore: the key/note last clicked (0..24)
   var noteSpell = 0, noteLastSpell = 1;                // Explore's sharps(0)/flats(1) toggle; Study alternates, starting with sharps
   function newNoteCard() {
+    syncSlot();
+    if (bubFull) { ftcBub = null; bubFull = false; }                                         // (a new step starts with empty bubbles)
     var avoid = state.card ? state.card.pc : -1, idx, pc, pre = state.cardMode === 'find' ? 'find|' : 'play|', keys = [];
     for (var i = 0; i < 25; i++) keys.push(pre + i);                                        // two octaves from middle C: 0..24, each remembered on its own
     idx = parseInt(Memory.pick(cardMem, keys, function (k) { return parseInt(k.slice(5), 10) % 12 === avoid; }, Math.random, Date.now()).slice(5), 10);
@@ -5978,7 +6122,12 @@ var KeyboardRender = (function () {
     startCardClock(true);
     var flat = noteLastSpell === 0;                           // Study: sharps and flats take turns
     noteLastSpell = flat ? 1 : 0;
-    state.card = { idx: idx, pc: pc, spell: flat ? 1 : 0, name: (flat ? NOTE_FLAT : NOTE_SHARP)[pc] };
+    var lv = noteLevelNo(), clef = null;
+    if (lv >= 3) {                                            // step 3: any clef, but not the same one twice running
+      var others = NOTE_CLEFS.filter(function (c) { return !state.card || c !== state.card.clef; });
+      clef = others[Math.floor(Math.random() * others.length)];
+    }
+    state.card = { idx: idx, pc: pc, spell: flat ? 1 : 0, name: (flat ? NOTE_FLAT : NOTE_SHARP)[pc], lv: lv, clef: clef };
     missedThisCard = false;
     state.guess = null;
   }
@@ -6008,11 +6157,12 @@ var KeyboardRender = (function () {
 
   function updateScore() {
     okEl.textContent = score.ok;
-    scoreBox.classList.toggle('quiz', quizOn());
+    syncSlot();
+    scoreBox.classList.toggle('quiz', quizOn() || noteQuizOn());
     showStreak();
     badEl.textContent = score.bad;
     scoreBox.hidden = !state.flash || (quizOn() && score.ok + score.bad === 0 && !isPhoneLayout() && !ftcTrial);
-    if (!(quizOn() && score.ok + score.bad > 0) && scoreBox.parentNode !== scoreHome) scoreHome.appendChild(scoreBox);
+    if (!(quizOn() && score.ok + score.bad > 0) && !noteQuizOn() && scoreBox.parentNode !== scoreHome) scoreHome.appendChild(scoreBox);
     flashModeGroup.hidden = !state.flash;
     kindGroup.hidden = state.flash || level === 'pop';
   }
@@ -6170,11 +6320,14 @@ var KeyboardRender = (function () {
 
   function noteAnswer(val) {
     dismissWelcome();                             // play the note: the pitch class pressed (any octave); find the note: the staff note clicked (0..24)
+    if (ftcTrial && (ftcTrial.counting || ftcTrial.done)) return;
     if (state.answered || !state.card) return;
     var find = state.cardMode === 'find', pc = val % 12;
+    if (ftcTrial && ftcTrial.note) { trialAnswer(find ? val === state.card.idx : pc === state.card.pc); return; }       // (a trial moves on whatever the answer)
     if (find ? val !== state.card.idx : pc !== state.card.pc) {
       score.bad++;
       memRecord(false);                                           // (the octave counts: the same note up the keyboard is its own card)
+      noteProgress(false);
       missedThisCard = true;
       var octave = find && pc === state.card.pc;                  // the right note name, the wrong octave
       state.guess = octave ? 'octave' : pc;
@@ -6186,11 +6339,13 @@ var KeyboardRender = (function () {
     }
     score.ok++;
     memRecord(true);
+    var upTo = noteProgress(true);
     state.answered = true;
     lastResult = 'Correct, ' + state.card.name + (state.cardMode === 'play' && NOTE_SHARP[pc] !== NOTE_FLAT[pc] ? ' (also ' + (state.card.spell ? NOTE_SHARP[pc] : NOTE_FLAT[pc]) + ')' : '') + '.';
     updateScore();
     draw(false, false);
     feedback('yes');
+    if (upTo) celebrateNote(upTo);
   }
   function press(pc, spell, viaKeyboard, fromS, keyEl) {
     if (noteOn()) {
