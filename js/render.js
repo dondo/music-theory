@@ -923,10 +923,10 @@ var KeyboardRender = (function () {
 
     // keys (clipped to the window; white keys first so black keys sit on top)
     if (!noKeys) {
-      parts.push('<g class="keys" clip-path="url(#kbclip)">');
+      parts.push('<g class="keys" clip-path="url(#kbclip)"><g class="keys-slide">');
       whites.forEach(function (k) { parts.push(whiteKey(k, ctx)); });
       blacks.forEach(function (k) { parts.push(blackKey(k, ctx)); });
-      parts.push('</g>');
+      parts.push('</g></g>');
       if (state.picked && state.picked.length) parts.push(pickedOverlay(whites, blacks, state.picked));
     }
 

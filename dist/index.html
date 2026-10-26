@@ -3439,10 +3439,10 @@ var KeyboardRender = (function () {
 
     // keys (clipped to the window; white keys first so black keys sit on top)
     if (!noKeys) {
-      parts.push('<g class="keys" clip-path="url(#kbclip)">');
+      parts.push('<g class="keys" clip-path="url(#kbclip)"><g class="keys-slide">');
       whites.forEach(function (k) { parts.push(whiteKey(k, ctx)); });
       blacks.forEach(function (k) { parts.push(blackKey(k, ctx)); });
-      parts.push('</g>');
+      parts.push('</g></g>');
       if (state.picked && state.picked.length) parts.push(pickedOverlay(whites, blacks, state.picked));
     }
 
@@ -4742,33 +4742,33 @@ var KeyboardRender = (function () {
     var newStave = newSvg.querySelector('.stave'), oldStave = oldSvg.querySelector('.stave');
     var tail = newStave && oldStave ? STAFF_FADE_MS : 0;
     var opts = { duration: SLIDE_MS, easing: EASE, fill: 'both' };
-    var a1 = oldSvg.animate([{ transform: 'translateX(0)' }, { transform: 'translateX(' + (-dx) + 'px)' }], opts);
-    var a2 = newSvg.animate([{ transform: 'translateX(' + dx + 'px)' }, { transform: 'translateX(0)' }], opts);
-    // flashcard: the signature card stays put while the keyboard slides under it
-    var a3 = null;
-    var newCard = newSvg.querySelector('.flashcard, .sigcard');
-    if (newCard) {
-      var oldCard = oldSvg.querySelector('.flashcard, .sigcard');
-      if (oldCard) oldCard.style.display = 'none';
-      var units = KeyboardRender.WIDTH / rect.width;          // screen px -> SVG user units
-      a3 = newCard.animate([{ transform: 'translateX(' + (-dx * units) + 'px)' }, { transform: 'translateX(0)' }], opts);
-    }
-    var extra = [], lastAnim = a2;
+    var a1, a2, a3 = null, extra = [], lastAnim;
     if (tail) {
-      newSvg.style.overflow = 'visible'; oldSvg.style.overflow = 'visible';      // (the old staff sits outside its sliding drawing's own box)
+      // With a staff, the drawings themselves stay put and their parts move: the keyboard slides, the old notes ride with it
+      // (through a window that does not move, so they vanish at the key signature), and the staff frame never moves at all.
       var u2 = KeyboardRender.WIDTH / rect.width, fade = { duration: tail, delay: SLIDE_MS, fill: 'both', easing: 'ease-in-out' };
-      var counter = [{ transform: 'translateX(0)' }, { transform: 'translateX(' + (dx * u2) + 'px)' }];
       var q = function (svg, sel) { return Array.prototype.slice.call(svg.querySelectorAll(sel)); };
-      // the old staff (lines, clef, key signature) stays exactly where it is while the drawing slides under it
-      q(oldSvg, '.stave-lines, .stave-sig').forEach(function (g) { extra.push(g.animate(counter, opts)); });
-      // its notes slide along with the keyboard, but the window they show through stays put, so they vanish at the key signature
-      q(oldSvg, '.stave-notes-wrap').forEach(function (g) { extra.push(g.animate(counter, opts)); });
-      q(oldSvg, '.stave-notes').forEach(function (g) { extra.push(g.animate([{ transform: 'translateX(0)' }, { transform: 'translateX(' + (-dx * u2) + 'px)' }], opts)); });   // (so net they travel with the keyboard)
+      var move = function (g, from, to) { return g.animate([{ transform: 'translateX(' + from * u2 + 'px)' }, { transform: 'translateX(' + to * u2 + 'px)' }], opts); };
+      q(oldSvg, '.keys-slide').forEach(function (g) { a1 = move(g, 0, -dx); extra.push(a1); });
+      q(newSvg, '.keys-slide').forEach(function (g) { a2 = move(g, dx, 0); extra.push(a2); });
+      q(oldSvg, '.stave-notes').forEach(function (g) { extra.push(move(g, 0, -dx)); });
       q(oldSvg, '.stave-under').forEach(function (g) { g.style.display = 'none'; });
-      // then the old key and notes fade out as the new ones fade in
       q(oldSvg, '.stave-sig, .stave-notes-wrap').forEach(function (g) { extra.push(g.animate([{ opacity: 1 }, { opacity: 0 }], fade)); });
       q(newSvg, '.stave-sig, .stave-notes-wrap, .stave-under').forEach(function (g) { lastAnim = g.animate([{ opacity: 0 }, { opacity: 1 }], fade); extra.push(lastAnim); });
       q(newSvg, '.stave-lines').forEach(function (g) { extra.push(g.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 1, delay: SLIDE_MS, fill: 'both' })); });   // (the same lines as the old staff's)
+      a1 = a1 || { cancel: function () {} }; a2 = a2 || { cancel: function () {} };
+    } else {
+      a1 = oldSvg.animate([{ transform: 'translateX(0)' }, { transform: 'translateX(' + (-dx) + 'px)' }], opts);
+      a2 = newSvg.animate([{ transform: 'translateX(' + dx + 'px)' }, { transform: 'translateX(0)' }], opts);
+      lastAnim = a2;
+      // flashcard: the signature card stays put while the keyboard slides under it
+      var newCard = newSvg.querySelector('.flashcard, .sigcard');
+      if (newCard) {
+        var oldCard = oldSvg.querySelector('.flashcard, .sigcard');
+        if (oldCard) oldCard.style.display = 'none';
+        var units = KeyboardRender.WIDTH / rect.width;          // screen px -> SVG user units
+        a3 = newCard.animate([{ transform: 'translateX(' + (-dx * units) + 'px)' }, { transform: 'translateX(0)' }], opts);
+      }
     }
     var finished = false;
     function done() {
