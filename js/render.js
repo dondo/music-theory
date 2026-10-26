@@ -755,7 +755,6 @@ var KeyboardRender = (function () {
     // final barline: a thin line, then a thick one
     out.push('<line x1="' + f(winR - 11) + '" y1="' + f(YB - 4 * SB) + '" x2="' + f(winR - 11) + '" y2="' + f(YB) + '" stroke="' + INK + '" stroke-width="1.2"/>');
     out.push('<rect x="' + f(winR - 8.5) + '" y="' + f(YB - 4 * SB - 0.5) + '" width="3.5" height="' + f(4 * SB + 1) + '" fill="' + INK + '"/>');
-    out.push('</g><g class="stave-sig">');
     var clef = clefDef(data.clef);
     var clefX = x0 + 8;
     out.push('<use href="#' + clef.glyph + '" transform="translate(' + f(clefX) + ',' + f(YB - clef.line * SB) + ') scale(' + k + ',-' + k + ')" fill="' + INK + '"/>');
@@ -764,6 +763,7 @@ var KeyboardRender = (function () {
     if (!data.fixedClef) out.push('<rect class="clef-hit" data-clef="' + clef.id + '" tabindex="0" role="button" aria-haspopup="true" aria-label="Clef: ' + clef.name +
       '. Press to change." x="' + f(x0 - 18) + '" y="' + f(YB - 4 * SB - 1.6 * SB) + '" width="' + f(clef.w * KB + 30) + '" height="' + f(4 * SB + 6.2 * SB) +
       '" rx="5"><title>Clef: ' + esc(clef.name) + ' (click to change)</title></rect>');
+    out.push('</g><g class="stave-sig">');       // (the clef belongs to the lines: only the key and its signature change with the key)
     var steps = sp.kind === 'sharp' ? clef.sharp : clef.flat;
     var ax = clefX + clef.w * KB + 8;
     var adv = 1.15 * SB;
@@ -943,7 +943,8 @@ var KeyboardRender = (function () {
       parts.push(state.cardMode === 'chord' ? (opened ? chordAnswer(state.card, state.quizStave, rootSpec, mode) : chordCard(state.card, mode, !!state.answered)) : flashCard(state.card, mode, !!state.answered));
       if (typeof state.guess === 'number' && !state.answered) parts.push(guessRow(state.guess, mode));
     } else if (state.staff && selected) {
-      parts.push(bigStave(state.staff, winL, winR, rootSpec, mode));    // chords or a progression: one big stave instead of the boxes
+      var stW = Math.min(windowGeom(0, 2).width, windowGeom(5, 2).width), stL = (WIDTH - stW) / 2;   // (the staff keeps one size whatever the key, so a key change leaves its lines and clef where they are)
+      parts.push(bigStave(state.staff, stL, stL + stW, rootSpec, mode));    // chords or a progression: one big stave instead of the boxes
     } else {
       // label boxes above the keys
       parts.push('<g class="boxes">');
