@@ -4907,6 +4907,7 @@ var KeyboardRender = (function () {
     if (!state.selected || state.flash || !chordy()) return null;      // (the stave belongs to the chord modes)
     var progOpen = progDetails.open && theoryMode();          // (the Progressions section belongs to the chord theory topics; Chords shows the chosen chord)
     var chordOpen = chordsDetails.open;
+    if (progOpen && isAlt() && chordOpen) progOpen = false;      // (progressions need the seven-note scale: pentatonic and whole tone show the chosen chord instead)
     if (!progOpen && !chordOpen) return null;
     var tonic = ChordAudio.tonicMidi(state.root);
     var clefId = clefAllowed(state.clef) ? state.clef : 'treble';   // a Jazz-only clef falls back to treble in Pop
