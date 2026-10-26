@@ -999,7 +999,7 @@ var KeyboardRender = (function () {
 
     if (noteMode && !noteStudy && state.noteLit == null) {        // Notes, Explore: the same hint, until a key has been picked
       parts.push('<text x="' + (WIDTH / 2) + '" y="' + (DEG_Y + 5) + '" text-anchor="middle" font-size="15" ' +
-        'fill="#7b8294" pointer-events="none">\u2191 Click any key to hear it and see its note on the staff</text>');
+        'fill="#7b8294" pointer-events="none">\u2191 Click any key to see the corresponding note on the staff, or click a note to see its key</text>');
     }
 
     parts.push('</svg>');
