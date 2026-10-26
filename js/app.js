@@ -1982,9 +1982,9 @@
   function ftcName(ch) {                                // the chord as shown: G7, or G7/B for an inversion
     return ftcQ.inv ? ch.symbol + '/' + ch.notes[ftcQ.inv % ch.notes.length] : ch.symbol;
   }
-  function ftcNotes() {
-    var ch = ftcChord(), tonic = ChordAudio.tonicMidi(ftcQ.pc), items = [], prev = null, i;
-    var n = ch.pcOffsets.length, k = (ftcQ.inv || 0) % n;                      // the chord tone k sits lowest
+  function ftcNotes(chOver, tonicOver, invOver) {
+    var ch = chOver || ftcChord(), tonic = tonicOver != null ? tonicOver : ChordAudio.tonicMidi(ftcQ.pc), items = [], prev = null, i;
+    var n = ch.pcOffsets.length, k = (invOver != null ? invOver : (ftcQ.inv || 0)) % n;                      // the chord tone k sits lowest
     for (i = 0; i < n; i++) {
       var j = (k + i) % n, pc = (tonic + ch.pcOffsets[j]) % 12, m = prev === null ? 48 : prev + 1;
       while (m % 12 !== pc) m++;
@@ -1994,6 +1994,31 @@
     var avg = items.reduce(function (a, n) { return a + n.midi; }, 0) / items.length;
     var shift = 12 * Math.round((71 - avg) / 12);
     return items.map(function (n) { return { midi: n.midi + shift, name: n.name }; });
+  }
+
+  // the chord a wrong guess named, as notes for the staff (root position): the card shows it in red beside the question
+  var LETTER_PC = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 }, LETTERS = 'CDEFGAB';
+  function wrongNotes(sel, got) {
+    if (!sel) {                                                                   // degree answers: a chord of the key
+      var ch = Chords.chordInKey(ftcSpec().name, state.mode, got.deg, got.type);
+      return ftcNotes(ch, ChordAudio.tonicMidi(ftcQ.pc), 0);
+    }
+    var t = sel.type, q = sel.qual, third = q === 'min' || q === 'dim' ? 3 : 4, fifth = q === 'dim' ? 6 : q === 'aug' ? 8 : 7;
+    var sev = (q === 'maj' || q === 'aug') && sel.sev === 'maj' ? 11 : 10;
+    var parts = t === 'sus2' ? [[0, 0], [1, 2], [4, 7]] : t === 'sus4' ? [[0, 0], [3, 5], [4, 7]] : [[0, 0], [2, third], [4, fifth]];
+    if (t === 'add9') parts.push([8, 14]);
+    if (t === '7' || t === '9' || t === '11' || t === '13') parts.push([6, sev]);
+    if (t === '9' || t === '11' || t === '13') parts.push([8, 14]);
+    if (t === '11' || t === '13') parts.push([10, 17]);
+    if (t === '13') parts.push([12, 21]);
+    var rootName = FindChord.pcName(sel.root, ftcSpec().kind === 'flat'), rl = LETTERS.indexOf(rootName.charAt(0)), names = [], offs = [];
+    parts.forEach(function (pt) {
+      var L = LETTERS.charAt((rl + pt[0]) % 7), pc = (sel.root + pt[1]) % 12, d = ((pc - LETTER_PC[L] + 18) % 12) - 6;      // -2..2 accidentals
+      names.push(L + (d === 1 ? Theory.SHARP : d === -1 ? Theory.FLAT : d === 2 ? Theory.DOUBLE_SHARP : d === -2 ? Theory.DOUBLE_FLAT : ''));
+      offs.push(pc);
+    });
+    var items = ftcNotes({ pcOffsets: offs, notes: names }, 0, 0);
+    return items;
   }
 
   function ftcNewQuestion(animate) {
@@ -2377,6 +2402,7 @@
     ftcStreak = 0;
     saveFtc();
     ftcWrong = true;                                  // (the chips keep showing the wrong chord until the next click)
+    try { state.card.wrong = { notes: wrongNotes(pa ? sel : null, got) }; } catch (e) { state.card.wrong = null; }      // (red notes beside the question; never in a time trial, which returns above)
     if (haveName) state.card.status = 'That is ' + haveName + '. Try again.';
     else { var have = Chords.chordInKey(ftcSpec().name, state.mode, got.deg, got.type); state.card.status = 'That is ' + have.symbol + ' (' + have.roman + '). Try again.'; }
     ftcSay(state.card.status, 'bad');

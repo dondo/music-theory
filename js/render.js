@@ -631,7 +631,7 @@ var KeyboardRender = (function () {
     for (q = 10; q <= maxP; q += 2) lines.push(q);
     lines.forEach(function (l) {
       out.push('<line x1="' + f(cx - 1.25 * SB) + '" y1="' + f(yAt(l)) + '" x2="' + f(cx + (items.some(function (i) { return i.right; }) ? 2.1 : 1.25) * SB) +
-        '" y2="' + f(yAt(l)) + '" stroke="' + INK + '" stroke-width="1.1"/>');
+        '" y2="' + f(yAt(l)) + '" stroke="' + ink + '" stroke-width="1.1"/>');
     });
     // accidentals, stacked leftwards so close ones do not collide (highest note first)
     var cols = [];
@@ -708,7 +708,9 @@ var KeyboardRender = (function () {
     }
     var sigVal = {};
     (sp.kind === 'sharp' ? SHARP_ORDER : FLAT_ORDER).slice(0, sp.n).forEach(function (l) { sigVal[l] = sp.kind === 'sharp' ? 1 : -1; });
-    out.push(chordOnStave(ax + Math.max(sp.n, 1) * adv + 36, card.chord.notes, sigVal, INK, clef));
+    var qx = ax + Math.max(sp.n, 1) * adv + 36;
+    out.push(chordOnStave(qx, card.chord.notes, sigVal, INK, clef));
+    if (card.wrong && !answered) out.push('<g class="wrong-chord">' + chordOnStave(Math.min(qx + 74, x1 - 22), card.wrong.notes, sigVal, '#dc2626', clef) + '</g>');      // what the wrong guess named, in red beside the question
     out.push('</g>');
     var ty = bot + 24;
     if (answered && card.title) {
