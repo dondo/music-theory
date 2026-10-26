@@ -763,10 +763,19 @@ html.is-local .ftc-local { display: inline-flex; }
 .note-soon { margin: 16px 0; padding: 18px; text-align: center; color: var(--muted); background: #fff; border-radius: 14px; }
 .note-soon[hidden] { display: none; }
 /* the topic list: each choice is its own outlined button */
-#appmode-group { gap: 6px; flex-wrap: wrap; border-radius: 22px; }
-#appmode-group label { border: 1.5px solid #b4bccf; background: #f3f5fa; padding: 6px 18px; }
-#appmode-group label:hover { background: #fff; }
-#appmode-group input:checked + label { border-color: var(--accent); background: #fff; }
+.mode-menu { position: relative; }
+.mode-btn { font: inherit; font-weight: 600; color: var(--ink); background: #fff; border: 1.5px solid var(--accent); border-radius: 22px; padding: 8px 16px 8px 20px; cursor: pointer; display: inline-flex; gap: 10px; align-items: center; }
+.mode-btn:hover { background: #f3f5fa; }
+.mode-caret { font-size: 12px; color: var(--muted); }
+#appmode-group { position: absolute; z-index: 20; top: calc(100% + 6px); left: 0; display: block; padding: 8px 18px 8px 10px; border-radius: 16px; background: #fff; border: 1.5px solid #b4bccf; box-shadow: 0 8px 24px rgba(20,30,60,.18); white-space: nowrap; }
+#appmode-group[hidden] { display: none; }
+#appmode-group::before { content: ''; position: absolute; left: 25px; top: 26px; bottom: 26px; width: 3px; margin-left: -1.5px; background: #4a7bec; border-radius: 2px; }
+#appmode-group label { position: relative; display: flex; align-items: center; gap: 14px; padding: 0 14px 0 6px; height: 36px; border-radius: 10px; background: transparent; border: 0; box-shadow: none; color: var(--ink); }
+#appmode-group label::before { content: ''; flex: none; box-sizing: border-box; width: 18px; height: 18px; border-radius: 50%; border: 3px solid #4a7bec; background: #fff; position: relative; z-index: 1; }
+#appmode-group label:hover { background: #f3f5fa; }
+#appmode-group input:checked + label { background: #e6edff; box-shadow: none; }
+#appmode-group input:checked + label::before { background: #4a7bec; box-shadow: 0 0 0 3px #fff inset; }
+#appmode-group input:focus-visible + label { outline: 3px solid var(--accent); outline-offset: -2px; }
 /* Chords and Progressions no longer collapse */
 .chords summary { cursor: default; list-style: none; }
 .chords summary::-webkit-details-marker { display: none; }
@@ -783,7 +792,9 @@ html.is-local .ftc-local { display: inline-flex; }
     </header>
 
     <section class="controls" aria-label="Controls">
-      <fieldset class="segmented" id="appmode-group">
+      <div class="mode-menu" id="mode-menu">
+      <button type="button" id="mode-btn" class="mode-btn" aria-haspopup="true" aria-expanded="false"><span id="mode-btn-label">Keys</span><span class="mode-caret" aria-hidden="true">▾</span></button>
+      <fieldset class="segmented" id="appmode-group" hidden>
         <legend class="sr-only">Topic</legend>
         <input type="radio" name="appmode" id="am-note" value="note">
         <label for="am-note">Notes</label>
@@ -800,6 +811,7 @@ html.is-local .ftc-local { display: inline-flex; }
         <input type="radio" name="appmode" id="am-minortheory" value="minortheory">
         <label for="am-minortheory">Minor chord theory</label>
       </fieldset>
+      </div>
       <fieldset class="segmented" id="level-group" hidden>
         <legend class="sr-only">Theory level</legend>
         <input type="radio" name="level" id="level-pop" value="pop" checked>
@@ -4146,6 +4158,7 @@ var KeyboardRender = (function () {
     state.mode = appIsMinor() ? 'minor' : 'major';
     document.getElementById('mode-' + state.mode).checked = true;
     document.getElementById('am-' + appMode).checked = true;
+    syncModeBtn();
     var kinds = { full: 'sk-full', pentatonic: 'sk-pent', wholetone: 'sk-whole' };
     if (level === 'jazz' && kinds[s.scaleKind]) { state.scaleKind = s.scaleKind; document.getElementById(kinds[s.scaleKind]).checked = true; }
     if (s.chordView === 'quality') state.chordView = 'quality';
@@ -6482,9 +6495,25 @@ var KeyboardRender = (function () {
   Array.prototype.forEach.call(document.querySelectorAll('input[name="notespell"]'), function (input) {
     input.addEventListener('change', function () { if (input.checked) { noteSpell = input.value === 'flat' ? 1 : 0; draw(false, false); } });
   });
-  Array.prototype.forEach.call(document.querySelectorAll('input[name="appmode"]'), function (input) {
-    input.addEventListener('change', function () { if (input.checked) applyAppMode(input.value); });
+  function syncModeBtn() {
+    var r = document.getElementById('am-' + appMode);
+    document.getElementById('mode-btn-label').textContent = document.querySelector('label[for="' + r.id + '"]').textContent;
+  }
+  function modeMenu(open) {
+    document.getElementById('appmode-group').hidden = !open;
+    document.getElementById('mode-btn').setAttribute('aria-expanded', open ? 'true' : 'false');
+  }
+  document.getElementById('mode-btn').addEventListener('click', function (e) {
+    e.stopPropagation(); modeMenu(document.getElementById('appmode-group').hidden);
   });
+  document.addEventListener('click', function (e) {
+    if (!document.getElementById('mode-menu').contains(e.target)) modeMenu(false);
+  });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') modeMenu(false); });
+  Array.prototype.forEach.call(document.querySelectorAll('input[name="appmode"]'), function (input) {
+    input.addEventListener('change', function () { if (input.checked) { applyAppMode(input.value); syncModeBtn(); modeMenu(false); } });
+  });
+  syncModeBtn();
 
   Array.prototype.forEach.call(levelInputs, function (input) {
     input.addEventListener('change', function () {

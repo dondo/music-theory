@@ -24,7 +24,9 @@
     </header>
 
     <section class="controls" aria-label="Controls">
-      <fieldset class="segmented" id="appmode-group">
+      <div class="mode-menu" id="mode-menu">
+      <button type="button" id="mode-btn" class="mode-btn" aria-haspopup="true" aria-expanded="false"><span id="mode-btn-label">Keys</span><span class="mode-caret" aria-hidden="true">▾</span></button>
+      <fieldset class="segmented" id="appmode-group" hidden>
         <legend class="sr-only">Topic</legend>
         <input type="radio" name="appmode" id="am-note" value="note">
         <label for="am-note">Notes</label>
@@ -41,6 +43,7 @@
         <input type="radio" name="appmode" id="am-minortheory" value="minortheory">
         <label for="am-minortheory">Minor chord theory</label>
       </fieldset>
+      </div>
       <fieldset class="segmented" id="level-group" hidden>
         <legend class="sr-only">Theory level</legend>
         <input type="radio" name="level" id="level-pop" value="pop" checked>

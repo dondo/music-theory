@@ -642,6 +642,7 @@
     state.mode = appIsMinor() ? 'minor' : 'major';
     document.getElementById('mode-' + state.mode).checked = true;
     document.getElementById('am-' + appMode).checked = true;
+    syncModeBtn();
     var kinds = { full: 'sk-full', pentatonic: 'sk-pent', wholetone: 'sk-whole' };
     if (level === 'jazz' && kinds[s.scaleKind]) { state.scaleKind = s.scaleKind; document.getElementById(kinds[s.scaleKind]).checked = true; }
     if (s.chordView === 'quality') state.chordView = 'quality';
@@ -2978,9 +2979,25 @@
   Array.prototype.forEach.call(document.querySelectorAll('input[name="notespell"]'), function (input) {
     input.addEventListener('change', function () { if (input.checked) { noteSpell = input.value === 'flat' ? 1 : 0; draw(false, false); } });
   });
-  Array.prototype.forEach.call(document.querySelectorAll('input[name="appmode"]'), function (input) {
-    input.addEventListener('change', function () { if (input.checked) applyAppMode(input.value); });
+  function syncModeBtn() {
+    var r = document.getElementById('am-' + appMode);
+    document.getElementById('mode-btn-label').textContent = document.querySelector('label[for="' + r.id + '"]').textContent;
+  }
+  function modeMenu(open) {
+    document.getElementById('appmode-group').hidden = !open;
+    document.getElementById('mode-btn').setAttribute('aria-expanded', open ? 'true' : 'false');
+  }
+  document.getElementById('mode-btn').addEventListener('click', function (e) {
+    e.stopPropagation(); modeMenu(document.getElementById('appmode-group').hidden);
   });
+  document.addEventListener('click', function (e) {
+    if (!document.getElementById('mode-menu').contains(e.target)) modeMenu(false);
+  });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') modeMenu(false); });
+  Array.prototype.forEach.call(document.querySelectorAll('input[name="appmode"]'), function (input) {
+    input.addEventListener('change', function () { if (input.checked) { applyAppMode(input.value); syncModeBtn(); modeMenu(false); } });
+  });
+  syncModeBtn();
 
   Array.prototype.forEach.call(levelInputs, function (input) {
     input.addEventListener('change', function () {
