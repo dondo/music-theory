@@ -4764,8 +4764,12 @@ var KeyboardRender = (function () {
       }
       q(oldSvg, '.stave-notes').forEach(function (g) { extra.push(move(g, 0, -S / u2)); });   // (the same easing over the same time, just a shorter way: they arrive together)
       q(oldSvg, '.stave-under').forEach(function (g) { g.style.display = 'none'; });
-      q(oldSvg, '.stave-sig, .stave-notes-wrap').forEach(function (g) { extra.push(g.animate([{ opacity: 1 }, { opacity: 0 }], fade)); });
-      q(newSvg, '.stave-sig, .stave-notes-wrap, .stave-under').forEach(function (g) { lastAnim = g.animate([{ opacity: 0 }, { opacity: 1 }], fade); extra.push(lastAnim); });
+      // the notes cross-fade while they slide; the key and its signature change once the slide is over
+      var fadeNotes = { duration: SLIDE_MS, fill: 'both', easing: 'ease-in-out' };
+      q(oldSvg, '.stave-notes-wrap').forEach(function (g) { extra.push(g.animate([{ opacity: 1 }, { opacity: 0 }], fadeNotes)); });
+      q(newSvg, '.stave-notes-wrap, .stave-under').forEach(function (g) { extra.push(g.animate([{ opacity: 0 }, { opacity: 1 }], fadeNotes)); });
+      q(oldSvg, '.stave-sig').forEach(function (g) { extra.push(g.animate([{ opacity: 1 }, { opacity: 0 }], fade)); });
+      q(newSvg, '.stave-sig').forEach(function (g) { lastAnim = g.animate([{ opacity: 0 }, { opacity: 1 }], fade); extra.push(lastAnim); });
       q(newSvg, '.stave-lines').forEach(function (g) { extra.push(g.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 1, delay: SLIDE_MS, fill: 'both' })); });   // (the same lines as the old staff's)
       a1 = a1 || { cancel: function () {} }; a2 = a2 || { cancel: function () {} };
     } else {
