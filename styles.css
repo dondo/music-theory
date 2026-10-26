@@ -767,5 +767,5 @@ html.is-local .ftc-local { display: inline-flex; }
 .note-hit:hover, .note-hit:focus-visible { fill-opacity: .14; }
 
 /* Play / Find the note: the progress row under the keyboard, like Find the chord's */
-.note-card[hidden] { display: none; }
-.note-card .chord-info { margin: 0; }
+.step-card[hidden] { display: none; }
+.step-card .chord-info { margin: 0; }

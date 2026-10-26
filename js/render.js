@@ -20,6 +20,7 @@ var KeyboardRender = (function () {
   var S = 6.8;                        // staff space (px between staff lines)
   var K = S / 250;                    // Bravura font units -> px
   var CLEF_W = 671 * K;
+  var clefNow = null;                 // the clef of the key-signature cards and boxes being drawn (Find the key / signature steps); null = treble
   var ACC_ADV = 1.15 * S;             // advance between accidentals
 
   var W = 64;                         // white key width
@@ -200,10 +201,10 @@ var KeyboardRender = (function () {
         f(bottom) + '" stroke="' + INK + '" stroke-width="1"/>');
     });
     var clefX = x0 + 6;
-    out.push('<use href="#gclef" transform="translate(' + f(clefX) + ',' + f(bottom - S) +
+    out.push('<use href="#' + (clefNow ? clefNow.glyph : 'gclef') + '" transform="translate(' + f(clefX) + ',' + f(bottom - (clefNow ? clefNow.line : 1) * S) +
       ') scale(' + K.toFixed(5) + ',' + (-K).toFixed(5) + ')" fill="' + INK + '"/>');
-    var steps = sp.kind === 'sharp' ? SHARP_STEPS : FLAT_STEPS;
-    var ax = clefX + CLEF_W + 3.5;
+    var steps = clefNow ? (sp.kind === 'sharp' ? clefNow.sharp : clefNow.flat) : (sp.kind === 'sharp' ? SHARP_STEPS : FLAT_STEPS);
+    var ax = clefX + (clefNow ? clefNow.w * K : CLEF_W) + 3.5;
     for (i = 0; i < sp.n; i++) {
       var ay = bottom - steps[i] * S / 2;
       out.push('<use href="#' + sp.kind + '" transform="translate(' + f(ax + i * ACC_ADV) +
@@ -847,6 +848,7 @@ var KeyboardRender = (function () {
   function render(state) {
     var mode = state.mode === 'minor' ? 'minor' : 'major';
     var r = T.mod12(state.root || 0);
+    clefNow = !state.noteMode && state.clefId && state.clefId !== 'treble' ? clefDef(state.clefId) : null;
     var noteMode = !!state.noteMode;                           // Notes: the keyboard and a stave of single notes, in C
     var noteStudy = noteMode && !!state.flash;                 // Study: play the note / find the note
     var selected = !!state.selected || noteMode;
@@ -917,6 +919,7 @@ var KeyboardRender = (function () {
       'font-family="-apple-system, \'Segoe UI\', Roboto, \'Helvetica Neue\', \'DejaVu Sans\', Arial, sans-serif">');
     parts.push('<defs>' +
       '<path id="gclef" d="' + G.gclef + '"/>' +
+      (clefNow && !(state.staff && selected) ? '<path id="' + clefNow.glyph + '" d="' + G[clefNow.glyph] + '"/>' : '') +
       (state.staff && selected ? '<path id="gclef8va" d="' + G.gclef8va + '"/><path id="gclef8vb" d="' + G.gclef8vb + '"/><path id="fclef" d="' + G.fclef + '"/><path id="cclef" d="' + G.cclef + '"/>' : '') +
       '<path id="sharp" d="' + G.sharp + '"/>' +
       '<path id="flat" d="' + G.flat + '"/>' +
