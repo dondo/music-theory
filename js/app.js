@@ -151,12 +151,14 @@
   var viewGroup = document.getElementById('view-group');
   var flashModeGroup = document.getElementById('flashmode-group');
   var flashModeInputs = document.querySelectorAll('input[name="flashmode"]');
-  var APP_MODES = ['note', 'key', 'minor', 'chords', 'minorchords', 'theory', 'minortheory'];
-  var appMode = 'note';                                // note | key | minor | chords | minorchords | theory | minortheory
-  function chordy() { return appMode.indexOf('chords') >= 0 || appMode.indexOf('theory') >= 0; }
+  var APP_MODES = ['note', 'key', 'minor', 'chords', 'minorchords', 'theory', 'minortheory', 'progs'];
+  var appMode = 'note';                                // note | key | minor | chords | minorchords | theory | minortheory | progs
+  function chordy() { return appMode.indexOf('chords') >= 0 || appMode.indexOf('theory') >= 0 || appMode === 'progs'; }
   function noteOn() { return appMode === 'note'; }
   function noteCardOn() { return noteOn() && state.flash && (state.cardMode === 'play' || state.cardMode === 'find'); }
-  function theoryMode() { return appMode.indexOf('theory') >= 0; }          // Jazz level: roman numerals, 11ths/13ths, scale types, and the progression builder
+  function theoryMode() { return appMode.indexOf('theory') >= 0 || appMode === 'progs'; }          // Jazz level: roman numerals, 11ths/13ths, scale types
+  function progsMode() { return appMode === 'progs'; }                      // the Progressions topic (major key): the only one that shows the progression builder
+  function progActive() { return progDetails.open && progsMode(); }
   function appIsMinor() { return appMode.indexOf('minor') === 0; }
   var level = 'pop';                                  // pop | jazz: pop hides the advanced theory
   var POP_HIDDEN_TYPES = ['11', '13'];
@@ -894,7 +896,7 @@
     progClear.textContent = armed === progClear ? 'Click again to clear' : 'Clear';
   }
 
-  function progOn() { return state.selected && !state.flash && !isAlt() && progDetails.open && prog.length > 0; }
+  function progOn() { return state.selected && !state.flash && !isAlt() && progActive() && prog.length > 0; }
 
   function progChord(i) {
     return Chords.chordInKey(currentSpec().name, state.mode, prog[i].deg, prog[i].type);
@@ -1113,7 +1115,7 @@
   function updateProgPanel() {
     syncProgIndex();
     if (state.chord && chordsDetails.open && state.selected && !state.flash && !isAlt()) progRevealed = true;
-    var visible = theoryMode() && state.selected && !state.flash && !isAlt() && !qualityOn();   // Chord theory: the section is simply there once a key is picked
+    var visible = progsMode() && state.selected && !state.flash && !isAlt() && !qualityOn();   // Chord theory: the section is simply there once a key is picked
     progSection.hidden = !visible;
     syncHints();
     if (!visible) return;
@@ -1350,7 +1352,7 @@
 
   function buildStaff() {
     if (!state.selected || state.flash || !chordy()) return null;      // (the stave belongs to the chord modes)
-    var progOpen = progDetails.open && theoryMode();          // (the Progressions section belongs to the chord theory topics; Chords shows the chosen chord)
+    var progOpen = progActive();          // (the Progressions section belongs to the Progressions topic alone; the others show the chosen chord)
     var chordOpen = chordsDetails.open;
     if (progOpen && isAlt() && chordOpen) progOpen = false;      // (progressions need the seven-note scale: pentatonic and whole tone show the chosen chord instead)
     if (!progOpen && !chordOpen) return null;
@@ -1452,11 +1454,11 @@
     syncProgIndex();
     state.fingerSpace = state.selected && !state.flash && !isAlt() && prog.length > 0;
     state.fingering = null;
-    if (state.fingerSpace && progIndex >= 0 && progDetails.open) {      // only while the Progressions section is expanded
+    if (state.fingerSpace && progIndex >= 0 && progActive()) {      // only while the Progressions section is expanded
       var vp = voicing(progIndex);
       state.fingering = vp ? vp.notes : null;
     }
-    if (textPop && (!progDetails.open || !state.selected || state.flash)) closeTextPop(false);
+    if (textPop && (!progActive() || !state.selected || state.flash)) closeTextPop(false);
     if (findOn && picks.length) syncPicks();
     state.picked = findOn ? picks : null;
     state.rootFirst = findActive();
@@ -1525,7 +1527,7 @@
     state.root = pc;
     state.spell = spell;
     state.selected = true;
-    if (progDetails.open && prog.length && !isAlt()) {      // a progression is being stepped through: start at its first chord
+    if (progActive() && prog.length && !isAlt()) {      // a progression is being stepped through: start at its first chord
       progIndex = 0;
       chordTypes_.full = prog[0].type;
       state.chord = { deg: prog[0].deg, type: prog[0].type };
