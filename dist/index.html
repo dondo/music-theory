@@ -6276,6 +6276,24 @@ var KeyboardRender = (function () {
     btn.click();
   });
 
+  // Notes, Play the note: A-G name the note (Shift = sharp, Alt = flat); once solved, Enter (like the right arrow) goes on
+  document.addEventListener('keydown', function (e) {
+    if (e.defaultPrevented || e.ctrlKey || e.metaKey || !noteCardOn()) return;
+    var t = e.target;
+    if (t && t.closest && t.closest('input, select, textarea')) return;
+    if (e.key === 'Enter' && !e.altKey && !e.shiftKey) {
+      if (!state.answered) return;
+      if (t && t !== document.body && t !== document.documentElement && !(t.closest && t.closest('#stage'))) return;
+      e.preventDefault();
+      nextCard(true);
+      return;
+    }
+    if (state.cardMode === 'play' && !state.answered && NATURALS[e.code] !== undefined) {
+      e.preventDefault();
+      noteAnswer((NATURALS[e.code] + (e.shiftKey ? 1 : 0) - (e.altKey ? 1 : 0) + 12) % 12);
+    }
+  });
+
   // Progressions: arrows step, Enter adds the selected chord, and the section's own buttons
   document.addEventListener('keydown', function (e) {
     if (e.defaultPrevented || !plainKey(e)) return;
