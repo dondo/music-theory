@@ -2841,8 +2841,10 @@
     else selectRoot(pc, spell, viaKeyboard, fromS);
   }
 
+  var exploreSnap = null;
   function setView(flash) {
     if (flash === state.flash) return;
+    if (flash) exploreSnap = { am: appMode, root: state.root, spell: state.spell, selected: state.selected, chord: state.chord, typePicked: typePicked, chordCleared: chordCleared };      // Explore's key and chord, for the way back
     state.flash = flash;
     state.root = 0;
     state.spell = 0;
@@ -2857,7 +2859,15 @@
       else if (noteOn() && state.cardMode !== 'play' && state.cardMode !== 'find') setCardMode('play');
       else if (!chordy() && !noteOn() && (state.cardMode === 'chord' || state.cardMode === 'play' || state.cardMode === 'find')) setCardMode('key');
       if (quizOn()) enterQuiz(); else newCard();
-    } else { exitQuiz(); state.card = null; if (chordy()) selectRoot(0, 0, false, null); }      // the chord topics need a key (C), as when entering them
+    } else {
+      exitQuiz(); state.card = null;
+      var sn = exploreSnap && exploreSnap.am === appMode && exploreSnap.selected && !noteOn() ? exploreSnap : null;
+      exploreSnap = null;
+      if (sn) {                                       // back to the key (and chord) that Explore had
+        selectRoot(sn.root, sn.spell, false, null);
+        if (chordy()) { state.chord = sn.chord; typePicked = sn.typePicked; chordCleared = sn.chordCleared; }
+      } else if (chordy()) selectRoot(0, 0, false, null);      // the chord topics need a key (C), as when entering them
+    }
     updateScore();
     draw('fade', false);
   }
