@@ -6436,7 +6436,7 @@ var KeyboardRender = (function () {
       else if (noteOn() && state.cardMode !== 'play' && state.cardMode !== 'find') setCardMode('play');
       else if (!chordy() && !noteOn() && (state.cardMode === 'chord' || state.cardMode === 'play' || state.cardMode === 'find')) setCardMode('key');
       if (quizOn()) enterQuiz(); else newCard();
-    } else { exitQuiz(); state.card = null; }
+    } else { exitQuiz(); state.card = null; if (chordy()) selectRoot(0, 0, false, null); }      // the chord topics need a key (C), as when entering them
     updateScore();
     draw('fade', false);
   }
