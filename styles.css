@@ -745,3 +745,8 @@ html.is-local .ftc-local { display: inline-flex; }
 .segmented[hidden] { display: none; }
 .note-soon { margin: 16px 0; padding: 18px; text-align: center; color: var(--muted); background: #fff; border-radius: 14px; }
 .note-soon[hidden] { display: none; }
+/* the topic list: each choice is its own outlined button */
+#appmode-group { gap: 6px; flex-wrap: wrap; border-radius: 22px; }
+#appmode-group label { border: 1.5px solid #b4bccf; background: #f3f5fa; padding: 6px 18px; }
+#appmode-group label:hover { background: #fff; }
+#appmode-group input:checked + label { border-color: var(--accent); background: #fff; }
