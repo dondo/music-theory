@@ -2800,6 +2800,15 @@
     }
   });
 
+  // a welcome banner is up: Enter is "Go" too (before any other Enter handling sees it)
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Enter' || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+    if (levelBanner.hidden || !levelBanner.hasAttribute('data-welcome')) return;
+    var t = e.target;
+    if (t && t.closest && t.closest('input, select, textarea')) return;
+    e.preventDefault(); e.stopImmediatePropagation(); dismissWelcome();
+  }, true);
+
   // Flashcards: once a card is solved, the right arrow deals the next one (same as the Next button).
   document.addEventListener('keydown', function (e) {
     if (e.key !== 'ArrowRight' || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
