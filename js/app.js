@@ -197,7 +197,7 @@
     caption.textContent = '';
     if (noteOn()) {
       var t;
-      if (!state.flash) t = 'Middle C and the twelve half steps above it, up to the next C (in the key of C, so black keys are sharps). Click a key or a note to light it up.';
+      if (!state.flash) t = 'Two octaves from middle C, a half step at a time (in the key of C, so black keys are sharps). Click a key or a note to light it up.';
       else if (state.answered) t = lastResult + ' Press Next for another note.';
       else if (state.cardMode === 'play') t = (lastResult ? lastResult + ' ' : '') + 'Study: play the note shown on the staff, in any octave.';
       else t = (lastResult ? lastResult + ' ' : '') + 'Study: one key is lit on the keyboard. Click its note on the staff.';
@@ -1257,12 +1257,12 @@
     var base = 60, flash = state.flash, card = state.card, answered = !!state.answered;
     if (flash && state.cardMode === 'play') {
       if (!card) return { kind: 'empty', clef: clefId, chords: [] };
-      return { kind: 'notes', clef: clefId, slot: 260, chords: [{ notes: [{ midi: base + card.pc, name: card.name }], top: answered ? card.name : '', sub: '', lit: false }] };
+      return { kind: 'notes', clef: clefId, slot: 260, chords: [{ notes: [{ midi: base + card.idx, name: card.name }], top: answered ? card.name : '', sub: '', lit: false }] };
     }
     var chords = [];
-    for (var i = 0; i <= 12; i++) {
-      var nm = i === 12 ? 'C' : NOTE_SHARP[i];
-      var lit = flash ? (answered && card && i % 12 === card.pc) : (noteSel != null && i % 12 === noteSel);
+    for (var i = 0; i <= 24; i++) {
+      var nm = NOTE_SHARP[i % 12];
+      var lit = flash ? (answered && card && i === card.idx) : (noteSel != null && i === noteSel);
       var show = !flash || answered;                    // find the note: the names stay hidden until it is solved
       chords.push({ notes: [{ midi: base + i, name: nm }], top: show || lit ? nm : '', sub: '', lit: lit });
     }
@@ -1383,7 +1383,7 @@
     state.noteLit = null;
     if (noteOn()) {
       state.mode = 'major'; state.root = 0; state.spell = 0;
-      state.noteLit = state.flash ? (state.cardMode === 'find' && state.card ? state.card.pc : null) : noteSel;
+      state.noteLit = state.flash ? (state.cardMode === 'find' && state.card ? state.card.idx : null) : noteSel;
       state.staff = buildNoteStaff();
     } else state.staff = buildStaff();
     layoutBar.hidden = !!state.flash || noteOn() || !!(state.staff && state.selected);       // the signature boxes only show when no stave replaces them
@@ -2322,10 +2322,10 @@
   var NOTE_FLAT = ['C', 'D\u266D', 'D', 'E\u266D', 'E', 'F', 'G\u266D', 'G', 'A\u266D', 'A', 'B\u266D', 'B'];
   var noteSel = null;                                  // Notes, Explore: the pitch class last clicked
   function newNoteCard() {
-    var avoid = state.card ? state.card.pc : -1, pc;
-    do { pc = Math.floor(Math.random() * 12); } while (pc === avoid);
+    var avoid = state.card ? state.card.pc : -1, idx, pc;
+    do { idx = Math.floor(Math.random() * 25); pc = idx % 12; } while (pc === avoid);        // two octaves from middle C: 0..24
     var flat = state.cardMode === 'play' && Math.random() < 0.5;
-    state.card = { pc: pc, spell: flat ? 1 : 0, name: (flat ? NOTE_FLAT : NOTE_SHARP)[pc] };
+    state.card = { idx: idx, pc: pc, spell: flat ? 1 : 0, name: (flat ? NOTE_FLAT : NOTE_SHARP)[pc] };
     missedThisCard = false;
     state.guess = null;
   }
@@ -2512,9 +2512,10 @@
     card.animate([{ transform: 'translateX(' + d + 'px)', opacity: 0 }, { transform: 'translateX(0)', opacity: 1 }], opts);
   }
 
-  function noteAnswer(pc) {                              // play the note / find the note: pc is the pitch class given
+  function noteAnswer(val) {                             // play the note: the pitch class pressed (any octave); find the note: the staff note clicked (0..24)
     if (state.answered || !state.card) return;
-    if (pc !== state.card.pc) {
+    var find = state.cardMode === 'find', pc = val % 12;
+    if (find ? val !== state.card.idx : pc !== state.card.pc) {
       score.bad++;
       missedThisCard = true;
       state.guess = pc;
@@ -2533,7 +2534,7 @@
   }
   function press(pc, spell, viaKeyboard, fromS, keyEl) {
     if (noteOn()) {
-      if (!state.flash) { noteSel = noteSel === pc ? null : pc; draw(false, false); }
+      if (!state.flash) { var ni0 = (fromS != null && fromS >= 0 && fromS <= 24) ? fromS : pc; noteSel = noteSel === ni0 ? null : ni0; draw(false, false); }
       else if (state.cardMode === 'play') noteAnswer(pc);
       return;
     }
@@ -2688,7 +2689,7 @@
     if (e.target.closest && e.target.closest('.giveup-btn')) { ftcGiveUp(e.detail === 0); return; }
     var nh = e.target.closest('.note-hit');
     if (nh) {
-      var ni = parseInt(nh.getAttribute('data-ni'), 10) % 12;
+      var ni = parseInt(nh.getAttribute('data-ni'), 10);
       if (!state.flash) { noteSel = noteSel === ni ? null : ni; draw(false, false); }
       else if (state.cardMode === 'find') noteAnswer(ni);
       return;

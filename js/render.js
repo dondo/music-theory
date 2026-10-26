@@ -849,7 +849,7 @@ var KeyboardRender = (function () {
     var sig = flash && !noteMode && state.cardMode === 'sig' && !!state.card;       // flashcards, "find the signature" direction
     var ctx = { mode: mode, scale: scale, flash: flash, sig: sig, flashRoot: (sig && !state.answered) ? r : null,
                 flashName: sig ? (T.specsFor(mode, state.card.pc)[state.card.spell] || rootSpec).name : '' };
-    if (noteMode && state.noteLit != null) ctx.litS = (T.mod12(state.noteLit) + 0) + windowGeom(0, 2).startSemitone;   // one key lit
+    if (noteMode && state.noteLit != null) ctx.litS = state.noteLit + windowGeom(0, 2).startSemitone;   // one key lit
     ctx.rootFirst = !!state.rootFirst;                          // Find a chord: keys below the root stay dark, so the root is the leftmost lit key
     if (scale && !flash && state.chord) {                       // Explore: a chord on a degree of the scale
       var pcOffs = null;
