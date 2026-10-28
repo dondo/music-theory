@@ -421,6 +421,10 @@
     else { document.getElementById('root-row').hidden = true; document.getElementById('sev-row').hidden = true; }
     chordTypes.textContent = '';
     var typeRow = chordTypes.closest ? chordTypes.closest('.chord-row') : null;
+    if (typeRow) {                                                        // Pop Find the chord reads Root, Quality, Type, Seventh; everywhere else Type leads
+      var rootRowEl = document.getElementById('root-row'), sevRowEl = document.getElementById('sev-row'), want = popQuiz ? sevRowEl : rootRowEl;
+      if (typeRow.nextElementSibling !== want) want.parentNode.insertBefore(typeRow, want);
+    }
     if (typeRow) typeRow.hidden = !alt && ftcTypesHidden();               // Find the chord: no TYPE row until a chord that is not a triad is in play
     var types = alt ? Chords.ALT_TYPES.filter(function (t) {
       for (var i = 0; i < sc.offsets.length; i++) if (Chords.chordInScale(sc, i, t.id)) return true;
