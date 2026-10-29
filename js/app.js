@@ -469,7 +469,7 @@
     chordInfo.textContent = '';
     var scoreHere = quizOn() && (score.ok + score.bad > 0 || !!ftcTrial);       // Find the chord: after the first guess the score replaces the instruction
     placeTrialBox(quizOn());
-    var showHead = quizOn() && (scoreHere || isPhoneLayout());       // (on a phone the level and the bubbles show from the start)
+    var showHead = quizOn();                                           // (the level, bubbles and arrows always show; before the first guess the instruction follows them)
     if (showHead) {
       quizHead.appendChild(levelTag);
       quizHead.appendChild(scoreBox); scoreBox.hidden = false;
