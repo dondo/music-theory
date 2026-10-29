@@ -1134,7 +1134,7 @@
     var curIt = currentItem();
     progSummary.textContent = 'Progressions' + (curIt ? ': ' + curIt.name : '') + (prog.length ? ' (' + prog.length + ')' : '');
     progHint.textContent = prog.length
-      ? 'Pick a key on the piano to light the first chord, then press Next or the right arrow to step through; it wraps round to the start. The lit chord shows a suggested left-hand fingering (1 = thumb) under the keys, chosen with inversions to keep the hand moving as little as possible through the progression.'
+      ? 'Pick a key on the piano to light the first chord, then press Next or the right arrow to step through; it wraps round to the start.'
       : 'Choose a type and a degree in the chord selector, then press Add (or Enter) to collect chords here.';
     progPrev.disabled = progNext.disabled = !prog.length;
     progList.textContent = '';
@@ -1149,7 +1149,7 @@
       b.setAttribute('aria-pressed', i === progIndex ? 'true' : 'false');
       b.setAttribute('aria-label', 'Chord ' + (i + 1) + ': ' + ch.roman + ', ' + ch.symbol);
       var vp2 = voicing(i);
-      if (vp2) b.title = ch.symbol + ': ' + vp2.name + ', fingers ' + vp2.notes.map(function (n) { return n.finger; }).join('-');
+      if (vp2) b.title = ch.symbol + ': ' + vp2.name;
       var popP = level === 'pop';                                            // (as on the chord selector: Pop leads with the chord name, Jazz with the numeral)
       b.appendChild(el('span', 'chip-num', popP ? ch.symbol : ch.roman));
       b.appendChild(el('span', 'chip-sym', popP ? ch.roman : ch.symbol));
@@ -1460,12 +1460,8 @@
       state.chord = null;                     // that chord does not exist in this key's scale
     }
     syncProgIndex();
-    state.fingerSpace = state.selected && !state.flash && !isAlt() && prog.length > 0;
-    state.fingering = null;
-    if (state.fingerSpace && progIndex >= 0 && progActive()) {      // only while the Progressions section is expanded
-      var vp = voicing(progIndex);
-      state.fingering = vp ? vp.notes : null;
-    }
+    state.fingerSpace = false;
+    state.fingering = null;                                          // (no fingering hints; the voicings still shape the staff and the sound)
     if (textPop && (!progActive() || !state.selected || state.flash)) closeTextPop(false);
     if (findOn && picks.length) syncPicks();
     state.picked = findOn ? picks : null;
