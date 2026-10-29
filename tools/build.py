@@ -27,6 +27,12 @@ html = re.sub(
     html,
 )
 
+# the footer's version: VERSION (e.g. 1.0) plus a short fingerprint of the build, so two builds of the same code read the same
+import hashlib as _h
+_base = read("VERSION").strip() if os.path.exists("VERSION") else "1.0"
+_fp = _h.sha1(html.replace("__VERSION__", "").encode("utf-8")).hexdigest()[:7]
+html = html.replace("__VERSION__", "%s (build %s)" % (_base, _fp))
+
 with open("dist/index.html", "w", encoding="utf-8") as f:
     f.write(html)
 print("wrote dist/index.html (%d KB)" % (len(html.encode("utf-8")) // 1024))

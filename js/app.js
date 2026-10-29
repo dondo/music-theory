@@ -3334,6 +3334,8 @@
     input.addEventListener('change', function () { if (input.checked) { noteSpell = input.value === 'flat' ? 1 : 0; draw(false, false); } });
   });
   function syncModeBtn() {
+    var onKeys = appMode === 'key' || appMode === 'minor';
+    Array.prototype.forEach.call(document.querySelectorAll('.legend-key'), function (li) { li.hidden = !onKeys; });      // the key-signature legend belongs to the Keys topics
     var r = document.getElementById('am-' + appMode);
     document.getElementById('mode-btn-label').textContent = document.querySelector('label[for="' + r.id + '"]').textContent;
   }

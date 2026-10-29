@@ -273,8 +273,8 @@ body {
   display: flex;
   flex-wrap: wrap;
   gap: 8px 22px;
-  margin: 18px 0 0;
-  padding: 14px 0 0;
+  margin: 14px 0 0;
+  padding: 12px 0 0;
   border-top: 1px solid var(--line);
   list-style: none;
   color: var(--muted);
@@ -829,6 +829,11 @@ html.is-local .ftc-local { display: inline-flex; }
 
 .sync-dialog[open]::backdrop { animation: sync-fade 0.24s ease-out; }
 @keyframes sync-fade { from { opacity: 0; } }
+
+.legend-key[hidden] { display: none; }
+.legend:not(:has(li:not([hidden]))) { display: none; }
+.foot-license .foot-version { margin-bottom: 0; }
+.foot-license .foot-version + p { margin-top: 2px; }
 </style>
 </head>
 <body>
@@ -951,6 +956,13 @@ html.is-local .ftc-local { display: inline-flex; }
       </div>
       <div id="stage" class="stage"></div>
     <div id="quality-view" class="quality-view" hidden></div>
+    <ul class="legend" aria-label="Legend">
+      <li class="legend-key"><span class="swatch sw-sharp"></span>Key signature with sharps</li>
+      <li class="legend-key"><span class="swatch sw-flat"></span>Key signature with flats</li>
+      <li class="legend-key"><span class="swatch sw-scale"></span>Scale tones</li>
+      <li class="legend-chord" hidden><span class="swatch sw-croot"></span>Chord root</li>
+      <li class="legend-chord" hidden><span class="swatch sw-ctone"></span>Other chord tones</li>
+    </ul>
     </section>
 
     <section id="ftc" class="ftc" aria-label="Find the chord" hidden>
@@ -1093,14 +1105,6 @@ html.is-local .ftc-local { display: inline-flex; }
     <!-- spoken summary of the selected key for screen readers; not shown -->
     <section id="caption" class="sr-only" aria-live="polite"></section>
 
-    <ul class="legend" aria-label="Legend">
-      <li><span class="swatch sw-sharp"></span>Key signature with sharps</li>
-      <li><span class="swatch sw-flat"></span>Key signature with flats</li>
-      <li><span class="swatch sw-scale"></span>Scale tones</li>
-      <li class="legend-chord" hidden><span class="swatch sw-croot"></span>Chord root</li>
-      <li class="legend-chord" hidden><span class="swatch sw-ctone"></span>Other chord tones</li>
-    </ul>
-
     <footer class="foot">
       <div class="foot-col">
         <h2>About</h2>
@@ -1110,6 +1114,7 @@ html.is-local .ftc-local { display: inline-flex; }
       <div class="foot-col foot-license">
         <h2>License</h2>
         <p><a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank" rel="noopener">CC BY-NC-SA 4.0</a></p>
+        <p class="foot-version">Version 1.0 (build 82da0ec)</p>
         <p><button type="button" id="reset-app" class="quiet-link">Clear all app data</button><button type="button" id="log-link" class="quiet-link">Practice log</button></p>
       </div>
     </footer>
@@ -7444,6 +7449,8 @@ var KeyboardRender = (function () {
     input.addEventListener('change', function () { if (input.checked) { noteSpell = input.value === 'flat' ? 1 : 0; draw(false, false); } });
   });
   function syncModeBtn() {
+    var onKeys = appMode === 'key' || appMode === 'minor';
+    Array.prototype.forEach.call(document.querySelectorAll('.legend-key'), function (li) { li.hidden = !onKeys; });      // the key-signature legend belongs to the Keys topics
     var r = document.getElementById('am-' + appMode);
     document.getElementById('mode-btn-label').textContent = document.querySelector('label[for="' + r.id + '"]').textContent;
   }

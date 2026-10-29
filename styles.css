@@ -256,8 +256,8 @@ body {
   display: flex;
   flex-wrap: wrap;
   gap: 8px 22px;
-  margin: 18px 0 0;
-  padding: 14px 0 0;
+  margin: 14px 0 0;
+  padding: 12px 0 0;
   border-top: 1px solid var(--line);
   list-style: none;
   color: var(--muted);
@@ -812,3 +812,8 @@ html.is-local .ftc-local { display: inline-flex; }
 
 .sync-dialog[open]::backdrop { animation: sync-fade 0.24s ease-out; }
 @keyframes sync-fade { from { opacity: 0; } }
+
+.legend-key[hidden] { display: none; }
+.legend:not(:has(li:not([hidden]))) { display: none; }
+.foot-license .foot-version { margin-bottom: 0; }
+.foot-license .foot-version + p { margin-top: 2px; }

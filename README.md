@@ -237,3 +237,5 @@ On phone-sized screens (narrow, or a phone on its side) the Keys / Chords / Leve
 ## Credits
 
 Music symbols come from the Bravura font (SIL Open Font License). Chord sources: [Diatonic Modes & Chords](https://harmonious.nfshost.com/p/b9/Diatonic-Modes-Chords), [Chord Dictionary](https://amadeus-chordzart.readthedocs.io/en/latest/theory/chord_dictionary.html), [Extended chords: 9th, 11th, 13th](https://www.songtive.com/en/chords/piano/type/extended), [Mode chord](https://www.basicmusictheory.com/topic/mode-chord). Black keys show their most common spelling; where both are in everyday use (F♯/G♭ major, D♯/E♭ minor) both spellings are shown. The app is licensed CC BY-NC-SA 4.0; the footer carries an About and a License section.
+
+The footer shows the version: the number in `VERSION` (bump it for a release) plus a short fingerprint of the build, filled in by `tools/build.py`.
