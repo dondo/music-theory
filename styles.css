@@ -293,6 +293,7 @@ body {
 .foot-license { text-align: right; flex: 0 0 auto; }
 .foot h2 { margin: 0 0 4px; font-size: 0.74rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #5d6475; }
 .foot p { margin: 0 0 4px; }
+.foot-license p + p { margin-top: 16px; }
 .foot-license .quiet-link { margin: 0 0 0 10px; }
 .foot-license .quiet-link:first-child { margin-left: 0; }
 @media (max-width: 560px) { .foot { flex-direction: column; } .foot-license { text-align: left; } }
@@ -808,3 +809,6 @@ html.is-local .ftc-local { display: inline-flex; }
 .intro { position: relative; }
 .sync-btn { position: absolute; top: 3.4rem; right: 0; }
 @media (max-width: 700px) { .sync-btn { position: static; margin-top: 10px; } }
+
+.sync-dialog[open]::backdrop { animation: sync-fade 0.24s ease-out; }
+@keyframes sync-fade { from { opacity: 0; } }

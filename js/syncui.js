@@ -108,7 +108,24 @@
     return { wrap: w, input: i };
   }
   function show(nodes) { body.textContent = ''; nodes.forEach(function (n) { body.appendChild(n); }); statusEl = el('p', 'sync-status'); statusEl.setAttribute('aria-live', 'polite'); body.appendChild(statusEl); }
-  function close() { dlg.close(); }
+  // the dialog grows out of the Sync button and shrinks back into it
+  function fly(opening, done) {
+    var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduce || !dlg.animate || !linkBtn || linkBtn.hidden) { if (done) done(); return; }
+    var b = linkBtn.getBoundingClientRect(), r = dlg.getBoundingClientRect();
+    if (!r.width || !r.height) { if (done) done(); return; }
+    var dx = (b.left + b.width / 2) - (r.left + r.width / 2), dy = (b.top + b.height / 2) - (r.top + r.height / 2);
+    var from = { transform: 'translate(' + dx + 'px,' + dy + 'px) scale(' + (b.width / r.width) + ',' + (b.height / r.height) + ')', opacity: 0, borderRadius: '999px' };
+    var to = { transform: 'none', opacity: 1, borderRadius: '16px' };
+    var a = dlg.animate(opening ? [from, to] : [to, from], { duration: opening ? 240 : 180, easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)' });
+    a.onfinish = function () { if (done) done(); };
+  }
+  var closing = false;
+  function close() {
+    if (closing || !dlg.open) return;
+    closing = true;
+    fly(false, function () { dlg.close(); closing = false; });
+  }
   function refresh() {
     if (linkBtn) linkBtn.textContent = creds ? 'Sync (on)' : 'Sync across devices';
     if (dlg && dlg.open && view === 'home') home();
@@ -206,7 +223,8 @@
     dlg = document.getElementById('sync-dialog');
     if (!linkBtn || !dlg || !window.crypto || !crypto.subtle || !dlg.showModal) { if (linkBtn) linkBtn.hidden = true; return; }
     body = el('div', 'sync-body'); dlg.appendChild(body);
-    linkBtn.addEventListener('click', function () { home(); dlg.showModal(); });
+    linkBtn.addEventListener('click', function () { home(); dlg.showModal(); fly(true); });
+    dlg.addEventListener('cancel', function (e) { e.preventDefault(); close(); });
     dlg.addEventListener('click', function (e) { if (e.target === dlg) close(); });
     refresh();
     if (creds) syncNow(true);
