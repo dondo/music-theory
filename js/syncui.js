@@ -120,13 +120,23 @@
     var a = dlg.animate(opening ? [from, to] : [to, from], { duration: opening ? 240 : 180, easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)' });
     a.onfinish = function () { if (done) done(); };
   }
+  function place() {                                              // the dialog's top-right corner sits at the button's top-right corner
+    var b = linkBtn.getBoundingClientRect(), w = dlg.offsetWidth, vw = document.documentElement.clientWidth;
+    var left = Math.max(8, Math.min(b.right - w, vw - w - 8)), top = Math.max(8, b.top);
+    dlg.style.margin = '0'; dlg.style.left = left + 'px'; dlg.style.top = top + 'px';
+    dlg.style.maxHeight = 'calc(100vh - ' + (top + 12) + 'px)'; dlg.style.overflowY = 'auto';
+  }
   var closing = false;
   function close() {
     if (closing || !dlg.open) return;
     closing = true;
     fly(false, function () { dlg.close(); closing = false; });
   }
+  function resetLabel() { return creds ? 'Clear all app data (across all devices)' : 'Clear all app data'; }
+  window.musicTheoryResetLabel = resetLabel;
   function refresh() {
+    var rb = document.getElementById('reset-app');
+    if (rb && /^Clear all app data/.test(rb.textContent)) rb.textContent = resetLabel();
     if (linkBtn) linkBtn.textContent = creds ? 'Sync (on)' : 'Sync across devices';
     if (dlg && dlg.open && view === 'home') home();
   }
@@ -223,7 +233,8 @@
     dlg = document.getElementById('sync-dialog');
     if (!linkBtn || !dlg || !window.crypto || !crypto.subtle || !dlg.showModal) { if (linkBtn) linkBtn.hidden = true; return; }
     body = el('div', 'sync-body'); dlg.appendChild(body);
-    linkBtn.addEventListener('click', function () { home(); dlg.showModal(); fly(true); });
+    linkBtn.addEventListener('click', function () { home(); dlg.showModal(); place(); fly(true); });
+    window.addEventListener('resize', function () { if (dlg.open) place(); });
     dlg.addEventListener('cancel', function (e) { e.preventDefault(); close(); });
     dlg.addEventListener('click', function (e) { if (e.target === dlg) close(); });
     refresh();

@@ -3442,7 +3442,7 @@
     });
   });
 
-  // Reset app settings: everything back to how a first visit looks (study weights, saved
+  // Clear all app data (formerly Reset app settings): everything back to how a first visit looks (study weights, saved
   // progression, remembered key / chord / open sections, level, mode, score)
   var resetAppBtn = document.getElementById('reset-app');
   resetAppBtn.addEventListener('click', function () {
@@ -3494,8 +3494,8 @@
     lastResult = '';
     updateScore();
     draw('fade', false);
-    resetAppBtn.textContent = 'App settings reset';
-    setTimeout(function () { resetAppBtn.textContent = 'Reset app settings'; }, 1800);
+    resetAppBtn.textContent = 'App data cleared';
+    setTimeout(function () { resetAppBtn.textContent = window.musicTheoryResetLabel ? window.musicTheoryResetLabel() : 'Clear all app data'; }, 1800);
   });
 
   scoreReset.addEventListener('click', function () {
