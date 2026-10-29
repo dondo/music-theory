@@ -1,13 +1,14 @@
 /* Flashcard memory model for the study cards (Keys, Find the signature, Play the note, Find the note).
    The same model Find the Chord uses (js/findchord.js), over any set of string-keyed items: each item has a
    half-life h (its recall halves every h ms), R = 2^(-elapsed / h) is the chance you still remember it, and an
-   item is drawn in proportion to EPS + (1 - R)^GAMMA, so the time since you last saw it is built into the odds.
+   item is drawn in proportion to (EPS + (1 - R)^GAMMA) x a novelty boost for items you have answered fewer than 10 times, so the time since you last saw it is built into the odds.
    A first-try answer moves h by correctness and speed; a miss shrinks it. Items are independent, so a note in the
    upper octave is tracked apart from the same note an octave down. Pure functions plus optional persistence. */
 var Memory = (function () {
   'use strict';
 
   var H0 = 3 * 60000, H_MIN = 2 * 60000, H_MAX = 60 * 86400000, EPS = 0.05, GAMMA = 1.5;
+  var NOVEL = 3, NOVEL_N = 10;                       // recency: an item answered fewer than 10 times is drawn up to 4x as often (never seen: 4x, fading to 1x at 10 answers)
   var LEARN_N = 3, LEARN_U = 0.5, LEARN_GAP = 2;      // answered fewer than 3 times: still being learned, at least 50% "forgotten" unless asked in the last 2 answers
   var RELEARN = 6, RELEARN_U = 0.8;                  // after a miss: at least 80% "forgotten" for the next 6 answers
   var TREF_DEFAULT = 3000, TREF_MIN = 1200, TREF_N = 100, TREF_NEED = 8, TIME_MAX = 20000, Q_NO_TIME = 0.7;
@@ -19,7 +20,7 @@ var Memory = (function () {
     var m = mem.p[key], u = 1 - recallOf(m, now);
     if (m && mem.seq - m.rs <= RELEARN) u = Math.max(u, RELEARN_U);
     else if (m && m.n < LEARN_N && mem.seq - m.ls > LEARN_GAP) u = Math.max(u, LEARN_U);
-    return EPS + Math.pow(u, GAMMA);
+    return (EPS + Math.pow(u, GAMMA)) * (1 + NOVEL * Math.max(0, 1 - (m ? m.n : 0) / NOVEL_N));
   }
   // one of `keys`, in proportion to its weight; `skip(key)` (optional) rules items out (when anything is left); `rng` returns [0, 1)
   function pick(mem, keys, skip, rng, now) {
@@ -75,7 +76,7 @@ var Memory = (function () {
   function reset(mem) { mem.p = {}; mem.seq = 0; mem.tm = {}; }
 
   var api = {
-    H0: H0, H_MIN: H_MIN, H_MAX: H_MAX, EPS: EPS, GAMMA: GAMMA, TREF_DEFAULT: TREF_DEFAULT,
+    NOVEL: NOVEL, H0: H0, H_MIN: H_MIN, H_MAX: H_MAX, EPS: EPS, GAMMA: GAMMA, TREF_DEFAULT: TREF_DEFAULT,
     create: create, recall: recall, weight: weight, pick: pick, tRef: tRef, grade: grade, answer: answer, load: load, save: save, reset: reset
   };
   if (typeof module !== 'undefined' && module.exports) { module.exports = api; }

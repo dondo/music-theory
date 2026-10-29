@@ -97,7 +97,7 @@
   var H0 = 3 * 60000, H_MIN = 2 * 60000, H_MAX = 60 * 86400000, EPS = 0.05, GAMMA = 1.5;
   var LEARN_N = 3, LEARN_U = 0.5, LEARN_GAP = 2;      // a pair answered fewer than 3 times is still being learned: at least 50% "forgotten" unless asked in the last 2 answers
   var RELEARN = 6, RELEARN_U = 0.8;                  // after a miss a pair counts as at least 80% forgotten for the next 6 answers
-  var TREF_DEFAULT = 3000, TREF_MIN = 1200, TREF_N = 100, TREF_NEED = 8, TIME_MAX = 20000, Q_NO_TIME = 0.7, OLD_R = 0.6, OLD_MIN = 1;
+  var TREF_DEFAULT = 3000, TREF_MIN = 1200, TREF_N = 100, TREF_NEED = 8, TIME_MAX = 20000, Q_NO_TIME = 0.7, OLD_R = 0.4, OLD_MIN = 1, NOVEL = 3, NOVEL_N = 10;   // review only what has really faded (R < 0.4); pairs answered fewer than 10 times are drawn up to 4x as often
   function newMem() { return { p: {}, seq: 0, tm: {} }; }       // p: pair -> { h, t, n, l, rs }; tm: speed class -> the last correct first-try times
   function pairKey(mode, q) { return mode + '|' + q.pc + '|' + q.deg + '|' + q.type; }
   function recallOf(m, now) { return m ? Math.pow(2, -Math.max(0, now - m.t) / m.h) : 0; }       // a pair never seen: 0
@@ -106,7 +106,7 @@
     var m = mem.p[pairKey(mode, q)], u = 1 - recallOf(m, now);
     if (m && mem.seq - m.rs <= RELEARN) u = Math.max(u, RELEARN_U);
     else if (m && m.n < LEARN_N && mem.seq - m.ls > LEARN_GAP) u = Math.max(u, LEARN_U);
-    return EPS + Math.pow(u, GAMMA);
+    return (EPS + Math.pow(u, GAMMA)) * (1 + NOVEL * Math.max(0, 1 - (m ? m.n : 0) / NOVEL_N));
   }
   function timeClass(type, inv) { return (type === 'triad' ? 'triad' : type === '7' ? '7th' : 'ext') + (inv > 0 ? '/inv' : ''); }
   function tRef(mem, cls) {                                      // the bar for "fast": your 20th-percentile correct time in this class
@@ -204,8 +204,8 @@
   }
 
   // ---- the newest challenge of a stage (new keys, or new chords) ----
-  // It is asked about often at first, and in every run of FRESH_WINDOW questions at least FRESH_MIN are about it.
-  var FRESH_WINDOW = 5, FRESH_MIN = 2, FRESH_BOOST = 4;
+  // It is asked about often at first, and in every run of FRESH_WINDOW questions at least FRESH_MIN (3 of 5) are about it.
+  var FRESH_WINDOW = 5, FRESH_MIN = 3, FRESH_BOOST = 6;
   // t = { asked, fresh } for the current run: 'only' when the run needs every question left to reach the minimum, else 'boost'
   function freshPlan(t) {
     var remaining = FRESH_WINDOW - t.asked, need = FRESH_MIN - t.fresh;
