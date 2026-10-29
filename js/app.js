@@ -67,7 +67,7 @@
   var qualityView = document.getElementById('quality-view'), cvGroup = document.getElementById('chordview-group');
   var qualityShown = null;                                   // the type whose table is in the page
   // Explore > Chord quality: with the Chords section open, a table of the qualities of the chosen type replaces the staff and keyboard
-  function qualityOn() { return state.chordView === 'quality' && !state.flash && !isAlt() && state.selected && chordsDetails.open; }
+  function qualityOn() { return state.chordView === 'quality' && !progsMode() && !state.flash && !isAlt() && state.selected && chordsDetails.open; }
   var chordPlayBtn = document.getElementById('chord-play');
   var progSoundBtn = document.getElementById('prog-sound');
   var progSoundLabel = document.getElementById('prog-sound-label');
@@ -161,6 +161,7 @@
   function progActive() { return progDetails.open && progsMode(); }
   function appIsMinor() { return appMode.indexOf('minor') === 0; }
   var level = 'pop';                                  // pop | jazz: pop hides the advanced theory
+  var progLevelPref = 'jazz';                         // Progressions' own choice of the two (the other topics are fixed: theory = jazz)
   var POP_HIDDEN_TYPES = ['11', '13'];
   var levelInputs = document.querySelectorAll('input[name="level"]');
   var modeHeadTip = document.getElementById('mode-head-tip');
@@ -334,7 +335,7 @@
     var show = chordy() && state.selected && (!state.flash || quizOn());
     chordsPanel.hidden = !show;
     var qOn = qualityOn();
-    cvGroup.hidden = !(show && !state.flash && chordsDetails.open && !isAlt());
+    cvGroup.hidden = !(show && !state.flash && !progsMode() && chordsDetails.open && !isAlt());
     document.getElementById(state.chordView === 'quality' ? 'cv-quality' : 'cv-scale').checked = true;
     stage.classList.toggle('chords-open', !!(show && chordsDetails.open) || noteOn());
     stage.hidden = qOn; qualityView.hidden = !qOn; caption.hidden = qOn;
@@ -650,7 +651,7 @@
           root: state.root, spell: state.spell, selected: state.selected, mode: state.mode, level: level,
           scaleKind: state.scaleKind, chord: state.chord, chordTypes: chordTypes_, typePicked: typePicked,
           chordsOpen: chordsDetails.open, progOpen: progDetails.open, progIndex: progIndex, progRevealed: progRevealed, clef: state.clef,
-          layout: state.layout, chordView: state.chordView, appMode: appMode, noteSpell: noteSpell
+          layout: state.layout, chordView: state.chordView, appMode: appMode, noteSpell: noteSpell, progLevel: progLevelPref
         };
       }
       o.flash = !!state.flash;
@@ -682,7 +683,8 @@
     else if (s.appMode === 'popchord') appMode = s.mode === 'minor' ? 'minorchords' : 'chords';      // (older saves)
     else if (s.appMode === 'jazz') appMode = s.mode === 'minor' ? 'minortheory' : 'theory';
     else appMode = level === 'jazz' ? (s.mode === 'minor' ? 'minortheory' : 'theory') : (s.mode === 'minor' ? 'minorchords' : 'chords');
-    level = theoryMode() ? 'jazz' : 'pop';
+    if (appMode === 'progs' && s.progLevel === 'pop') progLevelPref = 'pop';
+    level = theoryMode() ? (progsMode() ? progLevelPref : 'jazz') : 'pop';
     document.getElementById('level-' + level).checked = true;
     state.mode = appIsMinor() ? 'minor' : 'major';
     document.getElementById('mode-' + state.mode).checked = true;
@@ -2490,7 +2492,7 @@
     fc.hidden = !chordy(); fc.nextElementSibling.hidden = !chordy();
     ['fm-play', 'fm-find'].forEach(function (id) { var x = document.getElementById(id); x.hidden = !noteOn(); x.nextElementSibling.hidden = !noteOn(); });
     ['fm-key', 'fm-sig'].forEach(function (id) { var x = document.getElementById(id); x.hidden = chordy() || noteOn(); x.nextElementSibling.hidden = chordy() || noteOn(); });
-    viewGroup.hidden = false;
+    viewGroup.hidden = progsMode();                  // Progressions has no Explore / Study
     document.getElementById('mode-group').hidden = true;
   }
 
@@ -2679,7 +2681,16 @@
     scoreBox.hidden = !state.flash || (quizOn() && score.ok + score.bad === 0 && !isPhoneLayout() && !ftcTrial);
     if (!(quizOn() && score.ok + score.bad > 0) && !studyQuizOn() && scoreBox.parentNode !== scoreHome) scoreHome.appendChild(scoreBox);
     flashModeGroup.hidden = !state.flash;
-    kindGroup.hidden = state.flash || level === 'pop';
+    kindGroup.hidden = state.flash || (level === 'pop' && !progsMode());
+    syncKindOptions();
+  }
+  // Progressions picks its chord vocabulary here too: Pop | Jazz | Pentatonic | Whole tone (elsewhere: Full scale | Pentatonic | Whole tone)
+  function syncKindOptions() {
+    var p = progsMode(), pr = document.getElementById('sk-pop');
+    pr.hidden = pr.nextElementSibling.hidden = !p;
+    document.querySelector('label[for="sk-full"]').textContent = p ? 'Jazz' : 'Full scale';
+    var want = p && level === 'pop' ? 'sk-pop' : { full: 'sk-full', pentatonic: 'sk-pent', wholetone: 'sk-whole' }[state.scaleKind];
+    if (want && !document.getElementById(want).checked) document.getElementById(want).checked = true;
   }
 
   // brief feedback marks: kind 'yes' | 'nope'; `keyEl` is the key that was pressed
@@ -3300,7 +3311,19 @@
   Array.prototype.forEach.call(kindInputs, function (input) {
     input.addEventListener('change', function () {
       if (!input.checked) return;
-      state.scaleKind = input.value;
+      if (progsMode()) {                                              // Pop and Jazz are the chord vocabulary, on the full scale
+        var wantLv = input.value === 'pop' ? 'pop' : 'jazz';
+        progLevelPref = wantLv;
+        if (level !== wantLv) {
+          level = wantLv;
+          if (level === 'pop') {
+            if (chordTypes_.full && POP_HIDDEN_TYPES.indexOf(chordTypes_.full) >= 0) chordTypes_.full = 'triad';
+            state.scaleKind = 'full';
+          }
+          document.getElementById('level-' + level).checked = true;
+        }
+      }
+      state.scaleKind = input.value === 'pop' ? 'full' : input.value;
       typePicked = false;
       chordCleared = false;
       state.chord = null;               // chord types differ per scale; the default is picked in draw()
@@ -3313,7 +3336,7 @@
     if (am === appMode) return;
     if (state.flash) { setView(false); var er = document.querySelector('input[name="view"][value="explore"]'); if (er) er.checked = true; }      // a new topic always opens in Explore
     appMode = am;
-    var wantLevel = theoryMode() ? 'jazz' : 'pop';
+    var wantLevel = theoryMode() ? (progsMode() ? progLevelPref : 'jazz') : 'pop';
     var wantMode = appIsMinor() ? 'minor' : 'major';
     var lr = document.getElementById('level-' + wantLevel);
     if (!lr.checked) { lr.checked = true; lr.dispatchEvent(new Event('change')); } else { level = wantLevel; }
@@ -3379,7 +3402,7 @@
       /* (the app-mode switch sets the study activity) */
       if (level === 'pop') {
         if (chordTypes_.full && POP_HIDDEN_TYPES.indexOf(chordTypes_.full) >= 0) chordTypes_.full = 'triad';
-        if (state.scaleKind !== 'full') { state.scaleKind = 'full'; document.getElementById('sk-full').checked = true; chordCleared = false; state.chord = null; }
+        if (state.scaleKind !== 'full') { state.scaleKind = 'full'; document.getElementById(progsMode() ? 'sk-pop' : 'sk-full').checked = true; chordCleared = false; state.chord = null; }
         else if (state.chord && POP_HIDDEN_TYPES.indexOf(state.chord.type) >= 0) state.chord = { deg: state.chord.deg, type: 'triad' };
       }
       if (quizOn()) { state.chord = null; typePicked = false; ftcNewQuestion(false); }    // the chord pool differs between levels
