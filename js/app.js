@@ -471,8 +471,8 @@
     var showHead = quizOn() && (scoreHere || isPhoneLayout());       // (on a phone the level and the bubbles show from the start)
     if (showHead) {
       quizHead.appendChild(levelTag);
-      quizHead.appendChild(scoreBox); scoreBox.hidden = false;
       quizHead.appendChild(trialBox);
+      quizHead.appendChild(scoreBox); scoreBox.hidden = false;
       quizHead.appendChild(autoRow);
       autoRow.hidden = !!ftcTrial;
       chordInfo.appendChild(quizHead);
@@ -1666,7 +1666,6 @@
   var ftcPrevChordsOpen = null;                       // the chord selector's state before the quiz opened it
   var ftcSection = document.getElementById('ftc');
   var ftcMsg = document.getElementById('ftc-msg');
-  var ftcAutoBox = document.getElementById('ftc-auto');
 
   function quizOn() { return state.flash && state.cardMode === 'chord'; }
   function ftcPop() { return level === 'pop'; }
@@ -1676,7 +1675,7 @@
       var o = JSON.parse(window.localStorage.getItem(FTC_KEY));
       if (!o || typeof o !== 'object') return;
       if (o.lvl && typeof o.lvl === 'object') Object.keys(o.lvl).forEach(function (k) { if (/^(major|minor)\|(pop|jazz)$/.test(k) && Number.isInteger(o.lvl[k]) && o.lvl[k] >= 1) ftcLv[k] = o.lvl[k]; });
-      ftcAuto = o.auto !== false;
+      ftcAuto = true;                                  // (always automatic; older saves may say otherwise)
       if (o.fresh && Number.isInteger(o.fresh.asked) && Number.isInteger(o.fresh.fresh) && o.fresh.asked >= 0 && o.fresh.asked < 5 && o.fresh.fresh >= 0) ftcFresh = { asked: o.fresh.asked, fresh: o.fresh.fresh };
       ftcStreak = Number.isInteger(o.streak) ? Math.max(0, Math.min(streakNeed() - 1, o.streak)) : 0;
       ftcTried = ftcRight = ftcStreak;
@@ -1715,7 +1714,6 @@
     abortTrial();
     ftcLv = {};
     trialUnlocked = trialEver = false; ftcAuto = true; ftcStreak = 0; ftcTried = 0; ftcRight = 0; ftcBub = null; bubFull = false; ftcFresh = { asked: 0, fresh: 0 };
-    ftcAutoBox.checked = true;
     stepLv = { play: 1, find: 1, key: 1, sig: 1 }; slots = {}; slots[curSlot] = slotSnap(); if (curSlot !== 'chord') slots.chord = slotSnap();
     try { window.localStorage.removeItem(STEPS_KEY); } catch (e) { /* storage unavailable */ }
     try { window.localStorage.removeItem(FTC_KEY); window.localStorage.removeItem(TRIALS_KEY); window.localStorage.removeItem(WELCOME_KEY); window.localStorage.removeItem(STUDY_WELCOME_KEY); } catch (e) { /* storage unavailable */ }   // (the time trial bests go too)
@@ -2448,7 +2446,6 @@
     var li = FindChord.levelInfo(state.mode, ftcPop(), ftcLevelNo());
     document.getElementById('ftc-level').textContent = (ftcTrial ? 'Trial \u00b7 ' : '') + 'Stage ' + li.stage + ': Level ' + li.step;
     document.getElementById('ftc-level').title = 'Level ' + li.step + ' of ' + FindChord.stageSteps(state.mode, ftcPop(), ftcLevelNo());
-    document.getElementById('ftc-streak').textContent = '';
     showStreak();
   }
 
@@ -2467,11 +2464,9 @@
   }
   document.getElementById('ftc-harder').addEventListener('click', function () { ftcDifficulty(1); });
   document.getElementById('ftc-easier').addEventListener('click', function () { ftcDifficulty(-1); });
-  ftcAutoBox.addEventListener('change', function () { ftcAuto = ftcAutoBox.checked; ftcStreak = 0; ftcTried = 0; ftcRight = 0; ftcBub = null; bubFull = false; saveFtc(); updateFtc(); });
   loadFtc();
   slots.chord = slotSnap();                         // (what loadFtc restored belongs to Find the chord)
   loadSteps();
-  ftcAutoBox.checked = ftcAuto;
 
   function setCardMode(m) {
     state.cardMode = m;
@@ -2618,8 +2613,8 @@
     levelTag.textContent = (ftcTrial ? 'Trial \u00b7 ' : '') + 'Level ' + stepNo();
     levelTag.title = 'Level ' + stepNo() + ' of ' + STUDY_STEPS;
     quizHead.appendChild(levelTag);
-    quizHead.appendChild(scoreBox); scoreBox.hidden = false;
     quizHead.appendChild(trialBox);
+    quizHead.appendChild(scoreBox); scoreBox.hidden = false;
     quizHead.appendChild(autoRow);
     autoRow.hidden = !!ftcTrial;
     if (quizHead.parentNode !== stepInfo) stepInfo.appendChild(quizHead);

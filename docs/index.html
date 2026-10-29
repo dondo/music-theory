@@ -562,13 +562,11 @@ button, .inv-zone, .clef-hit, .key, svg { touch-action: manipulation; }
 .ftc-step-row { display: inline-flex; align-items: center; gap: 8px; }
 .ftc-step-name { font-weight: 600; min-width: 3.6em; }
 .ftc-step b { min-width: 1.6em; text-align: center; font-variant-numeric: tabular-nums; }
-.ftc-btn { width: 32px; height: 32px; padding: 0; font-size: 1.1rem; line-height: 1; }
+.ftc-btn { width: 32px; height: 24px; padding: 0; font-size: 1.1rem; line-height: 1; }
 .ftc-btn:disabled { opacity: 0.35; cursor: default; }
 .ftc-list { color: var(--muted); line-height: 1.5; }
-.ftc-auto { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); cursor: pointer; }
-.ftc-auto small { color: var(--muted); font-variant-numeric: tabular-nums; }
 #chords.quizzing summary { pointer-events: none; display: none; }       /* Find the chord: no "Chords in the key of …" header */
-@media (hover: none) { .ftc-btn { width: 40px; height: 40px; } }
+@media (hover: none) { .ftc-btn { width: 40px; height: 32px; } }
 
 /* Chords: find a chord from keys picked on the keyboard */
 #chords { position: relative; }
@@ -617,8 +615,7 @@ html.is-local body { border-top: 6px solid #ea580c; }
 @media (prefers-reduced-motion: reduce) { .levelup { animation: none; } }
 
 /* local-only testing controls */
-.ftc-local { display: none; gap: 4px; margin-left: 4px; }
-html.is-local .ftc-local { display: inline-flex; }
+.ftc-local { display: inline-flex; flex-direction: column; gap: 2px; }      /* harder / easier, stacked at the right */
 
 .ftc-side { margin-left: auto; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
 .ftc-side-row { display: flex; align-items: center; gap: 4px; }
@@ -632,7 +629,6 @@ html.is-local .ftc-local { display: inline-flex; }
 /* iPhone-sized screens (portrait, or a phone turned sideways): no difficulty controls in Find the chord;
    the level-up banner stays, on its own, under the keyboard */
 @media (max-width: 600px), (max-height: 500px) and (pointer: coarse) {
-  .ftc-side-row { display: none; }
   .ftc { padding: 0; margin-top: 8px; border: 0; background: transparent; box-shadow: none; }
   .levelup { margin-bottom: 0; padding: 10px 12px; font-size: 0.9rem; }
   .levelup-icon { font-size: 1.4rem; }
@@ -671,7 +667,7 @@ html.is-local .ftc-local { display: inline-flex; }
 @media (hover: hover) { .ftc-next:hover { background: #bbf7d0; } }
 
 /* Time trial */
-.trial-box { position: relative; display: flex; align-items: center; gap: 8px; margin: 0 auto; }
+.trial-box { position: relative; display: flex; align-items: center; gap: 8px; margin: 0; }
 .trial-btn { padding: 6px 16px; border-radius: 999px; border: 2px solid #2563eb; background: #eff6ff; color: #1e3a8a; font-weight: 700; font-size: 0.9rem; cursor: pointer; }
 .trial-btn[hidden], .trial-clock[hidden] { display: none; }
 .trial-clock { display: flex; align-items: center; gap: 8px; }
@@ -835,6 +831,8 @@ html.is-local .ftc-local { display: inline-flex; }
 .legend:not(:has(li:not([hidden]))) { display: none; }
 .foot-license .foot-version { margin-bottom: 0; }
 .foot-license .foot-version + p { margin-top: 2px; }
+@media (max-width: 600px) { .ftc-head { gap: 8px; } .ftc-head .ftc-side-row { margin-left: auto; } }      /* (level, bubbles and the arrows share a line on a phone) */
+@media (max-width: 600px) { .ftc-head { flex-wrap: nowrap; } .ftc-head .ftc-level { font-size: 1.05rem; white-space: nowrap; } #streak-text { gap: 3px; } .bub { width: 17px; height: 17px; } }
 </style>
 </head>
 <body>
@@ -970,10 +968,9 @@ html.is-local .ftc-local { display: inline-flex; }
       <p id="ftc-msg" class="sr-only" role="status" aria-live="polite"></p>
       <span id="ftc-level" class="ftc-level">Stage 1: Level 1</span>
       <div class="ftc-side-row" id="ftc-autorow">
-        <label class="ftc-auto"><input type="checkbox" id="ftc-auto" checked> Advance automatically <small id="ftc-streak"></small></label>
-        <span class="ftc-local" aria-label="Test controls (local only)">
-          <button type="button" id="ftc-harder" class="btn-reset ftc-btn" aria-label="Harder (local test)" title="Harder (local test)">&#9650;</button>
-          <button type="button" id="ftc-easier" class="btn-reset ftc-btn" aria-label="Easier (local test)" title="Easier (local test)">&#9660;</button>
+        <span class="ftc-local" aria-label="Change level">
+          <button type="button" id="ftc-harder" class="btn-reset ftc-btn" aria-label="Harder level" title="Harder level">&#9650;</button>
+          <button type="button" id="ftc-easier" class="btn-reset ftc-btn" aria-label="Easier level" title="Easier level">&#9660;</button>
         </span>
         </div>
     </section>
@@ -4594,8 +4591,8 @@ var KeyboardRender = (function () {
     var showHead = quizOn() && (scoreHere || isPhoneLayout());       // (on a phone the level and the bubbles show from the start)
     if (showHead) {
       quizHead.appendChild(levelTag);
-      quizHead.appendChild(scoreBox); scoreBox.hidden = false;
       quizHead.appendChild(trialBox);
+      quizHead.appendChild(scoreBox); scoreBox.hidden = false;
       quizHead.appendChild(autoRow);
       autoRow.hidden = !!ftcTrial;
       chordInfo.appendChild(quizHead);
@@ -5789,7 +5786,6 @@ var KeyboardRender = (function () {
   var ftcPrevChordsOpen = null;                       // the chord selector's state before the quiz opened it
   var ftcSection = document.getElementById('ftc');
   var ftcMsg = document.getElementById('ftc-msg');
-  var ftcAutoBox = document.getElementById('ftc-auto');
 
   function quizOn() { return state.flash && state.cardMode === 'chord'; }
   function ftcPop() { return level === 'pop'; }
@@ -5799,7 +5795,7 @@ var KeyboardRender = (function () {
       var o = JSON.parse(window.localStorage.getItem(FTC_KEY));
       if (!o || typeof o !== 'object') return;
       if (o.lvl && typeof o.lvl === 'object') Object.keys(o.lvl).forEach(function (k) { if (/^(major|minor)\|(pop|jazz)$/.test(k) && Number.isInteger(o.lvl[k]) && o.lvl[k] >= 1) ftcLv[k] = o.lvl[k]; });
-      ftcAuto = o.auto !== false;
+      ftcAuto = true;                                  // (always automatic; older saves may say otherwise)
       if (o.fresh && Number.isInteger(o.fresh.asked) && Number.isInteger(o.fresh.fresh) && o.fresh.asked >= 0 && o.fresh.asked < 5 && o.fresh.fresh >= 0) ftcFresh = { asked: o.fresh.asked, fresh: o.fresh.fresh };
       ftcStreak = Number.isInteger(o.streak) ? Math.max(0, Math.min(streakNeed() - 1, o.streak)) : 0;
       ftcTried = ftcRight = ftcStreak;
@@ -5838,7 +5834,6 @@ var KeyboardRender = (function () {
     abortTrial();
     ftcLv = {};
     trialUnlocked = trialEver = false; ftcAuto = true; ftcStreak = 0; ftcTried = 0; ftcRight = 0; ftcBub = null; bubFull = false; ftcFresh = { asked: 0, fresh: 0 };
-    ftcAutoBox.checked = true;
     stepLv = { play: 1, find: 1, key: 1, sig: 1 }; slots = {}; slots[curSlot] = slotSnap(); if (curSlot !== 'chord') slots.chord = slotSnap();
     try { window.localStorage.removeItem(STEPS_KEY); } catch (e) { /* storage unavailable */ }
     try { window.localStorage.removeItem(FTC_KEY); window.localStorage.removeItem(TRIALS_KEY); window.localStorage.removeItem(WELCOME_KEY); window.localStorage.removeItem(STUDY_WELCOME_KEY); } catch (e) { /* storage unavailable */ }   // (the time trial bests go too)
@@ -6571,7 +6566,6 @@ var KeyboardRender = (function () {
     var li = FindChord.levelInfo(state.mode, ftcPop(), ftcLevelNo());
     document.getElementById('ftc-level').textContent = (ftcTrial ? 'Trial \u00b7 ' : '') + 'Stage ' + li.stage + ': Level ' + li.step;
     document.getElementById('ftc-level').title = 'Level ' + li.step + ' of ' + FindChord.stageSteps(state.mode, ftcPop(), ftcLevelNo());
-    document.getElementById('ftc-streak').textContent = '';
     showStreak();
   }
 
@@ -6590,11 +6584,9 @@ var KeyboardRender = (function () {
   }
   document.getElementById('ftc-harder').addEventListener('click', function () { ftcDifficulty(1); });
   document.getElementById('ftc-easier').addEventListener('click', function () { ftcDifficulty(-1); });
-  ftcAutoBox.addEventListener('change', function () { ftcAuto = ftcAutoBox.checked; ftcStreak = 0; ftcTried = 0; ftcRight = 0; ftcBub = null; bubFull = false; saveFtc(); updateFtc(); });
   loadFtc();
   slots.chord = slotSnap();                         // (what loadFtc restored belongs to Find the chord)
   loadSteps();
-  ftcAutoBox.checked = ftcAuto;
 
   function setCardMode(m) {
     state.cardMode = m;
@@ -6741,8 +6733,8 @@ var KeyboardRender = (function () {
     levelTag.textContent = (ftcTrial ? 'Trial \u00b7 ' : '') + 'Level ' + stepNo();
     levelTag.title = 'Level ' + stepNo() + ' of ' + STUDY_STEPS;
     quizHead.appendChild(levelTag);
-    quizHead.appendChild(scoreBox); scoreBox.hidden = false;
     quizHead.appendChild(trialBox);
+    quizHead.appendChild(scoreBox); scoreBox.hidden = false;
     quizHead.appendChild(autoRow);
     autoRow.hidden = !!ftcTrial;
     if (quizHead.parentNode !== stepInfo) stepInfo.appendChild(quizHead);
@@ -7660,7 +7652,7 @@ var KeyboardRender = (function () {
 </script>
   <script>
 /* generated by tools/build.py: do not edit */
-var APP_VERSION = '1.0 (build 1a8a9ba)';
+var APP_VERSION = '1.0 (build 6af97d6)';
 (function () {
   function show() { Array.prototype.forEach.call(document.querySelectorAll('[data-version]'), function (e) { e.textContent = APP_VERSION; }); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', show); else show();

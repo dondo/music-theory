@@ -545,13 +545,11 @@ button, .inv-zone, .clef-hit, .key, svg { touch-action: manipulation; }
 .ftc-step-row { display: inline-flex; align-items: center; gap: 8px; }
 .ftc-step-name { font-weight: 600; min-width: 3.6em; }
 .ftc-step b { min-width: 1.6em; text-align: center; font-variant-numeric: tabular-nums; }
-.ftc-btn { width: 32px; height: 32px; padding: 0; font-size: 1.1rem; line-height: 1; }
+.ftc-btn { width: 32px; height: 24px; padding: 0; font-size: 1.1rem; line-height: 1; }
 .ftc-btn:disabled { opacity: 0.35; cursor: default; }
 .ftc-list { color: var(--muted); line-height: 1.5; }
-.ftc-auto { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); cursor: pointer; }
-.ftc-auto small { color: var(--muted); font-variant-numeric: tabular-nums; }
 #chords.quizzing summary { pointer-events: none; display: none; }       /* Find the chord: no "Chords in the key of …" header */
-@media (hover: none) { .ftc-btn { width: 40px; height: 40px; } }
+@media (hover: none) { .ftc-btn { width: 40px; height: 32px; } }
 
 /* Chords: find a chord from keys picked on the keyboard */
 #chords { position: relative; }
@@ -600,8 +598,7 @@ html.is-local body { border-top: 6px solid #ea580c; }
 @media (prefers-reduced-motion: reduce) { .levelup { animation: none; } }
 
 /* local-only testing controls */
-.ftc-local { display: none; gap: 4px; margin-left: 4px; }
-html.is-local .ftc-local { display: inline-flex; }
+.ftc-local { display: inline-flex; flex-direction: column; gap: 2px; }      /* harder / easier, stacked at the right */
 
 .ftc-side { margin-left: auto; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
 .ftc-side-row { display: flex; align-items: center; gap: 4px; }
@@ -615,7 +612,6 @@ html.is-local .ftc-local { display: inline-flex; }
 /* iPhone-sized screens (portrait, or a phone turned sideways): no difficulty controls in Find the chord;
    the level-up banner stays, on its own, under the keyboard */
 @media (max-width: 600px), (max-height: 500px) and (pointer: coarse) {
-  .ftc-side-row { display: none; }
   .ftc { padding: 0; margin-top: 8px; border: 0; background: transparent; box-shadow: none; }
   .levelup { margin-bottom: 0; padding: 10px 12px; font-size: 0.9rem; }
   .levelup-icon { font-size: 1.4rem; }
@@ -654,7 +650,7 @@ html.is-local .ftc-local { display: inline-flex; }
 @media (hover: hover) { .ftc-next:hover { background: #bbf7d0; } }
 
 /* Time trial */
-.trial-box { position: relative; display: flex; align-items: center; gap: 8px; margin: 0 auto; }
+.trial-box { position: relative; display: flex; align-items: center; gap: 8px; margin: 0; }
 .trial-btn { padding: 6px 16px; border-radius: 999px; border: 2px solid #2563eb; background: #eff6ff; color: #1e3a8a; font-weight: 700; font-size: 0.9rem; cursor: pointer; }
 .trial-btn[hidden], .trial-clock[hidden] { display: none; }
 .trial-clock { display: flex; align-items: center; gap: 8px; }
@@ -818,3 +814,5 @@ html.is-local .ftc-local { display: inline-flex; }
 .legend:not(:has(li:not([hidden]))) { display: none; }
 .foot-license .foot-version { margin-bottom: 0; }
 .foot-license .foot-version + p { margin-top: 2px; }
+@media (max-width: 600px) { .ftc-head { gap: 8px; } .ftc-head .ftc-side-row { margin-left: auto; } }      /* (level, bubbles and the arrows share a line on a phone) */
+@media (max-width: 600px) { .ftc-head { flex-wrap: nowrap; } .ftc-head .ftc-level { font-size: 1.05rem; white-space: nowrap; } #streak-text { gap: 3px; } .bub { width: 17px; height: 17px; } }
