@@ -413,6 +413,7 @@
         b.setAttribute('aria-label', c.roman + (hideSym ? '' : ', ' + c.symbol) + (pop ? '' : ', ' + c.mode));
         if (!pop) b.setAttribute('data-dark', c.darkness);           // gentle shading: brightest mode to darkest
         if (pop) b.appendChild(el('span', 'chip-num', c.symbol));                  // Pop: chord symbols (Am), as on a lead sheet
+        if (pop && progsMode()) b.appendChild(el('span', 'chip-sym', c.roman));    // (Progressions: the roman numeral too, small, underneath)
         else { b.appendChild(el('span', 'chip-num', c.roman)); b.appendChild(el('span', 'chip-sym', hideSym ? '\u00a0' : c.symbol)); }
         if (!pop) b.appendChild(el('span', 'chip-mode', c.mode));
       }
