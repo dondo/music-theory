@@ -185,7 +185,7 @@ var Sync = (function () {
   function call(method, id, token, body, base) {
     return fetch((base || WORKER) + '/s/' + id, { method: method, headers: { 'Authorization': 'Bearer ' + token }, body: body }).then(function (r) {
       return r.text().then(function (t) { return { status: r.status, text: t }; });
-    }, function () { throw new Error('Could not reach the sync service. Check the connection and try again.'); });
+    }, function () { throw new Error('Could not reach the sync service. Check the connection; if you are online, the service may not allow this page\u2019s address (' + (typeof location !== 'undefined' ? location.origin : '?') + ').'); });
   }
   function exists(d, base) {                                          // is this ID already taken? (404: free)
     return call('GET', d.id, d.token, undefined, base).then(function (r) {

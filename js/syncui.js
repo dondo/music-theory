@@ -147,7 +147,7 @@
   // setting up: a name, then a passphrase chosen for you
   function createName() {
     view = 'create';
-    var f = field('Your name for this account', 'text', 'At least ' + Sync.NAME_MIN + ' characters. Not case-sensitive. Pick something others would not guess; it is half of what protects your data.');
+    var f = field('Your name for this account', 'text', 'At least ' + Sync.NAME_MIN + ' characters. Not case-sensitive. Pick something memorable!');
     var go = btn('Choose a passphrase', function () {
       if (!Sync.validName(f.input.value)) { setStatus('The name needs at least ' + Sync.NAME_MIN + ' characters (up to ' + Sync.NAME_MAX + ').'); return; }
       reroll(f.input.value);

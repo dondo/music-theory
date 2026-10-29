@@ -2107,7 +2107,7 @@ var Sync = (function () {
   function call(method, id, token, body, base) {
     return fetch((base || WORKER) + '/s/' + id, { method: method, headers: { 'Authorization': 'Bearer ' + token }, body: body }).then(function (r) {
       return r.text().then(function (t) { return { status: r.status, text: t }; });
-    }, function () { throw new Error('Could not reach the sync service. Check the connection and try again.'); });
+    }, function () { throw new Error('Could not reach the sync service. Check the connection; if you are online, the service may not allow this page\u2019s address (' + (typeof location !== 'undefined' ? location.origin : '?') + ').'); });
   }
   function exists(d, base) {                                          // is this ID already taken? (404: free)
     return call('GET', d.id, d.token, undefined, base).then(function (r) {
@@ -2306,7 +2306,7 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = Sync; }
   // setting up: a name, then a passphrase chosen for you
   function createName() {
     view = 'create';
-    var f = field('Your name for this account', 'text', 'At least ' + Sync.NAME_MIN + ' characters. Not case-sensitive. Pick something others would not guess; it is half of what protects your data.');
+    var f = field('Your name for this account', 'text', 'At least ' + Sync.NAME_MIN + ' characters. Not case-sensitive. Pick something memorable!');
     var go = btn('Choose a passphrase', function () {
       if (!Sync.validName(f.input.value)) { setStatus('The name needs at least ' + Sync.NAME_MIN + ' characters (up to ' + Sync.NAME_MAX + ').'); return; }
       reroll(f.input.value);
