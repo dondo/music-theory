@@ -5581,12 +5581,12 @@ var KeyboardRender = (function () {
     return items.map(function (n) { return { midi: n.midi + shift, name: n.name }; });
   }
 
-  // the chord a wrong guess named, as notes for the staff (root position): the card shows it in red beside the question
+  // the chord a wrong guess named, as notes for the staff (in the question's inversion): the card shows it in red beside the question
   var LETTER_PC = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 }, LETTERS = 'CDEFGAB';
   function wrongNotes(sel, got) {
     if (!sel) {                                                                   // degree answers: a chord of the key
       var ch = Chords.chordInKey(ftcSpec().name, state.mode, got.deg, got.type);
-      return ftcNotes(ch, ChordAudio.tonicMidi(ftcQ.pc), 0);
+      return ftcNotes(ch, ChordAudio.tonicMidi(ftcQ.pc), ftcQ.inv || 0);      // (in the inversion the question is in)
     }
     var t = sel.type, q = sel.qual, third = q === 'min' || q === 'dim' ? 3 : 4, fifth = q === 'dim' ? 6 : q === 'aug' ? 8 : 7;
     var sev = (q === 'maj' || q === 'aug') && sel.sev === 'maj' ? 11 : 10;
@@ -5602,7 +5602,7 @@ var KeyboardRender = (function () {
       names.push(L + (d === 1 ? Theory.SHARP : d === -1 ? Theory.FLAT : d === 2 ? Theory.DOUBLE_SHARP : d === -2 ? Theory.DOUBLE_FLAT : ''));
       offs.push(pc);
     });
-    var items = ftcNotes({ pcOffsets: offs, notes: names }, 0, 0);
+    var items = ftcNotes({ pcOffsets: offs, notes: names }, 0, ftcQ.inv || 0);
     return items;
   }
 
