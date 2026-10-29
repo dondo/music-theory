@@ -170,6 +170,12 @@ var KeyboardRender = (function () {
     return d ? 'scale' : null;
   }
 
+  // a key left of the root that belongs to the scale (so to the signature) is not lit, but is greyed a little to say so
+  function belowScale(off, ctx) {
+    if (off >= 0 || !ctx.scale || ctx.flash || ctx.rootFirst || ctx.litS != null) return false;
+    return ctx.scale.offsets.indexOf(((off % 12) + 12) % 12) >= 0;
+  }
+
   // scale degree of the key `off` semitones above the root (null if not in scale)
   function degreeOf(off, scale) {
     if (!scale) return null;
@@ -259,7 +265,8 @@ var KeyboardRender = (function () {
     var sp = T.specsFor(ctx.mode, k.pc)[0];
     var d = degreeOf(k.off, ctx.scale);
     var type = ctx.litS != null ? (k.s === ctx.litS ? 'croot' : null) : (ctx.rootFirst && k.off < 0) ? null : keyType(d, ctx, k.pc);
-    var fill = type ? HL.white[type] : '#ffffff';
+    var below = !type && belowScale(k.off, ctx);
+    var fill = type ? HL.white[type] : below ? '#e3e6ec' : '#ffffff';
     var stroke = '#333';
     var sw = 1.5;
     var out = [];
@@ -294,7 +301,7 @@ var KeyboardRender = (function () {
     var d = degreeOf(k.off, ctx.scale);
     var type = ctx.litS != null ? (k.s === ctx.litS ? 'croot' : null) : (ctx.rootFirst && k.off < 0) ? null : keyType(d, ctx, k.pc);
     var x = k.cx - BW / 2;
-    var fill = type ? HL.black[type] : '#222';
+    var fill = type ? HL.black[type] : belowScale(k.off, ctx) ? '#5a606c' : '#222';
     var stroke = '#111';
     var sw = type ? (type === 'cscale' ? 3.6 : 7.2) : 1.2;   // lit black keys keep a heavy border so they still read as black
     var out = [];
