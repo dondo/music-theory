@@ -1,5 +1,5 @@
-/* Offline cache. 028ed400df is replaced by tools/build.py so each deploy refreshes the cache. */
-var CACHE = 'music-theory-028ed400df';
+/* Offline cache. 078e217e12 is replaced by tools/build.py so each deploy refreshes the cache. */
+var CACHE = 'music-theory-078e217e12';
 var FILES = ['./', 'index.html', 'manifest.webmanifest',
   'icons/icon-180.png', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png'];
 
@@ -12,7 +12,7 @@ self.addEventListener('activate', function (e) {
   }).then(function () { return self.clients.claim(); }));
 });
 self.addEventListener('fetch', function (e) {
-  if (e.request.method !== 'GET') return;
+  if (e.request.method !== 'GET' || new URL(e.request.url).origin !== self.location.origin) return;      // (the sync service is not cached)
   e.respondWith(caches.match(e.request, { ignoreSearch: true }).then(function (hit) {
     return hit || fetch(e.request);
   }));

@@ -758,5 +758,69 @@ check('pop answers: described, checked and named like a lead sheet', function ()
   });
   console.log('ok quality tables');
 })();
-console.log(failures ? '\n' + failures + ' FAILED' : '\nall tests passed');
-process.exit(failures ? 1 : 0);
+// sync: credentials, the versioned envelope, merging
+var Sync = require('../js/sync.js');
+(async function () {
+  var d = await Sync.derive('Dondo Music', 'water-nutmeg'), d2 = await Sync.derive('  dondo   music ', 'WATER-nutmeg'), d3 = await Sync.derive('dondo music', 'water-nutmeg2');
+  assert.strictEqual(d.id, d2.id); assert.strictEqual(d.token, d2.token);                  // case and spacing do not matter
+  assert.notStrictEqual(d.id, d3.id); assert.notStrictEqual(d.id, d.token);
+  assert.ok(/^[0-9a-f]{64}$/.test(d.id) && /^[0-9a-f]{64}$/.test(d.token));
+  assert.ok(Sync.validName('abcde') && !Sync.validName('abcd') && !Sync.validName('    ab   '));
+  assert.ok(Sync.validPass('four-sixsixs') === false && Sync.validPass('four-fives') && !Sync.validPass('abc-defg') && !Sync.validPass('abcdefg-abcd'));
+  for (var i = 0; i < 300; i++) assert.ok(Sync.validPass(Sync.randomPassphrase()), 'passphrase shape');
+  Sync.WORDS.forEach(function (w) { assert.ok(/^[a-z]{4,6}$/.test(w), w); });
+  assert.strictEqual(new Set(Sync.WORDS).size, Sync.WORDS.length);
+  var payload = { schema: 1, savedAt: 5, keys: { 'music-theory-x': { t: 3, v: 'abc' } } };
+  var env = await Sync.seal(d.key, payload), parsed = JSON.parse(env);
+  assert.strictEqual(parsed.v, 1);
+  assert.deepStrictEqual(await Sync.open(d.key, env), payload);
+  await assert.rejects(Sync.open(d3.key, env), /wrong name or passphrase/);
+  await assert.rejects(Sync.open(d.key, JSON.stringify(Object.assign({}, parsed, { v: 2 }))), /newer version/);
+  await assert.rejects(Sync.open(d.key, 'not json'), /not readable/);
+  var newer = await Sync.seal(d.key, { schema: 2, savedAt: 1, keys: {} });
+  await assert.rejects(Sync.open(d.key, newer), /newer version/);
+  // merging
+  var K = 'music-theory-';
+  var a = {}, b = {};
+  a[K + 'state-v1'] = { t: 10, v: 'A' }; b[K + 'state-v1'] = { t: 20, v: 'B' };                 // newest wins
+  a[K + 'only-a'] = { t: 1, v: '1' }; b[K + 'only-b'] = { t: 1, v: '2' };
+  a[K + 'cards-mem-v1'] = { t: 5, v: JSON.stringify({ p: { x: { h: 1, t: 100, n: 1 }, y: { h: 1, t: 50, n: 1 } }, seq: 4, tm: {} }) };
+  b[K + 'cards-mem-v1'] = { t: 9, v: JSON.stringify({ p: { x: { h: 2, t: 200, n: 2 }, z: { h: 1, t: 1, n: 1 } }, seq: 7, tm: {} }) };
+  a[K + 'notes-v1'] = { t: 5, v: JSON.stringify({ play: { lv: 3 }, find: { lv: 1 } }) };
+  b[K + 'notes-v1'] = { t: 9, v: JSON.stringify({ play: { lv: 2 }, find: { lv: 2, ever: true } }) };
+  a[K + 'trials-v3'] = { t: 5, v: JSON.stringify({ k: { ms: 9000, wrong: 0 } }) };
+  b[K + 'trials-v3'] = { t: 9, v: JSON.stringify({ k: { ms: 12000, wrong: 1 }, j: { ms: 5000, wrong: 0 } }) };
+  a[K + 'gone'] = { t: 30, v: null }; b[K + 'gone'] = { t: 10, v: 'still here' };               // a deletion newer than the data wins
+  var m = Sync.merge(a, b);
+  assert.strictEqual(m.keys[K + 'state-v1'].v, 'B');
+  assert.strictEqual(m.keys[K + 'only-a'].v, '1'); assert.strictEqual(m.keys[K + 'only-b'].v, '2');
+  var mem = JSON.parse(m.keys[K + 'cards-mem-v1'].v);
+  assert.deepStrictEqual(Object.keys(mem.p).sort(), ['x', 'y', 'z']); assert.strictEqual(mem.p.x.h, 2); assert.strictEqual(mem.seq, 7);
+  var st = JSON.parse(m.keys[K + 'notes-v1'].v);
+  assert.strictEqual(st.play.lv, 3); assert.strictEqual(st.find.lv, 2); assert.strictEqual(st.find.ever, true);
+  var tr = JSON.parse(m.keys[K + 'trials-v3'].v);
+  assert.strictEqual(tr.k.ms, 9000); assert.strictEqual(tr.j.ms, 5000);
+  assert.strictEqual(m.keys[K + 'gone'].v, null);
+  assert.ok(m.toLocal.indexOf(K + 'only-b') >= 0 && m.toLocal.indexOf(K + 'only-a') < 0);
+  assert.ok(m.toRemote.indexOf(K + 'only-a') >= 0 && m.toRemote.indexOf(K + 'only-b') < 0);
+  var again = Sync.merge(m.keys, m.keys);
+  assert.strictEqual(again.toLocal.length + again.toRemote.length, 0);                            // merging a merge changes nothing
+  // the Worker's contract against an in-memory stand-in
+  var store = {}, fetchLog = [];
+  global.fetch = async function (url, o) {
+    var id = url.split('/s/')[1], method = o.method, tok = o.headers.Authorization.replace('Bearer ', '');
+    fetchLog.push(method);
+    if (method === 'GET') return store[id] ? (store[id].tok === tok ? { status: 200, text: async () => store[id].body } : { status: 403, text: async () => '' }) : { status: 404, text: async () => '' };
+    store[id] = { tok: tok, body: o.body }; return { status: 200, text: async () => 'ok' };
+  };
+  assert.strictEqual(await Sync.exists(d), false);
+  await Sync.push(d, m.keys);
+  assert.strictEqual(await Sync.exists(d), true);
+  assert.deepStrictEqual((await Sync.pull(d)).keys[K + 'state-v1'], { t: 20, v: 'B' });
+  var acct = await Sync.newAccount('dondo music');
+  assert.ok(Sync.validPass(acct.pass) && acct.name === 'dondo music');
+  console.log('ok sync');
+})().then(function () {
+  console.log(failures ? '\n' + failures + ' FAILED' : '\nall tests passed');
+  process.exit(failures ? 1 : 0);
+}, function (e) { console.log('FAIL sync', e && e.message); process.exit(1); });

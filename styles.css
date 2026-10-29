@@ -769,3 +769,26 @@ html.is-local .ftc-local { display: inline-flex; }
 /* Play / Find the note: the progress row under the keyboard, like Find the chord's */
 .step-card[hidden] { display: none; }
 .step-card .chord-info { margin: 0; }
+
+/* ---- sync dialog ---- */
+.sync-dialog { border: 1px solid var(--line); border-radius: 16px; padding: 0; width: min(92vw, 30rem); color: var(--ink); background: #fff; box-shadow: 0 18px 50px rgba(20, 28, 55, 0.28); }
+.sync-dialog::backdrop { background: rgba(20, 28, 55, 0.4); }
+.sync-body { padding: 20px 22px 18px; }
+.sync-body h2 { margin: 0 0 10px; font-size: 1.15rem; }
+.sync-body p { margin: 0 0 12px; font-size: 0.92rem; line-height: 1.45; }
+.sync-muted { color: var(--muted); }
+.sync-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 12px 0; }
+.sync-k { flex: 0 0 6.5em; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
+.sync-secret { font-size: 1.1rem; font-weight: 700; padding: 4px 9px; border-radius: 8px; background: #f1f3f9; word-break: break-all; }
+.sync-small { padding: 4px 10px; font-size: 0.8rem; }
+.sync-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.sync-primary:disabled { opacity: 0.45; cursor: default; }
+.sync-field { display: block; margin: 12px 0; }
+.sync-field span { display: block; font-size: 0.82rem; font-weight: 700; margin-bottom: 4px; }
+.sync-field input { width: 100%; font: inherit; padding: 9px 11px; border: 1px solid #c9cfdd; border-radius: 10px; }
+.sync-field small { display: block; margin-top: 4px; color: var(--muted); font-size: 0.8rem; line-height: 1.35; }
+.sync-warn { border: 1px solid #f1c98c; background: #fff7ea; border-radius: 12px; padding: 10px 14px 2px; margin-bottom: 8px; }
+.sync-warn p { margin-top: 6px; }
+.sync-check { display: flex; gap: 9px; align-items: flex-start; margin: 14px 0 4px; font-size: 0.92rem; }
+.sync-check input { margin-top: 3px; }
+.sync-status { min-height: 1.2em; margin: 8px 0 0; color: #b91c1c; }
