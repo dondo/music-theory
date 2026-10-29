@@ -468,10 +468,10 @@
     chordInfo.classList.toggle('quiz', quizOn());
     chordInfo.textContent = '';
     var scoreHere = quizOn() && (score.ok + score.bad > 0 || !!ftcTrial);       // Find the chord: after the first guess the score replaces the instruction
+    placeTrialBox(quizOn());
     var showHead = quizOn() && (scoreHere || isPhoneLayout());       // (on a phone the level and the bubbles show from the start)
     if (showHead) {
       quizHead.appendChild(levelTag);
-      quizHead.appendChild(trialBox);
       quizHead.appendChild(scoreBox); scoreBox.hidden = false;
       quizHead.appendChild(autoRow);
       autoRow.hidden = !!ftcTrial;
@@ -2129,6 +2129,12 @@
   trialClock.hidden = true;
   trialBtn.hidden = !trialEver;
   trialBox.appendChild(trialBtn); trialBox.appendChild(trialClock); trialBox.appendChild(trialList);
+  // the Time Trial button lives in the controls row, just after the study direction ("Find the chord", ...)
+  function placeTrialBox(show) {
+    var g = document.getElementById('flashmode-group');
+    if (g && trialBox.previousSibling !== g) g.parentNode.insertBefore(trialBox, g.nextSibling);
+    trialBox.hidden = !show;
+  }
   function trialKey(n) { return studyQuizOn() ? (noteOn() ? 'note-' : 'step-') + studySlot() + ':' + n : state.mode + ':' + (ftcPop() ? 'pop' : 'jazz') + ':' + n; }
   // best per level: { ms, wrong } (older saves held just the time)
   function trialBests() {
@@ -2608,12 +2614,12 @@
   function updateStudyHead() {
     var on = studyQuizOn();
     stepCard.hidden = !on;
+    placeTrialBox(on);
     if (!on) return;
     syncSlot();
     levelTag.textContent = (ftcTrial ? 'Trial \u00b7 ' : '') + 'Level ' + stepNo();
     levelTag.title = 'Level ' + stepNo() + ' of ' + STUDY_STEPS;
     quizHead.appendChild(levelTag);
-    quizHead.appendChild(trialBox);
     quizHead.appendChild(scoreBox); scoreBox.hidden = false;
     quizHead.appendChild(autoRow);
     autoRow.hidden = !!ftcTrial;

@@ -816,3 +816,4 @@ html.is-local body { border-top: 6px solid #ea580c; }
 .foot-license .foot-version + p { margin-top: 2px; }
 @media (max-width: 600px) { .ftc-head { gap: 8px; } .ftc-head .ftc-side-row { margin-left: auto; } }      /* (level, bubbles and the arrows share a line on a phone) */
 @media (max-width: 600px) { .ftc-head { flex-wrap: nowrap; } .ftc-head .ftc-level { font-size: 1.05rem; white-space: nowrap; } #streak-text { gap: 3px; } .bub { width: 17px; height: 17px; } }
+.trial-box[hidden] { display: none; }
