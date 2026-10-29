@@ -21,6 +21,7 @@
     <header class="intro">
       <h1><svg class="app-icon" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#2563eb"/><rect x="8" y="34" width="48" height="22" rx="3" fill="#fff"/><path d="M20 34v22M32 34v22M44 34v22" stroke="#94a3b8" stroke-width="1.5"/><rect x="17" y="34" width="6" height="13" rx="1" fill="#1c1c1c"/><rect x="29" y="34" width="6" height="13" rx="1" fill="#1c1c1c"/><rect x="41" y="34" width="6" height="13" rx="1" fill="#1c1c1c"/><ellipse cx="34" cy="27" rx="6.5" ry="4.5" transform="rotate(-20 34 27)" fill="#fff"/><rect x="38.6" y="8" width="2.8" height="19" fill="#fff"/><path d="M41 8C41 15 53 15 50 25C49 19 44 18 41 16Z" fill="#fff"/></svg><span>Music Theory (Piano)</span><span class="local-badge" id="local-badge" hidden title="This is your local copy (local.js is present)">LOCAL</span></h1>
       <p class="lede">This app is meant to help explore musical notation and chord structure. This is not a curriculum; it&rsquo;s a self-driven study aid. There&rsquo;s some exposition of subtle concepts, but for the most part this is intended as a companion for a structured course of study.</p>
+      <button type="button" id="sync-link" class="btn-reset sync-btn">Sync across devices</button>
     </header>
 
     <section class="controls" aria-label="Controls">
@@ -286,17 +287,16 @@
     </ul>
 
     <footer class="foot">
-      Natural minor scales. Black keys show their most common spelling; where both are in everyday use
-      (F&#x266F;/G&#x266D; major, D&#x266F;/E&#x266D; minor) both spellings are shown.
-      Music symbols from the Bravura font (SIL Open Font License).
-      Chord sources:
-      <a href="https://harmonious.nfshost.com/p/b9/Diatonic-Modes-Chords" target="_blank" rel="noopener">Diatonic Modes &amp; Chords</a>,
-      <a href="https://amadeus-chordzart.readthedocs.io/en/latest/theory/chord_dictionary.html" target="_blank" rel="noopener">Chord Dictionary</a>,
-      <a href="https://www.songtive.com/en/chords/piano/type/extended" target="_blank" rel="noopener">Extended chords: 9th, 11th, 13th</a>,
-      <a href="https://www.basicmusictheory.com/topic/mode-chord" target="_blank" rel="noopener">Mode chord</a>.
-      <button type="button" id="log-link" class="quiet-link">Practice log</button>
-      <button type="button" id="sync-link" class="quiet-link">Sync across devices</button>
-      <button type="button" id="reset-app" class="quiet-link">Reset app settings</button>
+      <div class="foot-col">
+        <h2>About</h2>
+        <p>Developed by Donald Erik Schneider</p>
+        <p>If you like it, consider buying my book as a tip: <a href="https://www.amazon.com/Houses-Sword-Flame-Book-Trilogy/dp/0578725312" target="_blank" rel="noopener">Houses of Sword and Flame</a></p>
+      </div>
+      <div class="foot-col foot-license">
+        <h2>License</h2>
+        <p><a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank" rel="noopener">CC BY-NC-SA 4.0</a></p>
+        <p><button type="button" id="reset-app" class="quiet-link">Reset app settings</button><button type="button" id="log-link" class="quiet-link">Practice log</button></p>
+      </div>
     </footer>
   </main>
 

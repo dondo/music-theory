@@ -233,3 +233,7 @@ On phone-sized screens (narrow, or a phone on its side) the Keys / Chords / Leve
 - **Merging:** each saved key has a last-changed time; the newest wins, except the memory models (per item, the more recently seen), the answer log (union), time trial bests (the faster one), and levels (the higher one).
 - **Versions:** the stored envelope (`v`) and payload (`schema`) are versioned; data from a newer version is never overwritten (the app asks you to update) and older layouts are brought forward in `Sync.migrate` (`js/sync.js`, the engine; `js/syncui.js`, the dialog and clocks).
 - **Reset app settings** resets the synced state too, on every device, the next time they sync.
+
+## Credits
+
+Music symbols come from the Bravura font (SIL Open Font License). Chord sources: [Diatonic Modes & Chords](https://harmonious.nfshost.com/p/b9/Diatonic-Modes-Chords), [Chord Dictionary](https://amadeus-chordzart.readthedocs.io/en/latest/theory/chord_dictionary.html), [Extended chords: 9th, 11th, 13th](https://www.songtive.com/en/chords/piano/type/extended), [Mode chord](https://www.basicmusictheory.com/topic/mode-chord). Black keys show their most common spelling; where both are in everyday use (F♯/G♭ major, D♯/E♭ minor) both spellings are shown. The app is licensed CC BY-NC-SA 4.0; the footer carries an About and a License section.

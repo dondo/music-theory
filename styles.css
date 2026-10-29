@@ -281,11 +281,21 @@ body {
 .legend-chord[hidden] { display: none; }
 
 .foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 24px;
   margin-top: 20px;
   color: #7b8294;
   font-size: 0.82rem;
-  max-width: 70ch;
 }
+.foot-col { max-width: 44ch; }
+.foot-license { text-align: right; flex: 0 0 auto; }
+.foot h2 { margin: 0 0 4px; font-size: 0.74rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #5d6475; }
+.foot p { margin: 0 0 4px; }
+.foot-license .quiet-link { margin: 0 0 0 10px; }
+.foot-license .quiet-link:first-child { margin-left: 0; }
+@media (max-width: 560px) { .foot { flex-direction: column; } .foot-license { text-align: left; } }
 
 .quiet-link {
   margin-left: 6px;
@@ -304,6 +314,7 @@ body {
 @media (max-width: 560px) {
   .page { padding: 24px 12px 36px; }
   .intro h1 { font-size: 1.5rem; }
+  .sync-btn { position: static; margin-top: 10px; }
 }
 
 .chords summary { cursor: pointer; font-weight: 600; margin-bottom: 10px; }
@@ -792,3 +803,8 @@ html.is-local .ftc-local { display: inline-flex; }
 .sync-check { display: flex; gap: 9px; align-items: flex-start; margin: 14px 0 4px; font-size: 0.92rem; }
 .sync-check input { margin-top: 3px; }
 .sync-status { min-height: 1.2em; margin: 8px 0 0; color: #b91c1c; }
+
+/* the Sync button: top right, below the title */
+.intro { position: relative; }
+.sync-btn { position: absolute; top: 3.4rem; right: 0; }
+@media (max-width: 700px) { .sync-btn { position: static; margin-top: 10px; } }
