@@ -108,14 +108,14 @@
     return { wrap: w, input: i };
   }
   function show(nodes) { body.textContent = ''; nodes.forEach(function (n) { body.appendChild(n); }); statusEl = el('p', 'sync-status'); statusEl.setAttribute('aria-live', 'polite'); body.appendChild(statusEl); }
-  // the dialog grows out of the Sync button and shrinks back into it
+  // the dialog spreads down and left from the Sync button's corner, and folds back into it
   function fly(opening, done) {
     var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (reduce || !dlg.animate || !linkBtn || linkBtn.hidden) { if (done) done(); return; }
     var b = linkBtn.getBoundingClientRect(), r = dlg.getBoundingClientRect();
     if (!r.width || !r.height) { if (done) done(); return; }
-    var dx = (b.left + b.width / 2) - (r.left + r.width / 2), dy = (b.top + b.height / 2) - (r.top + r.height / 2);
-    var from = { transform: 'translate(' + dx + 'px,' + dy + 'px) scale(' + (b.width / r.width) + ',' + (b.height / r.height) + ')', opacity: 0, borderRadius: '999px' };
+    dlg.style.transformOrigin = '100% 0';                           // grows from the top-right corner, down and to the left
+    var from = { transform: 'scale(' + (b.width / r.width) + ',' + (b.height / r.height) + ')', opacity: 0, borderRadius: '999px' };
     var to = { transform: 'none', opacity: 1, borderRadius: '16px' };
     var a = dlg.animate(opening ? [from, to] : [to, from], { duration: opening ? 240 : 180, easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)' });
     a.onfinish = function () { if (done) done(); };
