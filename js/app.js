@@ -1150,8 +1150,9 @@
       b.setAttribute('aria-label', 'Chord ' + (i + 1) + ': ' + ch.roman + ', ' + ch.symbol);
       var vp2 = voicing(i);
       if (vp2) b.title = ch.symbol + ': ' + vp2.name + ', fingers ' + vp2.notes.map(function (n) { return n.finger; }).join('-');
-      b.appendChild(el('span', 'chip-num', ch.roman));
-      b.appendChild(el('span', 'chip-sym', ch.symbol));
+      var popP = level === 'pop';                                            // (as on the chord selector: Pop leads with the chord name, Jazz with the numeral)
+      b.appendChild(el('span', 'chip-num', popP ? ch.symbol : ch.roman));
+      b.appendChild(el('span', 'chip-sym', popP ? ch.roman : ch.symbol));
       var x = el('button', 'prog-x', '\u00D7');
       x.type = 'button';
       x.setAttribute('data-prog-remove', i);
@@ -1373,7 +1374,7 @@
         var ch = progChord(i), v = voicing(i);
         if (!v) return null;
         return { notes: v.notes.map(function (n) { return { midi: tonic + n.o + shift, name: ch.notes[n.idx] }; }),
-                 top: ch.roman, sub: ch.symbol, lit: i === progIndex };
+                 top: level === 'pop' ? ch.symbol : ch.roman, sub: level === 'pop' ? ch.roman : ch.symbol, lit: i === progIndex };
       }).filter(Boolean) };
     }
     if (!state.chord) return { kind: 'empty', clef: clefId, hint: 'Select a chord to see it here', chords: [] };
