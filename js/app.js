@@ -558,7 +558,7 @@
     });
     if (HAS_KEYBOARD && !rootBox.nextElementSibling) rootBox.parentNode.appendChild(el('p', 'rootkeys-note', 'Keyboard: A\u2013G for the root; Shift for sharp, ' + ALT_NAME + ' for flat.'));
     document.getElementById('root-row').hidden = false;
-    var needSev = ['7', '9', '11', '13'].indexOf(ftcSel.type) >= 0;           // (shown as soon as a seventh-or-more type is chosen; only a major or augmented chord needs the answer)
+    var needSev = ['7', '9', '11', '13'].indexOf(ftcSel.type) >= 0 && !ftcSevHidden();           // (shown as soon as a seventh-or-more type is chosen; only a major or augmented chord needs the answer)
     sevBox.textContent = '';
     document.getElementById('sev-row').hidden = !needSev;
     if (needSev) POP_SEVS.forEach(function (q) {
@@ -1729,6 +1729,15 @@
     return ftcTypesHidden() ? 'Choose the chord\u2019s degree.' : 'Choose a type and a degree, in either order. The second one you choose is your answer.';
   }
   function ftcHintTail() { return '. ' + (popAns() ? (ftcTypesHidden() ? 'Choose the root and quality in the Chords section.' : 'Choose the type, root and quality in the Chords section.') : (ftcTypesHidden() ? 'Choose the chord\u2019s degree in the Chords section.' : 'Choose a type and a degree in the Chords section; the second one you choose is your answer.')); }
+  // Pop: the maj/dom choice only comes in with the first major seventh chord (until then every seventh is a dominant one: C7)
+  function ftcSevHidden() {
+    var ref = Theory.specsFor(state.mode, state.mode === 'minor' ? 9 : 0)[0].name;
+    return quizOn() && ftcPop() && !FindChord.chords(state.mode, true, ftcLevels().chords).some(function (c) {
+      if (['7', '9', '11', '13'].indexOf(c.type) < 0) return false;
+      var wd = FindChord.describe(Chords.chordInKey(ref, state.mode, c.deg, c.type), c.type);
+      return wd.sev === 'maj';
+    });
+  }
   function ftcTypesHidden() { return quizOn() && FindChord.chords(state.mode, ftcPop(), ftcLevels().chords).every(function (c) { return c.type === 'triad'; }); }
   function ftcSpec() { return Theory.specsFor(state.mode, ftcQ.pc)[ftcQ.spell]; }
   function ftcChord() { return Chords.chordInKey(ftcSpec().name, state.mode, ftcQ.deg, ftcQ.type); }
@@ -2353,6 +2362,7 @@
     if (pa) {                                          // Pop: type + root + quality (+ maj/dom); sus chords need no quality
       var T = ftcSel.type;
       if (ftcSel.qual !== null && !FindChord.needsSev(T, ftcSel.qual)) ftcSel.sev = null;
+      else if (ftcSel.qual !== null && ftcSevHidden()) ftcSel.sev = 'dom';
       if (ftcSel.root === null || T === null || (FindChord.needsQual(T) && ftcSel.qual === null) || (FindChord.needsSev(T, ftcSel.qual) && ftcSel.sev === null)) { draw(false, false); return; }
       var sel = { root: ftcSel.root, type: T, qual: FindChord.needsQual(T) ? ftcSel.qual : null, sev: ftcSel.sev };
       ok = FindChord.checkAnswer(FindChord.describe(ftcChord(), ftcQ.type), ftcQ.pc, sel);
