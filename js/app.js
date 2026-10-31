@@ -1815,7 +1815,7 @@
     if (levelBanner.parentNode !== home) home.insertBefore(levelBanner, newStage ? home.firstChild : null);
     document.getElementById('ftc-levelup-icon').textContent = '\u{1F389}';
     document.getElementById('ftc-levelup-title').textContent = title;
-    if (goRow) html += '<span class="levelup-go-row"><button type="button" class="btn-reset levelup-go">Go \u2192</button></span>';   // (the same as Next)
+    if (goRow) html += '<span class="levelup-go-row">'+'<button type="button" class="btn-reset levelup-stay" data-kind="ftc">Not yet \u2014 I can do better</button>'+'<button type="button" class="btn-reset levelup-go">Go \u2192</button></span>';   // (the same as Next)
     levelText.innerHTML = html;
     levelBanner.hidden = false;
     levelBanner.style.animation = 'none'; void levelBanner.offsetWidth; levelBanner.style.animation = '';
@@ -1830,7 +1830,7 @@
     var html = 'You\u2019ve completed Level ' + (n - 1) + ' (of ' + STUDY_STEPS + '). On to level ' + n + ', ' +
       ['', '', 'the <strong>bass clef</strong>!', 'where <strong>treble and bass</strong> take turns!', 'introducing the <strong>alto clef</strong>!', 'where <strong>treble, bass and alto</strong> all take turns!'][n] +
       (n === 4 ? '<span class="levelup-line2">Note: few people need to know about this, except my sister, who was the violist and most skilled musician in our terrible family quartet.</span>' : '') +
-      '<span class="levelup-go-row"><button type="button" class="btn-reset levelup-go">Go \u2192</button></span>';
+      '<span class="levelup-go-row">'+'<button type="button" class="btn-reset levelup-stay" data-kind="step">Not yet \u2014 I can do better</button>'+'<button type="button" class="btn-reset levelup-go">Go \u2192</button></span>';
     if (levelBanner.parentNode !== ftcSection) ftcSection.appendChild(levelBanner);
     document.getElementById('ftc-levelup-icon').textContent = '\u{1F389}';
     document.getElementById('ftc-levelup-title').textContent = 'Nice work!';
@@ -1912,6 +1912,15 @@
   }
   levelBanner.addEventListener('click', function (e) {
     if (levelBanner.hasAttribute('data-welcome') && e.target.closest && e.target.closest('.levelup-go')) { bannerHold = false; levelBanner.hidden = true; levelBanner.removeAttribute('data-welcome'); return; }
+    var stay = e.target.closest && e.target.closest('.levelup-stay');
+    if (stay && (quizOn() || studyQuizOn()) && state.answered) {              // "Not yet, I can do better": take the level-up back, then go on
+      if (stay.getAttribute('data-kind') === 'ftc') { ftcSetLevel(ftcLevelNo() - 1); ftcRaised(false); }
+      else stepLv[studySlot()] = Math.max(1, stepNo() - 1);
+      ftcStreak = 0; ftcTried = 0; ftcRight = 0; ftcBub = null; bubFull = false;
+      saveFtc();
+      nextCard(false);
+      return;
+    }
     if (e.target.closest && e.target.closest('.levelup-go') && (quizOn() || studyQuizOn()) && state.answered) nextCard(false);
   });
   function confetti(ox, oy) {

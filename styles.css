@@ -589,6 +589,8 @@ html.is-local body { border-top: 6px solid #ea580c; }
 .levelup { line-height: 1.35; }
 .levelup-go-row { display: block; margin-top: 10px; text-align: right; }
 .levelup-go { padding: 8px 20px; border-radius: 999px; border: 2px solid #16a34a; background: #dcfce7; color: #14532d; font-weight: 700; font-size: 1rem; cursor: pointer; }
+.levelup-stay { margin-right: 10px; padding: 8px 16px; border-radius: 999px; border: 2px solid #94a3b8; background: transparent; color: inherit; font-size: 0.95rem; cursor: pointer; }
+.levelup-stay:hover, .levelup-stay:focus-visible { background: rgba(148, 163, 184, 0.2); }
 .levelup-go:hover, .levelup-go:focus-visible { background: #bbf7d0; }
 .levelup > div { flex: 1; }
 .levelup-line2 { display: block; margin-top: 1.35em; }
