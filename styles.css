@@ -817,3 +817,25 @@ html.is-local body { border-top: 6px solid #ea580c; }
 @media (max-width: 600px) { .ftc-head { gap: 8px; } .ftc-head .ftc-side-row { margin-left: auto; } }      /* (level, bubbles and the arrows share a line on a phone) */
 @media (max-width: 600px) { .ftc-head { flex-wrap: nowrap; } .ftc-head .ftc-level { font-size: 1.05rem; white-space: nowrap; } #streak-text { gap: 3px; } .bub { width: 17px; height: 17px; } }
 .trial-box[hidden] { display: none; }
+
+/* the developer dialog: a small gear in the footer opens it; it grows upward from the gear */
+.dev-icon { display: inline-flex; vertical-align: middle; margin-left: 12px; padding: 2px; border: 0; background: none; color: #a3aab8; cursor: pointer; border-radius: 6px; }
+.dev-icon:hover, .dev-icon:focus-visible { color: var(--muted); }
+.dev-dialog { position: fixed; width: min(300px, calc(100vw - 16px)); padding: 12px 14px; border: 1px solid var(--line); border-radius: 14px; background: #fff; color: inherit; box-shadow: 0 10px 34px rgba(20, 30, 60, 0.22); }
+.dev-dialog::backdrop { background: rgba(20, 30, 60, 0.18); }
+.dev-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.dev-toggle { display: inline-flex; align-items: center; gap: 6px; padding: 2px 0; border: 0; background: none; font: inherit; font-weight: 700; cursor: pointer; color: inherit; }
+.dev-tri { display: inline-block; width: 1em; transition: transform 0.15s; }
+.dev-dialog.expanded .dev-tri { transform: rotate(90deg); }
+.dev-close { border: 0; background: none; font-size: 1.3rem; line-height: 1; color: var(--muted); cursor: pointer; padding: 0 4px; }
+.dev-body { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 12px; }
+.dev-body[hidden], .dev-done[hidden] { display: none; }
+.dev-body h2 { margin: 0; font-size: 1rem; }
+.dev-body p { margin: 0; color: var(--muted); font-size: 0.9rem; }
+.dev-row { display: flex; align-items: center; gap: 8px; font-size: 0.95rem; }
+.dev-slide { flex-direction: column; align-items: stretch; gap: 4px; }
+.dev-slide input { width: 100%; }
+.dev-row.off { opacity: 0.5; }
+.dev-danger { padding: 7px 14px; border-radius: 999px; border: 1px solid #dc2626; background: #fef2f2; color: #b91c1c; font-weight: 600; cursor: pointer; align-self: flex-start; }
+.dev-actions { display: flex; gap: 8px; }
+.dev-done { margin: 12px 0 0; color: #15803d; font-weight: 600; }

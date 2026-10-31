@@ -133,9 +133,8 @@
   }
   function resetLabel() { return creds ? 'Clear all app data (across all devices)' : 'Clear all app data'; }
   window.musicTheoryResetLabel = resetLabel;
+  window.musicTheorySyncOn = function () { return !!creds; };
   function refresh() {
-    var rb = document.getElementById('reset-app');
-    if (rb && /^Clear all app data/.test(rb.textContent)) rb.textContent = resetLabel();
     if (linkBtn) linkBtn.textContent = creds ? 'Sync (on)' : 'Sync across devices';
     if (dlg && dlg.open && view === 'home') home();
   }

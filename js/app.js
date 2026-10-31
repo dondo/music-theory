@@ -1553,7 +1553,12 @@
   function ftcLevelNo() { return ftcTrial ? ftcTrial.level : FindChord.clamp(ftcLv[ftcLvKey()] || 1, 1, FindChord.levelCount(state.mode, level === 'pop')); }
   function ftcSetLevel(n) { ftcLv[ftcLvKey()] = FindChord.clamp(n, 1, FindChord.levelCount(state.mode, level === 'pop')); }
   var ftcAuto = true, ftcStreak = 0, ftcTried = 0, ftcRight = 0;     // (ftcTried: questions answered since the last level change)
-  function streakNeed() { return window.MUSIC_THEORY_LOCAL ? 5 : FindChord.STREAK; }      // (the local copy levels up faster, to test)
+  // Questions per level: the app's default (FindChord.STREAK), or the number chosen in the developer dialog while Developer mode is on.
+  // (Kept per device, outside the synced keys.)
+  var DEV_KEY = 'devmode-music-theory-v1', dev = { on: false, n: FindChord.STREAK };
+  try { var dv = JSON.parse(window.localStorage.getItem(DEV_KEY)); if (dv && typeof dv === 'object') { dev.on = dv.on === true; if (Number.isInteger(dv.n) && dv.n >= 1 && dv.n <= 30) dev.n = dv.n; } } catch (e) { /* defaults */ }
+  function streakNeed() { return dev.on ? dev.n : FindChord.STREAK; }
+  function unlockText() { var n = streakNeed(); return Math.ceil(0.7 * n) + ' of the last ' + n; }
   // The last few first-try answers as bubbles, newest on the left: green when right, a red X when wrong. A full green row is a level-up.
   var TRIAL_LEN = 10, TRIAL_PENALTY = 10000;                   // a time trial: ten questions, ten seconds for each wrong answer
   var ftcBub = null, bubFull = false;
@@ -1599,7 +1604,7 @@
   function checkTrialUnlock() {
     if (trialUnlocked || ftcTrial) return;
     var b = bubbles(), right = b.filter(function (r) { return r === 'ok'; }).length;
-    if (right >= (window.MUSIC_THEORY_LOCAL ? 3 : Math.ceil(0.7 * b.length))) { trialUnlocked = trialEver = true; if (typeof syncTrialBox === 'function') syncTrialBox(); }
+    if (right >= Math.ceil(0.7 * b.length)) { trialUnlocked = trialEver = true; if (typeof syncTrialBox === 'function') syncTrialBox(); }
   }
   function pushBub(result) {
     if (bubFull) { ftcBub = null; bubFull = false; }          // (the full green row stayed up for the celebration)
@@ -2177,7 +2182,7 @@
       for (var k = ncur; k >= 1; k--) {
         var nbtn = el('button', 'btn-reset trial-lvl'), nbest = nb[trialKey(k)], nlocked = k === ncur && !trialUnlocked;
         nbtn.type = 'button'; nbtn.setAttribute('data-level', k); nbtn.setAttribute('role', 'menuitem');
-        if (nlocked) { nbtn.disabled = true; nbtn.classList.add('locked'); nbtn.title = 'Answer ' + (window.MUSIC_THEORY_LOCAL ? '3 of the last 5' : '7 of the last 10') + ' right to unlock'; }
+        if (nlocked) { nbtn.disabled = true; nbtn.classList.add('locked'); nbtn.title = 'Answer ' + unlockText() + ' right to unlock'; }
         nbtn.appendChild(el('span', 'tl-n', 'Level ' + k));
         nbtn.appendChild(el('span', 'tl-best', nlocked ? 'play it first' : nbest ? fmtTime(nbest.ms) + (nbest.wrong == null ? '' : ' \u00b7 ' + nbest.wrong + ' wrong') : 'no time yet'));
         trialList.appendChild(nbtn);
@@ -2201,7 +2206,7 @@
         var b = el('button', 'btn-reset trial-lvl'), best = bests[trialKey(n)];
         b.type = 'button'; b.setAttribute('data-level', n); b.setAttribute('role', 'menuitem');
         var locked = n === cur && !trialUnlocked;                    // the step in progress opens for a trial once it has been played well enough
-        if (locked) { b.disabled = true; b.classList.add('locked'); b.title = 'Answer ' + (window.MUSIC_THEORY_LOCAL ? '3 of the last 5' : '7 of the last 10') + ' right to unlock'; }
+        if (locked) { b.disabled = true; b.classList.add('locked'); b.title = 'Answer ' + unlockText() + ' right to unlock'; }
         b.appendChild(el('span', 'tl-n', 'Level ' + FindChord.levelInfo(state.mode, ftcPop(), n).step));
         b.appendChild(el('span', 'tl-best', locked ? 'play it first' : best ? fmtTime(best.ms) + (best.wrong == null ? '' : ' \u00b7 ' + best.wrong + ' wrong') : 'no time yet'));
         body.appendChild(b);
@@ -3469,8 +3474,7 @@
 
   // Clear all app data (formerly Reset app settings): everything back to how a first visit looks (study weights, saved
   // progression, remembered key / chord / open sections, level, mode, score)
-  var resetAppBtn = document.getElementById('reset-app');
-  resetAppBtn.addEventListener('click', function () {
+  function clearAllAppData() {
     restoring = true;                                  // no saves while the sections snap shut
     setTimeout(function () { restoring = false; }, 300);
     if (state.flash) setView(false);
@@ -3519,9 +3523,58 @@
     lastResult = '';
     updateScore();
     draw('fade', false);
-    resetAppBtn.textContent = 'App data cleared';
-    setTimeout(function () { resetAppBtn.textContent = window.musicTheoryResetLabel ? window.musicTheoryResetLabel() : 'Clear all app data'; }, 1800);
-  });
+  }
+
+  // ---- the developer dialog (the small gear in the footer) ----
+  // "Developer mode" expands upward to: the Developer mode checkbox, a Questions-per-level slider (1-30, used only while the box is
+  // ticked; otherwise the app default), and Delete all app data (with an "Are you sure?" step).
+  (function devDialog() {
+    var dlg = document.getElementById('dev-dialog'), openBtn = document.getElementById('dev-btn'), tog = document.getElementById('dev-toggle');
+    var body = document.getElementById('dev-body'), conf = document.getElementById('dev-confirm'), done = document.getElementById('dev-done');
+    var on = document.getElementById('dev-on'), range = document.getElementById('dev-range'), out = document.getElementById('dev-n');
+    function save() { try { window.localStorage.setItem(DEV_KEY, JSON.stringify(dev)); } catch (e) { /* not persisted */ } }
+    function show() {
+      on.checked = dev.on; range.value = dev.n; out.textContent = dev.n; range.disabled = !dev.on;
+      range.closest('.dev-row').classList.toggle('off', !dev.on);
+    }
+    function place() {                                           // the dialog's bottom-right corner sits on the icon, so it grows upward
+      var b = openBtn.getBoundingClientRect(), vw = document.documentElement.clientWidth;
+      dlg.style.margin = '0'; dlg.style.top = 'auto'; dlg.style.left = 'auto';
+      dlg.style.right = Math.max(8, vw - b.right) + 'px';
+      dlg.style.bottom = Math.max(8, window.innerHeight - b.bottom) + 'px';
+    }
+    function expand(open) {
+      tog.setAttribute('aria-expanded', open ? 'true' : 'false');
+      dlg.classList.toggle('expanded', open);
+      body.hidden = !open; conf.hidden = true; done.hidden = true;
+      place();
+    }
+    function applied() {                                         // the number of questions per level changed: the bubbles and the streak follow
+      if (bubFull || (ftcBub && ftcBub.length)) bubFull = bubblesFull();
+      ftcStreak = Math.min(ftcStreak, streakNeed() - 1);
+      if (typeof updateFtc === 'function' && quizOn()) { updateFtc(); updateChordPanel(); }
+      if (typeof updateStudyHead === 'function' && studyQuizOn()) updateStudyHead();
+      showStreak();
+    }
+    openBtn.addEventListener('click', function () { show(); expand(false); dlg.showModal(); place(); });
+    tog.addEventListener('click', function () { expand(body.hidden && conf.hidden); });
+    document.getElementById('dev-close').addEventListener('click', function () { dlg.close(); });
+    dlg.addEventListener('click', function (e) { if (e.target === dlg) dlg.close(); });       // (a click on the backdrop)
+    window.addEventListener('resize', function () { if (dlg.open) place(); });
+    on.addEventListener('change', function () { dev.on = on.checked; save(); show(); applied(); });
+    range.addEventListener('input', function () { dev.n = parseInt(range.value, 10); out.textContent = dev.n; save(); if (dev.on) applied(); });
+    document.getElementById('dev-delete').addEventListener('click', function () {
+      var across = window.musicTheorySyncOn && window.musicTheorySyncOn();
+      document.getElementById('dev-confirm-text').textContent = 'This will discard all stored data and reset all progress' + (across ? ' across all devices' : '') + '.';
+      body.hidden = true; conf.hidden = false; place();
+    });
+    document.getElementById('dev-cancel').addEventListener('click', function () { conf.hidden = true; body.hidden = false; place(); });
+    document.getElementById('dev-proceed').addEventListener('click', function () {
+      clearAllAppData();
+      conf.hidden = true; done.hidden = false; place();
+      setTimeout(function () { if (dlg.open) dlg.close(); }, 1200);
+    });
+  })();
 
   scoreReset.addEventListener('click', function () {
     score.ok = 0;

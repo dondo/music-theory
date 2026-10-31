@@ -834,6 +834,28 @@ html.is-local body { border-top: 6px solid #ea580c; }
 @media (max-width: 600px) { .ftc-head { gap: 8px; } .ftc-head .ftc-side-row { margin-left: auto; } }      /* (level, bubbles and the arrows share a line on a phone) */
 @media (max-width: 600px) { .ftc-head { flex-wrap: nowrap; } .ftc-head .ftc-level { font-size: 1.05rem; white-space: nowrap; } #streak-text { gap: 3px; } .bub { width: 17px; height: 17px; } }
 .trial-box[hidden] { display: none; }
+
+/* the developer dialog: a small gear in the footer opens it; it grows upward from the gear */
+.dev-icon { display: inline-flex; vertical-align: middle; margin-left: 12px; padding: 2px; border: 0; background: none; color: #a3aab8; cursor: pointer; border-radius: 6px; }
+.dev-icon:hover, .dev-icon:focus-visible { color: var(--muted); }
+.dev-dialog { position: fixed; width: min(300px, calc(100vw - 16px)); padding: 12px 14px; border: 1px solid var(--line); border-radius: 14px; background: #fff; color: inherit; box-shadow: 0 10px 34px rgba(20, 30, 60, 0.22); }
+.dev-dialog::backdrop { background: rgba(20, 30, 60, 0.18); }
+.dev-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.dev-toggle { display: inline-flex; align-items: center; gap: 6px; padding: 2px 0; border: 0; background: none; font: inherit; font-weight: 700; cursor: pointer; color: inherit; }
+.dev-tri { display: inline-block; width: 1em; transition: transform 0.15s; }
+.dev-dialog.expanded .dev-tri { transform: rotate(90deg); }
+.dev-close { border: 0; background: none; font-size: 1.3rem; line-height: 1; color: var(--muted); cursor: pointer; padding: 0 4px; }
+.dev-body { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 12px; }
+.dev-body[hidden], .dev-done[hidden] { display: none; }
+.dev-body h2 { margin: 0; font-size: 1rem; }
+.dev-body p { margin: 0; color: var(--muted); font-size: 0.9rem; }
+.dev-row { display: flex; align-items: center; gap: 8px; font-size: 0.95rem; }
+.dev-slide { flex-direction: column; align-items: stretch; gap: 4px; }
+.dev-slide input { width: 100%; }
+.dev-row.off { opacity: 0.5; }
+.dev-danger { padding: 7px 14px; border-radius: 999px; border: 1px solid #dc2626; background: #fef2f2; color: #b91c1c; font-weight: 600; cursor: pointer; align-self: flex-start; }
+.dev-actions { display: flex; gap: 8px; }
+.dev-done { margin: 12px 0 0; color: #15803d; font-weight: 600; }
 </style>
 </head>
 <body>
@@ -1116,9 +1138,29 @@ html.is-local body { border-top: 6px solid #ea580c; }
         <h2>License</h2>
         <p><a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank" rel="noopener">CC BY-NC-SA 4.0</a></p>
         <p class="foot-version">Version <span data-version>dev</span></p>
-        <p><button type="button" id="reset-app" class="quiet-link">Clear all app data</button><button type="button" id="log-link" class="quiet-link">Practice log</button></p>
+        <p><button type="button" id="log-link" class="quiet-link">Practice log</button><button type="button" id="dev-btn" class="dev-icon" aria-label="Developer options" title="Developer options" aria-haspopup="dialog"><svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button></p>
       </div>
     </footer>
+    <dialog id="dev-dialog" class="dev-dialog" aria-label="Developer options">
+      <div class="dev-head">
+        <button type="button" id="dev-toggle" class="dev-toggle" aria-expanded="false" aria-controls="dev-body"><span class="dev-tri" aria-hidden="true">▸</span> Developer mode</button>
+        <button type="button" id="dev-close" class="dev-close" aria-label="Close">×</button>
+      </div>
+      <div id="dev-body" class="dev-body" hidden>
+        <label class="dev-row"><input type="checkbox" id="dev-on"> Developer mode</label>
+        <div class="dev-row dev-slide">
+          <label for="dev-range">Questions per level: <output id="dev-n" for="dev-range">10</output></label>
+          <input type="range" id="dev-range" min="1" max="30" step="1" value="10">
+        </div>
+        <button type="button" id="dev-delete" class="dev-danger">Delete all app data</button>
+      </div>
+      <div id="dev-confirm" class="dev-body" hidden>
+        <h2>Are you sure?</h2>
+        <p id="dev-confirm-text"></p>
+        <div class="dev-actions"><button type="button" id="dev-proceed" class="dev-danger">Proceed</button><button type="button" id="dev-cancel" class="btn-reset">Cancel</button></div>
+      </div>
+      <p id="dev-done" class="dev-done" role="status" hidden>App data deleted.</p>
+    </dialog>
   </main>
 
   <dialog id="sync-dialog" class="sync-dialog" aria-label="Sync across devices"></dialog>
@@ -2319,9 +2361,8 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = Sync; }
   }
   function resetLabel() { return creds ? 'Clear all app data (across all devices)' : 'Clear all app data'; }
   window.musicTheoryResetLabel = resetLabel;
+  window.musicTheorySyncOn = function () { return !!creds; };
   function refresh() {
-    var rb = document.getElementById('reset-app');
-    if (rb && /^Clear all app data/.test(rb.textContent)) rb.textContent = resetLabel();
     if (linkBtn) linkBtn.textContent = creds ? 'Sync (on)' : 'Sync across devices';
     if (dlg && dlg.open && view === 'home') home();
   }
@@ -5676,7 +5717,12 @@ var KeyboardRender = (function () {
   function ftcLevelNo() { return ftcTrial ? ftcTrial.level : FindChord.clamp(ftcLv[ftcLvKey()] || 1, 1, FindChord.levelCount(state.mode, level === 'pop')); }
   function ftcSetLevel(n) { ftcLv[ftcLvKey()] = FindChord.clamp(n, 1, FindChord.levelCount(state.mode, level === 'pop')); }
   var ftcAuto = true, ftcStreak = 0, ftcTried = 0, ftcRight = 0;     // (ftcTried: questions answered since the last level change)
-  function streakNeed() { return window.MUSIC_THEORY_LOCAL ? 5 : FindChord.STREAK; }      // (the local copy levels up faster, to test)
+  // Questions per level: the app's default (FindChord.STREAK), or the number chosen in the developer dialog while Developer mode is on.
+  // (Kept per device, outside the synced keys.)
+  var DEV_KEY = 'devmode-music-theory-v1', dev = { on: false, n: FindChord.STREAK };
+  try { var dv = JSON.parse(window.localStorage.getItem(DEV_KEY)); if (dv && typeof dv === 'object') { dev.on = dv.on === true; if (Number.isInteger(dv.n) && dv.n >= 1 && dv.n <= 30) dev.n = dv.n; } } catch (e) { /* defaults */ }
+  function streakNeed() { return dev.on ? dev.n : FindChord.STREAK; }
+  function unlockText() { var n = streakNeed(); return Math.ceil(0.7 * n) + ' of the last ' + n; }
   // The last few first-try answers as bubbles, newest on the left: green when right, a red X when wrong. A full green row is a level-up.
   var TRIAL_LEN = 10, TRIAL_PENALTY = 10000;                   // a time trial: ten questions, ten seconds for each wrong answer
   var ftcBub = null, bubFull = false;
@@ -5722,7 +5768,7 @@ var KeyboardRender = (function () {
   function checkTrialUnlock() {
     if (trialUnlocked || ftcTrial) return;
     var b = bubbles(), right = b.filter(function (r) { return r === 'ok'; }).length;
-    if (right >= (window.MUSIC_THEORY_LOCAL ? 3 : Math.ceil(0.7 * b.length))) { trialUnlocked = trialEver = true; if (typeof syncTrialBox === 'function') syncTrialBox(); }
+    if (right >= Math.ceil(0.7 * b.length)) { trialUnlocked = trialEver = true; if (typeof syncTrialBox === 'function') syncTrialBox(); }
   }
   function pushBub(result) {
     if (bubFull) { ftcBub = null; bubFull = false; }          // (the full green row stayed up for the celebration)
@@ -6300,7 +6346,7 @@ var KeyboardRender = (function () {
       for (var k = ncur; k >= 1; k--) {
         var nbtn = el('button', 'btn-reset trial-lvl'), nbest = nb[trialKey(k)], nlocked = k === ncur && !trialUnlocked;
         nbtn.type = 'button'; nbtn.setAttribute('data-level', k); nbtn.setAttribute('role', 'menuitem');
-        if (nlocked) { nbtn.disabled = true; nbtn.classList.add('locked'); nbtn.title = 'Answer ' + (window.MUSIC_THEORY_LOCAL ? '3 of the last 5' : '7 of the last 10') + ' right to unlock'; }
+        if (nlocked) { nbtn.disabled = true; nbtn.classList.add('locked'); nbtn.title = 'Answer ' + unlockText() + ' right to unlock'; }
         nbtn.appendChild(el('span', 'tl-n', 'Level ' + k));
         nbtn.appendChild(el('span', 'tl-best', nlocked ? 'play it first' : nbest ? fmtTime(nbest.ms) + (nbest.wrong == null ? '' : ' \u00b7 ' + nbest.wrong + ' wrong') : 'no time yet'));
         trialList.appendChild(nbtn);
@@ -6324,7 +6370,7 @@ var KeyboardRender = (function () {
         var b = el('button', 'btn-reset trial-lvl'), best = bests[trialKey(n)];
         b.type = 'button'; b.setAttribute('data-level', n); b.setAttribute('role', 'menuitem');
         var locked = n === cur && !trialUnlocked;                    // the step in progress opens for a trial once it has been played well enough
-        if (locked) { b.disabled = true; b.classList.add('locked'); b.title = 'Answer ' + (window.MUSIC_THEORY_LOCAL ? '3 of the last 5' : '7 of the last 10') + ' right to unlock'; }
+        if (locked) { b.disabled = true; b.classList.add('locked'); b.title = 'Answer ' + unlockText() + ' right to unlock'; }
         b.appendChild(el('span', 'tl-n', 'Level ' + FindChord.levelInfo(state.mode, ftcPop(), n).step));
         b.appendChild(el('span', 'tl-best', locked ? 'play it first' : best ? fmtTime(best.ms) + (best.wrong == null ? '' : ' \u00b7 ' + best.wrong + ' wrong') : 'no time yet'));
         body.appendChild(b);
@@ -7592,8 +7638,7 @@ var KeyboardRender = (function () {
 
   // Clear all app data (formerly Reset app settings): everything back to how a first visit looks (study weights, saved
   // progression, remembered key / chord / open sections, level, mode, score)
-  var resetAppBtn = document.getElementById('reset-app');
-  resetAppBtn.addEventListener('click', function () {
+  function clearAllAppData() {
     restoring = true;                                  // no saves while the sections snap shut
     setTimeout(function () { restoring = false; }, 300);
     if (state.flash) setView(false);
@@ -7642,9 +7687,58 @@ var KeyboardRender = (function () {
     lastResult = '';
     updateScore();
     draw('fade', false);
-    resetAppBtn.textContent = 'App data cleared';
-    setTimeout(function () { resetAppBtn.textContent = window.musicTheoryResetLabel ? window.musicTheoryResetLabel() : 'Clear all app data'; }, 1800);
-  });
+  }
+
+  // ---- the developer dialog (the small gear in the footer) ----
+  // "Developer mode" expands upward to: the Developer mode checkbox, a Questions-per-level slider (1-30, used only while the box is
+  // ticked; otherwise the app default), and Delete all app data (with an "Are you sure?" step).
+  (function devDialog() {
+    var dlg = document.getElementById('dev-dialog'), openBtn = document.getElementById('dev-btn'), tog = document.getElementById('dev-toggle');
+    var body = document.getElementById('dev-body'), conf = document.getElementById('dev-confirm'), done = document.getElementById('dev-done');
+    var on = document.getElementById('dev-on'), range = document.getElementById('dev-range'), out = document.getElementById('dev-n');
+    function save() { try { window.localStorage.setItem(DEV_KEY, JSON.stringify(dev)); } catch (e) { /* not persisted */ } }
+    function show() {
+      on.checked = dev.on; range.value = dev.n; out.textContent = dev.n; range.disabled = !dev.on;
+      range.closest('.dev-row').classList.toggle('off', !dev.on);
+    }
+    function place() {                                           // the dialog's bottom-right corner sits on the icon, so it grows upward
+      var b = openBtn.getBoundingClientRect(), vw = document.documentElement.clientWidth;
+      dlg.style.margin = '0'; dlg.style.top = 'auto'; dlg.style.left = 'auto';
+      dlg.style.right = Math.max(8, vw - b.right) + 'px';
+      dlg.style.bottom = Math.max(8, window.innerHeight - b.bottom) + 'px';
+    }
+    function expand(open) {
+      tog.setAttribute('aria-expanded', open ? 'true' : 'false');
+      dlg.classList.toggle('expanded', open);
+      body.hidden = !open; conf.hidden = true; done.hidden = true;
+      place();
+    }
+    function applied() {                                         // the number of questions per level changed: the bubbles and the streak follow
+      if (bubFull || (ftcBub && ftcBub.length)) bubFull = bubblesFull();
+      ftcStreak = Math.min(ftcStreak, streakNeed() - 1);
+      if (typeof updateFtc === 'function' && quizOn()) { updateFtc(); updateChordPanel(); }
+      if (typeof updateStudyHead === 'function' && studyQuizOn()) updateStudyHead();
+      showStreak();
+    }
+    openBtn.addEventListener('click', function () { show(); expand(false); dlg.showModal(); place(); });
+    tog.addEventListener('click', function () { expand(body.hidden && conf.hidden); });
+    document.getElementById('dev-close').addEventListener('click', function () { dlg.close(); });
+    dlg.addEventListener('click', function (e) { if (e.target === dlg) dlg.close(); });       // (a click on the backdrop)
+    window.addEventListener('resize', function () { if (dlg.open) place(); });
+    on.addEventListener('change', function () { dev.on = on.checked; save(); show(); applied(); });
+    range.addEventListener('input', function () { dev.n = parseInt(range.value, 10); out.textContent = dev.n; save(); if (dev.on) applied(); });
+    document.getElementById('dev-delete').addEventListener('click', function () {
+      var across = window.musicTheorySyncOn && window.musicTheorySyncOn();
+      document.getElementById('dev-confirm-text').textContent = 'This will discard all stored data and reset all progress' + (across ? ' across all devices' : '') + '.';
+      body.hidden = true; conf.hidden = false; place();
+    });
+    document.getElementById('dev-cancel').addEventListener('click', function () { conf.hidden = true; body.hidden = false; place(); });
+    document.getElementById('dev-proceed').addEventListener('click', function () {
+      clearAllAppData();
+      conf.hidden = true; done.hidden = false; place();
+      setTimeout(function () { if (dlg.open) dlg.close(); }, 1200);
+    });
+  })();
 
   scoreReset.addEventListener('click', function () {
     score.ok = 0;
@@ -7683,7 +7777,7 @@ var KeyboardRender = (function () {
 </script>
   <script>
 /* generated by tools/build.py: do not edit */
-var APP_VERSION = '1.0 (build 05232c2)';
+var APP_VERSION = '1.0 (build 9b9df29)';
 (function () {
   function show() { Array.prototype.forEach.call(document.querySelectorAll('[data-version]'), function (e) { e.textContent = APP_VERSION; }); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', show); else show();

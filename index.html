@@ -296,9 +296,29 @@
         <h2>License</h2>
         <p><a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank" rel="noopener">CC BY-NC-SA 4.0</a></p>
         <p class="foot-version">Version <span data-version>dev</span></p>
-        <p><button type="button" id="reset-app" class="quiet-link">Clear all app data</button><button type="button" id="log-link" class="quiet-link">Practice log</button></p>
+        <p><button type="button" id="log-link" class="quiet-link">Practice log</button><button type="button" id="dev-btn" class="dev-icon" aria-label="Developer options" title="Developer options" aria-haspopup="dialog"><svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button></p>
       </div>
     </footer>
+    <dialog id="dev-dialog" class="dev-dialog" aria-label="Developer options">
+      <div class="dev-head">
+        <button type="button" id="dev-toggle" class="dev-toggle" aria-expanded="false" aria-controls="dev-body"><span class="dev-tri" aria-hidden="true">▸</span> Developer mode</button>
+        <button type="button" id="dev-close" class="dev-close" aria-label="Close">×</button>
+      </div>
+      <div id="dev-body" class="dev-body" hidden>
+        <label class="dev-row"><input type="checkbox" id="dev-on"> Developer mode</label>
+        <div class="dev-row dev-slide">
+          <label for="dev-range">Questions per level: <output id="dev-n" for="dev-range">10</output></label>
+          <input type="range" id="dev-range" min="1" max="30" step="1" value="10">
+        </div>
+        <button type="button" id="dev-delete" class="dev-danger">Delete all app data</button>
+      </div>
+      <div id="dev-confirm" class="dev-body" hidden>
+        <h2>Are you sure?</h2>
+        <p id="dev-confirm-text"></p>
+        <div class="dev-actions"><button type="button" id="dev-proceed" class="dev-danger">Proceed</button><button type="button" id="dev-cancel" class="btn-reset">Cancel</button></div>
+      </div>
+      <p id="dev-done" class="dev-done" role="status" hidden>App data deleted.</p>
+    </dialog>
   </main>
 
   <dialog id="sync-dialog" class="sync-dialog" aria-label="Sync across devices"></dialog>
