@@ -1553,11 +1553,11 @@
   function ftcLevelNo() { return ftcTrial ? ftcTrial.level : FindChord.clamp(ftcLv[ftcLvKey()] || 1, 1, FindChord.levelCount(state.mode, level === 'pop')); }
   function ftcSetLevel(n) { ftcLv[ftcLvKey()] = FindChord.clamp(n, 1, FindChord.levelCount(state.mode, level === 'pop')); }
   var ftcAuto = true, ftcStreak = 0, ftcTried = 0, ftcRight = 0;     // (ftcTried: questions answered since the last level change)
-  // Questions per level: the app's default (FindChord.STREAK), or the number chosen in the developer dialog while Developer mode is on.
+  // Questions per level: the app's default (FindChord.STREAK), or the number set with the slider in the developer dialog.
   // (Kept per device, outside the synced keys.)
-  var DEV_KEY = 'devmode-music-theory-v1', dev = { on: false, n: FindChord.STREAK };
-  try { var dv = JSON.parse(window.localStorage.getItem(DEV_KEY)); if (dv && typeof dv === 'object') { dev.on = dv.on === true; if (Number.isInteger(dv.n) && dv.n >= 1 && dv.n <= 30) dev.n = dv.n; } } catch (e) { /* defaults */ }
-  function streakNeed() { return dev.on ? dev.n : FindChord.STREAK; }
+  var DEV_KEY = 'devmode-music-theory-v1', dev = { n: FindChord.STREAK };
+  try { var dv = JSON.parse(window.localStorage.getItem(DEV_KEY)); if (dv && typeof dv === 'object' && dv.on !== false && Number.isInteger(dv.n) && dv.n >= 1 && dv.n <= 30) dev.n = dv.n; } catch (e) { /* defaults */ }
+  function streakNeed() { return dev.n; }
   function unlockText() { var n = streakNeed(); return Math.ceil(0.7 * n) + ' of the last ' + n; }
   // The last few first-try answers as bubbles, newest on the left: green when right, a red X when wrong. A full green row is a level-up.
   var TRIAL_LEN = 10, TRIAL_PENALTY = 10000;                   // a time trial: ten questions, ten seconds for each wrong answer
@@ -1829,7 +1829,7 @@
     levelBanner.removeAttribute('data-welcome');
     var html = 'You\u2019ve completed Level ' + (n - 1) + ' (of ' + STUDY_STEPS + '). On to level ' + n + ', ' +
       ['', '', 'the <strong>bass clef</strong>!', 'where <strong>treble and bass</strong> take turns!', 'introducing the <strong>alto clef</strong>!', 'where <strong>treble, bass and alto</strong> all take turns!'][n] +
-      (n === 4 ? '<span class="levelup-line2">(Note: few people need to know about this, except my sister, who was the violist and most skilled musician in our terrible family quartet.)</span>' : '') +
+      (n === 4 ? '<span class="levelup-line2">Note: few people need to know about this, except my sister, who was the violist and most skilled musician in our terrible family quartet.</span>' : '') +
       '<span class="levelup-go-row"><button type="button" class="btn-reset levelup-go">Go \u2192</button></span>';
     if (levelBanner.parentNode !== ftcSection) ftcSection.appendChild(levelBanner);
     document.getElementById('ftc-levelup-icon').textContent = '\u{1F389}';
@@ -3526,29 +3526,19 @@
     draw('fade', false);
   }
 
-  // ---- the developer dialog (the small gear in the footer) ----
-  // "Developer mode" expands upward to: the Developer mode checkbox, a Questions-per-level slider (1-30, used only while the box is
-  // ticked; otherwise the app default), and Delete all app data (with an "Are you sure?" step).
+  // ---- the developer dialog (the small gear beside the version) ----
+  // It opens showing a Questions-per-level slider (1-30; the default is FindChord.STREAK) and Delete all app data (with an "Are you sure?" step).
   (function devDialog() {
-    var dlg = document.getElementById('dev-dialog'), openBtn = document.getElementById('dev-btn'), tog = document.getElementById('dev-toggle');
+    var dlg = document.getElementById('dev-dialog'), openBtn = document.getElementById('dev-btn');
     var body = document.getElementById('dev-body'), conf = document.getElementById('dev-confirm'), done = document.getElementById('dev-done');
-    var on = document.getElementById('dev-on'), range = document.getElementById('dev-range'), out = document.getElementById('dev-n');
+    var range = document.getElementById('dev-range'), out = document.getElementById('dev-n');
     function save() { try { window.localStorage.setItem(DEV_KEY, JSON.stringify(dev)); } catch (e) { /* not persisted */ } }
-    function show() {
-      on.checked = dev.on; range.value = dev.n; out.textContent = dev.n; range.disabled = !dev.on;
-      range.closest('.dev-row').classList.toggle('off', !dev.on);
-    }
-    function place() {                                           // the dialog's bottom-right corner sits on the icon, so it grows upward
+    function show() { range.value = dev.n; out.textContent = dev.n; body.hidden = false; conf.hidden = true; done.hidden = true; }
+    function place() {                                           // the dialog's bottom-right corner sits on the gear
       var b = openBtn.getBoundingClientRect(), vw = document.documentElement.clientWidth;
       dlg.style.margin = '0'; dlg.style.top = 'auto'; dlg.style.left = 'auto';
       dlg.style.right = Math.max(8, vw - b.right) + 'px';
       dlg.style.bottom = Math.max(8, window.innerHeight - b.bottom) + 'px';
-    }
-    function expand(open) {
-      tog.setAttribute('aria-expanded', open ? 'true' : 'false');
-      dlg.classList.toggle('expanded', open);
-      body.hidden = !open; conf.hidden = true; done.hidden = true;
-      place();
     }
     function applied() {                                         // the number of questions per level changed: the bubbles and the streak follow
       if (bubFull || (ftcBub && ftcBub.length)) bubFull = bubblesFull();
@@ -3557,13 +3547,11 @@
       if (typeof updateStudyHead === 'function' && studyQuizOn()) updateStudyHead();
       showStreak();
     }
-    openBtn.addEventListener('click', function () { show(); expand(false); dlg.showModal(); place(); });
-    tog.addEventListener('click', function () { expand(body.hidden && conf.hidden); });
+    openBtn.addEventListener('click', function () { show(); dlg.showModal(); place(); });
     document.getElementById('dev-close').addEventListener('click', function () { dlg.close(); });
     dlg.addEventListener('click', function (e) { if (e.target === dlg) dlg.close(); });       // (a click on the backdrop)
     window.addEventListener('resize', function () { if (dlg.open) place(); });
-    on.addEventListener('change', function () { dev.on = on.checked; save(); show(); applied(); });
-    range.addEventListener('input', function () { dev.n = parseInt(range.value, 10); out.textContent = dev.n; save(); if (dev.on) applied(); });
+    range.addEventListener('input', function () { dev.n = parseInt(range.value, 10); out.textContent = dev.n; save(); applied(); });
     document.getElementById('dev-delete').addEventListener('click', function () {
       var across = window.musicTheorySyncOn && window.musicTheorySyncOn();
       document.getElementById('dev-confirm-text').textContent = 'This will discard all stored data and reset all progress' + (across ? ' across all devices' : '') + '.';

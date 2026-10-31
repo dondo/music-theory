@@ -300,12 +300,8 @@
       </div>
     </footer>
     <dialog id="dev-dialog" class="dev-dialog" aria-label="Developer options">
-      <div class="dev-head">
-        <button type="button" id="dev-toggle" class="dev-toggle" aria-expanded="false" aria-controls="dev-body"><span class="dev-tri" aria-hidden="true">▸</span> Developer mode</button>
-        <button type="button" id="dev-close" class="dev-close" aria-label="Close">×</button>
-      </div>
-      <div id="dev-body" class="dev-body" hidden>
-        <label class="dev-row"><input type="checkbox" id="dev-on"> Developer mode</label>
+      <button type="button" id="dev-close" class="dev-close" aria-label="Close">×</button>
+      <div id="dev-body" class="dev-body">
         <div class="dev-row dev-slide">
           <label for="dev-range">Questions per level: <output id="dev-n" for="dev-range">10</output></label>
           <input type="range" id="dev-range" min="1" max="30" step="1" value="10">
