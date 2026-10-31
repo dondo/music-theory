@@ -780,7 +780,7 @@ var KeyboardRender = (function () {
     for (i = 0; i < sp.n; i++) {
       out.push('<use href="#' + sp.kind + '" transform="translate(' + f(ax + i * adv) + ',' + f(YB - steps[i] * SB / 2) + ') scale(' + k + ',-' + k + ')" fill="' + INK + '"/>');
     }
-    out.push('<text x="' + f(x0 + 8) + '" y="' + f(YB - 4 * SB - 14 - (clef.glyph === 'gclef8va' ? 13 : 0)) + '" font-size="14" font-weight="bold" fill="' + pal[1] + '">' + esc(T.keyTitle(sp, mode)) + '</text>');
+    if (!data.noKey) out.push('<text x="' + f(x0 + 8) + '" y="' + f(YB - 4 * SB - 14 - (clef.glyph === 'gclef8va' ? 13 : 0)) + '" font-size="14" font-weight="bold" fill="' + pal[1] + '">' + esc(T.keyTitle(sp, mode)) + '</text>');
     out.push('</g>');
     var sigVal = {};
     (sp.kind === 'sharp' ? SHARP_ORDER : FLAT_ORDER).slice(0, sp.n).forEach(function (l) { sigVal[l] = sp.kind === 'sharp' ? 1 : -1; });
@@ -816,15 +816,15 @@ var KeyboardRender = (function () {
         if (c.lit) {                              // drawn beneath the staff lines, in the key's own tint
           under.push('<rect class="lit-box" x="' + f(left + slot / 2 - boxW / 2) + '" y="' + f(YB - 4 * SB - 5.5 * SB) + '" width="' + f(boxW) + '" height="' + f(14.5 * SB + 40) + '" rx="8" fill="' + pal[0] + '" stroke="' + pal[1] + '" stroke-width="1.2"/>');
         }
-        out.push(chordOnStave(cx, c.notes, sigVal, ink, clef));
+        if (!data.noNotes) out.push(chordOnStave(cx, c.notes, sigVal, ink, clef));
         if (data.hits) {                          // Notes: each note is a button
           out.push('<rect class="note-hit" data-ni="' + j + '" tabindex="0" role="button" aria-label="Note ' + (j + 1) + '" x="' + f(left + 2) + '" y="' + f(YB - 4 * SB - 4 * SB) +
             '" width="' + f(slot - 4) + '" height="' + f(4 * SB + 8 * SB) + '" rx="6" fill="#2563eb" fill-opacity="0" />');
         }
         var yTop = YB + 2.5 * SB + 24, ySub = YB + 2.5 * SB + 41;
         if (stagger) { yTop = j % 2 ? YB + 61 : YB + 30; ySub = yTop + 14; }
-        out.push('<text x="' + f(cx) + '" y="' + f(yTop) + '" text-anchor="middle" font-size="' + fsTop + '" font-weight="bold" fill="' + (c.lit ? PAL_DARK[sp.kind] : '#333') + '" pointer-events="none">' + esc(c.top) + '</text>');
-        if (c.sub) {
+        if (!data.noNames) out.push('<text x="' + f(cx) + '" y="' + f(yTop) + '" text-anchor="middle" font-size="' + fsTop + '" font-weight="bold" fill="' + (c.lit ? PAL_DARK[sp.kind] : '#333') + '" pointer-events="none">' + esc(c.top) + '</text>');
+        if (c.sub && !data.noNames) {
           out.push('<text x="' + f(cx) + '" y="' + f(ySub) + '" text-anchor="middle" font-size="' + fsSub + '" fill="' + (c.lit ? PAL_DARK[sp.kind] : '#5d6475') + '" pointer-events="none">' + esc(c.sub) + '</text>');
         }
         if (data.kind === 'prog') {       // click above the chord for the next inversion up, below it for the next one down
@@ -851,6 +851,21 @@ var KeyboardRender = (function () {
     out.splice.apply(out, [1, 0].concat(under));
     out.push('</g>');
     return out.join('');
+  }
+
+  // Play the note, level 3: the grand staff. The treble stave sits above the bass stave (middle C between them, on its own ledger line);
+  // the note is drawn on whichever of the two the card is in, and its name goes below both.
+  function grandStave(data, winL, winR, rootSpec, mode) {
+    var noteClef = data.clef === 'bass' ? 'bass' : 'treble';
+    function mk(clef, extra) { return bigStave(Object.assign({}, data, { clef: clef, fixedClef: true, grand: false }, extra), winL, winR, rootSpec, mode); }
+    var x0 = winL + 6, yTop = YB - 4 * SB - 40, yBot = YB + 20;
+    return '<g class="grand-staff" aria-label="Grand staff">' +
+      '<g transform="translate(0,-40)">' + mk('treble', { noNames: true, noNotes: noteClef !== 'treble' }) + '</g>' +
+      '<g transform="translate(0,20)">' + mk('bass', { noKey: true, noNotes: noteClef !== 'bass' }) + '</g>' +
+      '<line x1="' + f(x0) + '" y1="' + f(yTop) + '" x2="' + f(x0) + '" y2="' + f(yBot) + '" stroke="' + INK + '" stroke-width="1.4"/>' +
+      '<path d="M' + f(x0 - 3) + ',' + f(yTop) + ' C' + f(x0 - 15) + ',' + f(yTop + 6) + ' ' + f(x0 - 3) + ',' + f((yTop + yBot) / 2 - 8) + ' ' + f(x0 - 14) + ',' + f((yTop + yBot) / 2) +
+        ' C' + f(x0 - 3) + ',' + f((yTop + yBot) / 2 + 8) + ' ' + f(x0 - 15) + ',' + f(yBot - 6) + ' ' + f(x0 - 3) + ',' + f(yBot) + '" fill="none" stroke="' + INK + '" stroke-width="2"/>' +
+      '</g>';
   }
 
   // ---- public: render a state to an SVG string -------------------------------
@@ -945,7 +960,7 @@ var KeyboardRender = (function () {
     }
 
     if (noteMode) {
-      parts.push(bigStave(state.staff || { kind: 'empty', clef: 'treble', chords: [] }, winL, winR, rootSpec, mode));
+      parts.push((state.staff && state.staff.grand ? grandStave : bigStave)(state.staff || { kind: 'empty', clef: 'treble', chords: [] }, winL, winR, rootSpec, mode));
       if (noteStudy) {
         parts.push('<text class="fb-nope" x="' + f(WIDTH / 2) + '" y="50" text-anchor="middle" font-size="34" font-weight="bold" fill="#dc2626" opacity="0" pointer-events="none">\u2717 ' + (state.guess === 'octave' ? 'Right note, wrong octave' : typeof state.guess === 'number' ? 'That was ' + ['C', 'C\u266F/D\u266D', 'D', 'D\u266F/E\u266D', 'E', 'F', 'F\u266F/G\u266D', 'G', 'G\u266F/A\u266D', 'A', 'A\u266F/B\u266D', 'B'][state.guess] : 'Nope') + '</text>' +
           '<text class="fb-yes" x="' + f(WIDTH / 2) + '" y="50" text-anchor="middle" font-size="34" font-weight="bold" fill="#16a34a" opacity="0" pointer-events="none">\u2713 Yes!</text>');
