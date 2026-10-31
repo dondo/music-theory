@@ -1829,6 +1829,7 @@
     levelBanner.removeAttribute('data-welcome');
     var html = 'You\u2019ve completed Level ' + (n - 1) + ' (of ' + STUDY_STEPS + '). On to level ' + n + ', ' +
       ['', '', 'the <strong>bass clef</strong>!', 'where <strong>treble and bass</strong> take turns!', 'introducing the <strong>alto clef</strong>!', 'where <strong>treble, bass and alto</strong> all take turns!'][n] +
+      (n === 4 ? '<span class="levelup-line2">(Note: few people need to know about this, except my sister, who was the violist and most skilled musician in our terrible family quartet.)</span>' : '') +
       '<span class="levelup-go-row"><button type="button" class="btn-reset levelup-go">Go \u2192</button></span>';
     if (levelBanner.parentNode !== ftcSection) ftcSection.appendChild(levelBanner);
     document.getElementById('ftc-levelup-icon').textContent = '\u{1F389}';
