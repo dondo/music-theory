@@ -1461,6 +1461,7 @@
     }
     syncProgIndex();
     state.fingerSpace = false;
+    state.tight = progsMode() && state.selected && !state.flash && !isAlt();     // (no fingering row under the keyboard any more: no room reserved for it)
     state.fingering = null;                                          // (no fingering hints; the voicings still shape the staff and the sound)
     if (textPop && (!progActive() || !state.selected || state.flash)) closeTextPop(false);
     if (findOn && picks.length) syncPicks();

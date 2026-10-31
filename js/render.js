@@ -921,7 +921,7 @@ var KeyboardRender = (function () {
     var parts = [];
     var noKeys = flash && !noteMode && state.cardMode === 'chord';                  // Find the chord: just the staff card, no keyboard
     var opened = noKeys && !!state.answered && !!state.quizStave;      // answered: the card opens out into the big stave
-    var svgH = noteMode ? HEIGHT : sig ? HEIGHT_SIG : (opened ? 304 : (noKeys ? 276 : (flash ? HEIGHT_FLASH : HEIGHT)));
+    var svgH = noteMode ? HEIGHT : sig ? HEIGHT_SIG : (opened ? 304 : (noKeys ? 276 : (flash ? HEIGHT_FLASH : (state.tight ? HEIGHT_SIG : HEIGHT))));      // tight: Progressions, nothing under the keys
     var cut = noteMode ? 0 : (sig || flash) ? 0 : (state.staff && selected ? 30 : TOP_CUT);   // explore: no empty strip above the boxes; the big stave needs headroom for high chords
     parts.push('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 ' + cut + ' ' + WIDTH + ' ' + (svgH - cut) + '" width="' + WIDTH +
       '" height="' + (svgH - cut) + '" class="kb-svg' + (sig ? ' sig' : '') + '" role="group" aria-label="Piano keyboard with key signatures" ' +
