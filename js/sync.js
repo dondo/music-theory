@@ -145,7 +145,7 @@ var Sync = (function () {
       var p = x[m], q = y[m];
       if (!isObj(p)) { out[m] = q; return; }
       if (!isObj(q)) { out[m] = p; return; }
-      var pt = p.lt | 0, qt = q.lt | 0;                 // the level changed most recently wins (so stepping back sticks); with no stamps, the higher
+      var pt = +p.lt || 0, qt = +q.lt || 0;                 // the level changed most recently wins (so stepping back sticks); with no stamps, the higher
       var pick = pt !== qt ? (pt > qt ? p : q) : (p.lv | 0) > (q.lv | 0) ? p : (q.lv | 0) > (p.lv | 0) ? q : (aNewer ? p : q);
       out[m] = Object.assign({}, pick, { ever: !!(p.ever || q.ever) });
     });
@@ -157,7 +157,7 @@ var Sync = (function () {
     var out = Object.assign({}, aNewer ? x : y), lvl = {};
     var xl = isObj(x.lvl) ? x.lvl : {}, yl = isObj(y.lvl) ? y.lvl : {}, xt = isObj(x.lvt) ? x.lvt : {}, yt = isObj(y.lvt) ? y.lvt : {}, lvt = {};
     Object.keys(xl).concat(Object.keys(yl)).forEach(function (k) {       // per mode: the most recently changed level wins (no stamps: the higher)
-      var tx = xt[k] | 0, ty = yt[k] | 0;
+      var tx = +xt[k] || 0, ty = +yt[k] || 0;
       lvl[k] = !(k in yl) ? xl[k] : !(k in xl) ? yl[k] : tx !== ty ? (tx > ty ? xl[k] : yl[k]) : Math.max(xl[k] | 0, yl[k] | 0);
       lvt[k] = Math.max(tx, ty);
     });

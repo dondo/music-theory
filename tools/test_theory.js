@@ -803,8 +803,8 @@ var Sync = require('../js/sync.js');
   assert.strictEqual(m.keys[K + 'gone'].v, null);
   // a level stepped back more recently than the other side's higher level sticks (stamps); with no stamps the higher still wins
   var sa = {}, sb = {};
-  sa[K + 'notes-v1'] = { t: 50, v: JSON.stringify({ play: { lv: 1, lt: 40 } }) }; sb[K + 'notes-v1'] = { t: 20, v: JSON.stringify({ play: { lv: 2, lt: 10 } }) };
-  sa[K + 'ftc-v1'] = { t: 50, v: JSON.stringify({ lvl: { 'major|pop': 3 }, lvt: { 'major|pop': 40 } }) }; sb[K + 'ftc-v1'] = { t: 20, v: JSON.stringify({ lvl: { 'major|pop': 4 }, lvt: { 'major|pop': 10 } }) };
+  sa[K + 'notes-v1'] = { t: 50, v: JSON.stringify({ play: { lv: 1, lt: 1761800000040 } }) }; sb[K + 'notes-v1'] = { t: 20, v: JSON.stringify({ play: { lv: 2, lt: 1761800000010 } }) };
+  sa[K + 'ftc-v1'] = { t: 50, v: JSON.stringify({ lvl: { 'major|pop': 3 }, lvt: { 'major|pop': 1761800000040 } }) }; sb[K + 'ftc-v1'] = { t: 20, v: JSON.stringify({ lvl: { 'major|pop': 4 }, lvt: { 'major|pop': 1761800000010 } }) };
   var sm = Sync.merge(sa, sb);
   assert.strictEqual(JSON.parse(sm.keys[K + 'notes-v1'].v).play.lv, 1);
   assert.strictEqual(JSON.parse(sm.keys[K + 'ftc-v1'].v).lvl['major|pop'], 3);

@@ -1704,7 +1704,7 @@
     var c = slots.chord || slotSnap();
     try { window.localStorage.setItem(FTC_KEY, JSON.stringify({ lvl: ftcLv, lvt: ftcLvT, auto: ftcAuto, streak: c.streak, bub: c.bub || [], trial: c.unlocked, ever: c.ever, fresh: ftcFresh })); } catch (e) { /* storage unavailable */ }
     var no = {};
-    ['play', 'find', 'key', 'sig'].forEach(function (m) { var q = slots[m] || {}; no[m] = { lv: stepLv[m], lt: stepLvT[m] | 0, streak: q.streak | 0, bub: q.bub || [], trial: !!q.unlocked, ever: !!q.ever }; });
+    ['play', 'find', 'key', 'sig'].forEach(function (m) { var q = slots[m] || {}; no[m] = { lv: stepLv[m], lt: +stepLvT[m] || 0, streak: q.streak | 0, bub: q.bub || [], trial: !!q.unlocked, ever: !!q.ever }; });
     try { window.localStorage.setItem(STEPS_KEY, JSON.stringify(no)); } catch (e) { /* storage unavailable */ }
   }
   function loadSteps() {
