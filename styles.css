@@ -316,7 +316,6 @@ body {
 @media (max-width: 560px) {
   .page { padding: 24px 12px 36px; }
   .intro h1 { font-size: 1.5rem; }
-  .sync-btn { position: static; margin-top: 10px; }
 }
 
 .chords summary { cursor: pointer; font-weight: 600; margin-bottom: 10px; }
@@ -804,8 +803,11 @@ html.is-local body { border-top: 6px solid #ea580c; }
 
 /* the Sync button: top right, below the title */
 .intro { position: relative; }
-.sync-btn { position: absolute; top: 3.4rem; right: 0; }
-@media (max-width: 700px) { .sync-btn { position: static; margin-top: 10px; } }
+.sync-btn { position: absolute; top: 0; right: 0; }
+.settings-btn { display: inline-flex; align-items: center; justify-content: center; width: 38px; height: 38px; padding: 0; border-radius: 50%; color: var(--muted); }
+.intro h1 { padding-right: 48px; }
+.sync-rule { border: 0; border-top: 1px solid var(--line); margin: 18px 0 14px; }
+.sync-body .dev-slide { margin: 10px 0 12px; }
 
 .sync-dialog[open]::backdrop { animation: sync-fade 0.24s ease-out; }
 @keyframes sync-fade { from { opacity: 0; } }
@@ -842,3 +844,5 @@ html.is-local body { border-top: 6px solid #ea580c; }
 
 .dev-dialog .dev-close { position: absolute; top: 6px; right: 8px; }
 .dev-dialog .dev-body { margin-top: 0; padding-top: 0; border-top: 0; padding-right: 22px; }
+
+.sync-body .dev-done { margin: 6px 0; }

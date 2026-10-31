@@ -3526,44 +3526,22 @@
     draw('fade', false);
   }
 
-  // ---- the developer dialog (the small gear beside the version) ----
-  // It opens showing a Questions-per-level slider (1-30; the default is FindChord.STREAK) and Delete all app data (with an "Are you sure?" step).
-  (function devDialog() {
-    var dlg = document.getElementById('dev-dialog'), openBtn = document.getElementById('dev-btn');
-    var body = document.getElementById('dev-body'), conf = document.getElementById('dev-confirm'), done = document.getElementById('dev-done');
-    var range = document.getElementById('dev-range'), out = document.getElementById('dev-n');
-    function save() { try { window.localStorage.setItem(DEV_KEY, JSON.stringify(dev)); } catch (e) { /* not persisted */ } }
-    function show() { range.value = dev.n; out.textContent = dev.n; body.hidden = false; conf.hidden = true; done.hidden = true; }
-    function place() {                                           // the dialog's bottom-right corner sits on the gear
-      var b = openBtn.getBoundingClientRect(), vw = document.documentElement.clientWidth;
-      dlg.style.margin = '0'; dlg.style.top = 'auto'; dlg.style.left = 'auto';
-      dlg.style.right = Math.max(8, vw - b.right) + 'px';
-      dlg.style.bottom = Math.max(8, window.innerHeight - b.bottom) + 'px';
-    }
-    function applied() {                                         // the number of questions per level changed: the bubbles and the streak follow
+  // ---- settings, used by the dialog behind the cog at the top right (js/syncui.js builds it) ----
+  // Questions per level (1-30; the default is FindChord.STREAK) and Delete all app data.
+  window.musicTheorySettings = {
+    DEFAULT_N: FindChord.STREAK,
+    getQuestions: function () { return dev.n; },
+    setQuestions: function (n) {                                 // the bubbles and the streak follow
+      dev.n = Math.max(1, Math.min(30, n | 0));
+      try { window.localStorage.setItem(DEV_KEY, JSON.stringify(dev)); } catch (e) { /* not persisted */ }
       if (bubFull || (ftcBub && ftcBub.length)) bubFull = bubblesFull();
       ftcStreak = Math.min(ftcStreak, streakNeed() - 1);
       if (typeof updateFtc === 'function' && quizOn()) { updateFtc(); updateChordPanel(); }
       if (typeof updateStudyHead === 'function' && studyQuizOn()) updateStudyHead();
       showStreak();
-    }
-    openBtn.addEventListener('click', function () { show(); dlg.showModal(); place(); });
-    document.getElementById('dev-close').addEventListener('click', function () { dlg.close(); });
-    dlg.addEventListener('click', function (e) { if (e.target === dlg) dlg.close(); });       // (a click on the backdrop)
-    window.addEventListener('resize', function () { if (dlg.open) place(); });
-    range.addEventListener('input', function () { dev.n = parseInt(range.value, 10); out.textContent = dev.n; save(); applied(); });
-    document.getElementById('dev-delete').addEventListener('click', function () {
-      var across = window.musicTheorySyncOn && window.musicTheorySyncOn();
-      document.getElementById('dev-confirm-text').textContent = 'This will discard all stored data and reset all progress' + (across ? ' across all devices' : '') + '.';
-      body.hidden = true; conf.hidden = false; place();
-    });
-    document.getElementById('dev-cancel').addEventListener('click', function () { conf.hidden = true; body.hidden = false; place(); });
-    document.getElementById('dev-proceed').addEventListener('click', function () {
-      clearAllAppData();
-      conf.hidden = true; done.hidden = false; place();
-      setTimeout(function () { if (dlg.open) dlg.close(); }, 1200);
-    });
-  })();
+    },
+    clearAll: clearAllAppData
+  };
 
   scoreReset.addEventListener('click', function () {
     score.ok = 0;

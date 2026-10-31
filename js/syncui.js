@@ -131,17 +131,41 @@
     closing = true;
     fly(false, function () { dlg.close(); closing = false; });
   }
-  function resetLabel() { return creds ? 'Clear all app data (across all devices)' : 'Clear all app data'; }
-  window.musicTheoryResetLabel = resetLabel;
+  var syncOK = true;                                             // false where there is no WebCrypto: the dialog then holds only the settings
   window.musicTheorySyncOn = function () { return !!creds; };
   function refresh() {
-    if (linkBtn) linkBtn.textContent = creds ? 'Sync (on)' : 'Sync across devices';
+    if (linkBtn) linkBtn.title = creds ? 'Settings and sync (sync is on)' : 'Settings and sync';
     if (dlg && dlg.open && view === 'home') home();
   }
   var view = 'home';
 
+  // the settings part of the dialog: Questions per level, and Delete all app data (after an "Are you sure?")
+  function settingsNodes() {
+    var S = window.musicTheorySettings;
+    if (!S) return [];
+    var out = el('output', null, String(S.getQuestions())), rg = el('input'), lab = el('label', null, 'Questions per level: ');
+    rg.type = 'range'; rg.min = 1; rg.max = 30; rg.step = 1; rg.value = S.getQuestions(); rg.id = 'set-range'; lab.htmlFor = 'set-range'; lab.appendChild(out);
+    rg.addEventListener('input', function () { S.setQuestions(parseInt(rg.value, 10)); out.textContent = rg.value; });
+    var sl = el('div', 'dev-row dev-slide'); sl.appendChild(lab); sl.appendChild(rg);
+    var del = btn('Delete all app data', confirmDelete, 'dev-danger');
+    return [el('hr', 'sync-rule'), el('h2', null, 'Settings'), sl, del];
+  }
+  function confirmDelete() {
+    view = 'confirm';
+    show([
+      el('h2', null, 'Are you sure?'),
+      el('p', null, 'This will discard all stored data and reset all progress' + (creds ? ' across all devices' : '') + '.'),
+      row(btn('Proceed', function () {
+        window.musicTheorySettings.clearAll();
+        show([el('p', 'dev-done', 'App data deleted.')]);
+        setTimeout(function () { if (dlg.open) close(); }, 1200);
+      }, 'dev-danger'), btn('Cancel', home))
+    ]);
+  }
+
   function home() {
     view = 'home';
+    if (!syncOK) { show([el('h2', null, 'Settings')].concat(settingsNodes().slice(2)).concat([row(btn('Close', close))])); return; }
     if (creds) {
       var shown = false, pw = el('code', 'sync-secret', '•••••••••');
       var tog = btn('Show', function () { shown = !shown; pw.textContent = shown ? creds.pass : '•••••••••'; tog.textContent = shown ? 'Hide' : 'Show'; }, 'btn-reset sync-small');
@@ -151,15 +175,15 @@
         row(el('span', 'sync-k', 'Name'), el('code', 'sync-secret', creds.name)),
         row(el('span', 'sync-k', 'Passphrase'), pw, tog),
         el('p', 'sync-muted', 'Last synced: ' + when(creds.last) + (lastError ? '. ' + lastError : '')),
-        row(btn('Sync now', function () { syncNow(true); }, 'btn-reset sync-primary'), btn('Disconnect this device', disconnect), btn('Close', close))
-      ]);
+        row(btn('Sync now', function () { syncNow(true); }, 'btn-reset sync-primary'), btn('Disconnect this device', disconnect))
+      ].concat(settingsNodes(), [row(btn('Close', close))]));
       return;
     }
     show([
       el('h2', null, 'Sync across devices'),
       el('p', null, 'Keep your progress, saved progressions and settings on every device you use. They are encrypted on this device before they are stored, so only someone with your name and passphrase can read them. There is no account and no email.'),
-      row(btn('Set up sync', createName, 'btn-reset sync-primary'), btn('Connect this device', connect), btn('Close', close))
-    ]);
+      row(btn('Set up sync', createName, 'btn-reset sync-primary'), btn('Connect this device', connect))
+    ].concat(settingsNodes(), [row(btn('Close', close))]));
   }
   function disconnect() {
     show([
@@ -229,14 +253,15 @@
   function init() {
     linkBtn = document.getElementById('sync-link');
     dlg = document.getElementById('sync-dialog');
-    if (!linkBtn || !dlg || !window.crypto || !crypto.subtle || !dlg.showModal) { if (linkBtn) linkBtn.hidden = true; return; }
+    if (!linkBtn || !dlg || !dlg.showModal) { if (linkBtn) linkBtn.hidden = true; return; }
+    if (!window.crypto || !crypto.subtle) syncOK = false;
     body = el('div', 'sync-body'); dlg.appendChild(body);
     linkBtn.addEventListener('click', function () { home(); dlg.showModal(); place(); fly(true); });
     window.addEventListener('resize', function () { if (dlg.open) place(); });
     dlg.addEventListener('cancel', function (e) { e.preventDefault(); close(); });
     dlg.addEventListener('click', function (e) { if (e.target === dlg) close(); });
     refresh();
-    if (creds) syncNow(true);
+    if (creds && syncOK) syncNow(true);
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 })();
