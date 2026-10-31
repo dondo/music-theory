@@ -3130,6 +3130,16 @@
     e.preventDefault(); e.stopImmediatePropagation(); dismissWelcome();
   }, true);
 
+  // a level-up banner is up: the left arrow is "Not yet, I've got more in me" (the right arrow is Go, below)
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'ArrowLeft' || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey || levelBanner.hidden) return;
+    var stayBtn = levelBanner.querySelector('.levelup-stay');
+    if (!stayBtn) return;
+    var t = e.target;
+    if (t && t.closest && t.closest('input, select, textarea')) return;
+    e.preventDefault(); e.stopImmediatePropagation(); stayBtn.click();
+  }, true);
+
   // Flashcards: once a card is solved, the right arrow deals the next one (same as the Next button).
   document.addEventListener('keydown', function (e) {
     if (e.key !== 'ArrowRight' || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
