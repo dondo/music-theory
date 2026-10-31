@@ -801,6 +801,13 @@ var Sync = require('../js/sync.js');
   var tr = JSON.parse(m.keys[K + 'trials-v3'].v);
   assert.strictEqual(tr.k.ms, 9000); assert.strictEqual(tr.j.ms, 5000);
   assert.strictEqual(m.keys[K + 'gone'].v, null);
+  // a level stepped back more recently than the other side's higher level sticks (stamps); with no stamps the higher still wins
+  var sa = {}, sb = {};
+  sa[K + 'notes-v1'] = { t: 50, v: JSON.stringify({ play: { lv: 1, lt: 40 } }) }; sb[K + 'notes-v1'] = { t: 20, v: JSON.stringify({ play: { lv: 2, lt: 10 } }) };
+  sa[K + 'ftc-v1'] = { t: 50, v: JSON.stringify({ lvl: { 'major|pop': 3 }, lvt: { 'major|pop': 40 } }) }; sb[K + 'ftc-v1'] = { t: 20, v: JSON.stringify({ lvl: { 'major|pop': 4 }, lvt: { 'major|pop': 10 } }) };
+  var sm = Sync.merge(sa, sb);
+  assert.strictEqual(JSON.parse(sm.keys[K + 'notes-v1'].v).play.lv, 1);
+  assert.strictEqual(JSON.parse(sm.keys[K + 'ftc-v1'].v).lvl['major|pop'], 3);
   assert.ok(m.toLocal.indexOf(K + 'only-b') >= 0 && m.toLocal.indexOf(K + 'only-a') < 0);
   assert.ok(m.toRemote.indexOf(K + 'only-a') >= 0 && m.toRemote.indexOf(K + 'only-b') < 0);
   var again = Sync.merge(m.keys, m.keys);

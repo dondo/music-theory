@@ -137,7 +137,7 @@ var Sync = (function () {
     });
     return JSON.stringify(out);
   }
-  function mergeSteps(a, b, aNewer) {                // Notes/Keys levels: per activity, the higher level (ties: the newer side)
+  function mergeSteps(a, b, aNewer) {                // Notes/Keys levels: per activity, the most recently changed level (no stamps: the higher; ties: the newer side)
     var x = parse(a), y = parse(b);
     if (!isObj(x) || !isObj(y)) return null;
     var out = {};
@@ -145,17 +145,23 @@ var Sync = (function () {
       var p = x[m], q = y[m];
       if (!isObj(p)) { out[m] = q; return; }
       if (!isObj(q)) { out[m] = p; return; }
-      var pick = (p.lv | 0) > (q.lv | 0) ? p : (q.lv | 0) > (p.lv | 0) ? q : (aNewer ? p : q);
+      var pt = p.lt | 0, qt = q.lt | 0;                 // the level changed most recently wins (so stepping back sticks); with no stamps, the higher
+      var pick = pt !== qt ? (pt > qt ? p : q) : (p.lv | 0) > (q.lv | 0) ? p : (q.lv | 0) > (p.lv | 0) ? q : (aNewer ? p : q);
       out[m] = Object.assign({}, pick, { ever: !!(p.ever || q.ever) });
     });
     return JSON.stringify(out);
   }
-  function mergeFtc(a, b, aNewer) {                  // Find the chord progress: the higher level per mode, the rest from the newer side
+  function mergeFtc(a, b, aNewer) {                  // Find the chord progress: the most recently changed level per mode, the rest from the newer side
     var x = parse(a), y = parse(b);
     if (!isObj(x) || !isObj(y)) return null;
     var out = Object.assign({}, aNewer ? x : y), lvl = {};
-    [x.lvl, y.lvl].forEach(function (l) { if (isObj(l)) Object.keys(l).forEach(function (k) { lvl[k] = Math.max(lvl[k] | 0, l[k] | 0); }); });
-    out.lvl = lvl; out.ever = !!(x.ever || y.ever);
+    var xl = isObj(x.lvl) ? x.lvl : {}, yl = isObj(y.lvl) ? y.lvl : {}, xt = isObj(x.lvt) ? x.lvt : {}, yt = isObj(y.lvt) ? y.lvt : {}, lvt = {};
+    Object.keys(xl).concat(Object.keys(yl)).forEach(function (k) {       // per mode: the most recently changed level wins (no stamps: the higher)
+      var tx = xt[k] | 0, ty = yt[k] | 0;
+      lvl[k] = !(k in yl) ? xl[k] : !(k in xl) ? yl[k] : tx !== ty ? (tx > ty ? xl[k] : yl[k]) : Math.max(xl[k] | 0, yl[k] | 0);
+      lvt[k] = Math.max(tx, ty);
+    });
+    out.lvl = lvl; out.lvt = lvt; out.ever = !!(x.ever || y.ever);
     return JSON.stringify(out);
   }
   var MERGERS = {

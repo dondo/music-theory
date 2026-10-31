@@ -1567,6 +1567,8 @@
   // The progress variables above and below belong to whichever activity is showing ('chord' | 'play' | 'find'); the others wait in `slots`.
   var STUDY_STEPS = 5, STEPS_KEY = 'music-theory-notes-v1';
   var stepLv = { play: 1, find: 1, key: 1, sig: 1 };
+  // when each level last changed (for sync: the newer change wins, so a deliberate step back isn't undone by a higher level elsewhere)
+  var ftcLvT = {}, stepLvT = {}, ftcLvPrev = {}, stepLvPrev = { play: 1, find: 1, key: 1, sig: 1 };
   var slots = {}, curSlot = 'chord';
   function slotSnap() { return { bub: ftcBub, bubFull: bubFull, streak: ftcStreak, tried: ftcTried, right: ftcRight, unlocked: trialUnlocked, ever: trialEver }; }
   function slotLoad(o) {
@@ -1680,7 +1682,7 @@
     try {
       var o = JSON.parse(window.localStorage.getItem(FTC_KEY));
       if (!o || typeof o !== 'object') return;
-      if (o.lvl && typeof o.lvl === 'object') Object.keys(o.lvl).forEach(function (k) { if (/^(major|minor)\|(pop|jazz)$/.test(k) && Number.isInteger(o.lvl[k]) && o.lvl[k] >= 1) ftcLv[k] = o.lvl[k]; });
+      if (o.lvl && typeof o.lvl === 'object') Object.keys(o.lvl).forEach(function (k) { if (/^(major|minor)\|(pop|jazz)$/.test(k) && Number.isInteger(o.lvl[k]) && o.lvl[k] >= 1) ftcLv[k] = o.lvl[k]; ftcLvPrev[k] = o.lvl[k]; if (o.lvt && Number.isInteger(o.lvt[k])) ftcLvT[k] = o.lvt[k]; });
       ftcAuto = true;                                  // (always automatic; older saves may say otherwise)
       if (o.fresh && Number.isInteger(o.fresh.asked) && Number.isInteger(o.fresh.fresh) && o.fresh.asked >= 0 && o.fresh.asked < 5 && o.fresh.fresh >= 0) ftcFresh = { asked: o.fresh.asked, fresh: o.fresh.fresh };
       ftcStreak = Number.isInteger(o.streak) ? Math.max(0, Math.min(streakNeed() - 1, o.streak)) : 0;
@@ -1696,10 +1698,13 @@
   function saveFtc() {
     if (ftcTrial) return;                                        // (a trial is never saved: the normal state stays as it was)
     slots[curSlot] = slotSnap();
+    var nowT = Date.now();
+    Object.keys(ftcLv).forEach(function (k) { if (ftcLvPrev[k] !== ftcLv[k]) { ftcLvT[k] = nowT; ftcLvPrev[k] = ftcLv[k]; } });
+    ['play', 'find', 'key', 'sig'].forEach(function (m) { if (stepLvPrev[m] !== stepLv[m]) { stepLvT[m] = nowT; stepLvPrev[m] = stepLv[m]; } });
     var c = slots.chord || slotSnap();
-    try { window.localStorage.setItem(FTC_KEY, JSON.stringify({ lvl: ftcLv, auto: ftcAuto, streak: c.streak, bub: c.bub || [], trial: c.unlocked, ever: c.ever, fresh: ftcFresh })); } catch (e) { /* storage unavailable */ }
+    try { window.localStorage.setItem(FTC_KEY, JSON.stringify({ lvl: ftcLv, lvt: ftcLvT, auto: ftcAuto, streak: c.streak, bub: c.bub || [], trial: c.unlocked, ever: c.ever, fresh: ftcFresh })); } catch (e) { /* storage unavailable */ }
     var no = {};
-    ['play', 'find', 'key', 'sig'].forEach(function (m) { var q = slots[m] || {}; no[m] = { lv: stepLv[m], streak: q.streak | 0, bub: q.bub || [], trial: !!q.unlocked, ever: !!q.ever }; });
+    ['play', 'find', 'key', 'sig'].forEach(function (m) { var q = slots[m] || {}; no[m] = { lv: stepLv[m], lt: stepLvT[m] | 0, streak: q.streak | 0, bub: q.bub || [], trial: !!q.unlocked, ever: !!q.ever }; });
     try { window.localStorage.setItem(STEPS_KEY, JSON.stringify(no)); } catch (e) { /* storage unavailable */ }
   }
   function loadSteps() {
@@ -1710,6 +1715,7 @@
         var q = o[m];
         if (!q || typeof q !== 'object') return;
         stepLv[m] = FindChord.clamp(q.lv || 1, 1, STUDY_STEPS);
+        stepLvPrev[m] = stepLv[m]; if (Number.isInteger(q.lt)) stepLvT[m] = q.lt;
         var b = Array.isArray(q.bub) ? q.bub.slice(0, 40).map(function (r) { return r === 'ok' || r === 'bad' ? r : null; }) : null, need = streakNeed();
         var st = Number.isInteger(q.streak) ? Math.max(0, Math.min(need - 1, q.streak)) : 0;
         slots[m] = { bub: b, bubFull: !!b && b.length >= need && b.slice(0, need).every(function (r) { return r === 'ok'; }), streak: st, tried: st, right: st, unlocked: q.trial === true, ever: q.ever === true || q.trial === true };
@@ -1718,7 +1724,7 @@
   }
   function resetFtc() {
     abortTrial();
-    ftcLv = {};
+    ftcLv = {}; ftcLvT = {}; ftcLvPrev = {}; stepLvT = {}; stepLvPrev = { play: 1, find: 1, key: 1, sig: 1 };
     trialUnlocked = trialEver = false; ftcAuto = true; ftcStreak = 0; ftcTried = 0; ftcRight = 0; ftcBub = null; bubFull = false; ftcFresh = { asked: 0, fresh: 0 };
     stepLv = { play: 1, find: 1, key: 1, sig: 1 }; slots = {}; slots[curSlot] = slotSnap(); if (curSlot !== 'chord') slots.chord = slotSnap();
     try { window.localStorage.removeItem(STEPS_KEY); } catch (e) { /* storage unavailable */ }
