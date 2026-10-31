@@ -558,7 +558,7 @@
       b.setAttribute('aria-pressed', ftcSel.root === k[0] ? 'true' : 'false');
       rootBox.appendChild(b);
     });
-    if (HAS_KEYBOARD && !rootBox.nextElementSibling) rootBox.parentNode.appendChild(el('p', 'rootkeys-note', 'Keyboard: A\u2013G for the root; Shift for sharp, ' + ALT_NAME + ' for flat.'));
+    if (HAS_KEYBOARD && !rootBox.nextElementSibling) rootBox.parentNode.appendChild(el('p', 'rootkeys-note', 'Keyboard: A\u2013G for the root; Shift for sharp, ' + ALT_NAME + ' or / for flat.'));
     document.getElementById('root-row').hidden = false;
     var needSev = ['7', '9', '11', '13'].indexOf(ftcSel.type) >= 0 && !ftcSevHidden();           // (shown as soon as a seventh-or-more type is chosen; only a major or augmented chord needs the answer)
     sevBox.textContent = '';
@@ -1845,9 +1845,9 @@
   var WELCOME_KEY = 'music-theory-ftc-welcomed';
   var STUDY_WELCOME_KEY = 'music-theory-study-welcomed';          // the other study activities, each welcomed once
   var STUDY_WELCOMES = {
-    key: ['Find the Key', 'You\u2019ll be shown a key signature on the staff. Press the piano key it belongs to' + (HAS_KEYBOARD ? ' \u2014 click it, or type its letter (Shift for a sharp, ' + ALT_NAME + ' for a flat)' : '') + '. Keys you miss come back more often.'],
+    key: ['Find the Key', 'You\u2019ll be shown a key signature on the staff. Press the piano key it belongs to' + (HAS_KEYBOARD ? ' \u2014 click it, or type its letter (Shift for a sharp, ' + ALT_NAME + ' or / for a flat)' : '') + '. Keys you miss come back more often.'],
     sig: ['Find the Signature', 'A key is lit on the keyboard, and the key signatures are laid out above it. Click the signature that belongs to the lit key. F\u266F and G\u266D are separate boxes: the lit key says which one is asked for.'],
-    play: ['Play the Note', 'A note appears on the staff. Press the matching piano key (any octave)' + (HAS_KEYBOARD ? ', or type its letter A\u2013G (Shift for a sharp, ' + ALT_NAME + ' for a flat)' : '') + '. Sharps and flats take turns.<span class="levelup-line2">There are five levels, aimed at learning different clefs: first the treble clef, then the bass clef, then the alto clef.</span>'],
+    play: ['Play the Note', 'A note appears on the staff. Press the matching piano key (any octave)' + (HAS_KEYBOARD ? ', or type its letter A\u2013G (Shift for a sharp, ' + ALT_NAME + ' or / for a flat)' : '') + '. Sharps and flats take turns.<span class="levelup-line2">There are five levels, aimed at learning different clefs: first the treble clef, then the bass clef, then the alto clef.</span>'],
     find: ['Find the Note', 'A key is lit on the keyboard. Click its note on the staff, in the right octave. Sharps and flats take turns.']
   };
   function dismissWelcome() {
@@ -3141,6 +3141,16 @@
   });
 
   // Pop Find the chord: 1-8 pick the type, A-G the root (Shift = sharp, Alt = flat), P [ ] \ the quality (dim min maj aug), ; ' the seventh (maj dom)
+  // "/" held down works as a second flat modifier (like Option / Alt) for the letter keys: hold / and press a letter
+  var slashHeld = false;
+  function flatHeld(e) { return e.altKey || slashHeld; }
+  document.addEventListener('keydown', function (e) {
+    if (e.code !== 'Slash' || e.ctrlKey || e.metaKey || e.altKey) return;
+    var t = e.target; if (t && t.closest && t.closest('input, select, textarea')) return;
+    slashHeld = true; e.preventDefault();                      // (no browser quick-find)
+  }, true);
+  document.addEventListener('keyup', function (e) { if (e.code === 'Slash') slashHeld = false; }, true);
+  window.addEventListener('blur', function () { slashHeld = false; });
   var NATURALS = { KeyC: 0, KeyD: 2, KeyE: 4, KeyF: 5, KeyG: 7, KeyA: 9, KeyB: 11 };
   var QUAL_CODES = { KeyP: 'dim', BracketLeft: 'min', BracketRight: 'maj', Backslash: 'aug' }, SEV_CODES = { Semicolon: 'maj', Quote: 'dom' };
   document.addEventListener('keydown', function (e) {
@@ -3149,7 +3159,7 @@
     if (t && t.closest && t.closest('input, select, textarea')) return;
     var btn = null, c = e.code;
     if (/^[1-8]$/.test(e.key) && !e.altKey && !e.shiftKey) btn = chordTypes.children[parseInt(e.key, 10) - 1];
-    else if (NATURALS[c] !== undefined) btn = chordsPanel.querySelector('[data-root="' + ((NATURALS[c] + (e.shiftKey ? 1 : 0) - (e.altKey ? 1 : 0) + 12) % 12) + '"]');
+    else if (NATURALS[c] !== undefined) btn = chordsPanel.querySelector('[data-root="' + ((NATURALS[c] + (e.shiftKey ? 1 : 0) - (flatHeld(e) ? 1 : 0) + 12) % 12) + '"]');
     else if (!e.altKey && !e.shiftKey && QUAL_CODES[c]) btn = chordsPanel.querySelector('[data-qual="' + QUAL_CODES[c] + '"]');
     else if (!e.altKey && !e.shiftKey && SEV_CODES[c]) btn = chordsPanel.querySelector('[data-sev="' + SEV_CODES[c] + '"]');
     if (!btn || btn.disabled) return;
@@ -3172,7 +3182,7 @@
     }
     if ((state.cardMode === 'play' || state.cardMode === 'key') && !state.answered && NATURALS[e.code] !== undefined) {
       e.preventDefault();
-      var npc = (NATURALS[e.code] + (e.shiftKey ? 1 : 0) - (e.altKey ? 1 : 0) + 12) % 12;
+      var npc = (NATURALS[e.code] + (e.shiftKey ? 1 : 0) - (flatHeld(e) ? 1 : 0) + 12) % 12;
       if (state.cardMode === 'play') noteAnswer(npc); else answer(npc, true, null, null);
     }
   });
