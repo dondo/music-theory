@@ -3766,11 +3766,24 @@ var KeyboardRender = (function () {
       '<polygon points="' + [[-a, 0.3], [a, -0.1], [a, 0.25], [-a, 0.65]].map(function (q) { return f(x + q[0]) + ',' + f(y + q[1] * u); }).join(' ') + '" stroke="none"/></g>';
   }
 
+  // the same note in every other octave that fits on the stave (up to three ledger lines either way), marked dim;
+  // side ('treble' | 'bass'): on the grand staff each stave takes the octaves on its own side of middle C
+  function echoNotes(o, clef, side) {
+    var pc = ((o.midi % 12) + 12) % 12, out = [];
+    for (var m = 12; m <= 120; m++) {
+      if (m % 12 !== pc || m === o.midi) continue;
+      if ((side === 'treble' && m < 60) || (side === 'bass' && m >= 60)) continue;
+      var p = notePosition(m, o.name, clef);
+      if (p >= -6 && p <= 16) out.push({ midi: m, name: o.name, dim: true });
+    }
+    return out;
+  }
+
   // a block chord (whole notes) centred on cx; sigVal maps a letter to the key signature's accidental
   function chordOnStave(cx, notes, sigVal, ink, clef) {
     var items = notes.map(function (n) {
       var val = accidentalValue(n.name);
-      return { p: notePosition(n.midi, n.name, clef), val: val, show: val !== (sigVal[n.name.charAt(0)] || 0) };
+      return { p: notePosition(n.midi, n.name, clef), val: val, show: val !== (sigVal[n.name.charAt(0)] || 0), dim: !!n.dim };
     }).sort(function (a, b) { return a.p - b.p; });
     var out = [];
     var rx = 0.72 * SB, ry = 0.5 * SB;
@@ -3785,9 +3798,10 @@ var KeyboardRender = (function () {
     var lines = [];
     for (q = -2; q >= minP; q -= 2) lines.push(q);
     for (q = 10; q <= maxP; q += 2) lines.push(q);
+    var solid = items.filter(function (i) { return !i.dim; }), sLo = solid.length ? solid[0].p : minP, sHi = solid.length ? solid[solid.length - 1].p : maxP;
     lines.forEach(function (l) {
       out.push('<line x1="' + f(cx - 1.25 * SB) + '" y1="' + f(yAt(l)) + '" x2="' + f(cx + (items.some(function (i) { return i.right; }) ? 2.1 : 1.25) * SB) +
-        '" y2="' + f(yAt(l)) + '" stroke="' + ink + '" stroke-width="1.1"/>');
+        '" y2="' + f(yAt(l)) + '" stroke="' + ink + '" stroke-width="1.1"' + (l < sLo || l > sHi ? ' opacity="0.3"' : '') + '/>');
     });
     // accidentals, stacked leftwards so close ones do not collide (highest note first)
     var cols = [];
@@ -3796,12 +3810,13 @@ var KeyboardRender = (function () {
       var c = 0;
       while (cols[c] !== undefined && cols[c] - it.p < 6) c++;
       cols[c] = it.p;
-      out.push(accGlyph(it.val, cx - 1.7 * SB - c * 1.15 * SB, yAt(it.p)));
+      var ag = accGlyph(it.val, cx - 1.7 * SB - c * 1.15 * SB, yAt(it.p));
+      out.push(it.dim ? '<g opacity="0.3">' + ag + '</g>' : ag);
     });
     items.forEach(function (it) {
       var x = cx + (it.right ? 2 * rx - 1 : 0);
-      out.push('<ellipse cx="' + f(x) + '" cy="' + f(yAt(it.p)) + '" rx="' + f(rx) + '" ry="' + f(ry) + '" fill="' + ink + '"/>' +
-        '<ellipse cx="' + f(x) + '" cy="' + f(yAt(it.p)) + '" rx="' + f(0.3 * SB) + '" ry="' + f(0.52 * SB) + '" transform="rotate(35 ' + f(x) + ' ' + f(yAt(it.p)) + ')" fill="#fff"/>');
+      out.push((it.dim ? '<g opacity="0.3">' : '<g>') + '<ellipse cx="' + f(x) + '" cy="' + f(yAt(it.p)) + '" rx="' + f(rx) + '" ry="' + f(ry) + '" fill="' + ink + '"/>' +
+        '<ellipse cx="' + f(x) + '" cy="' + f(yAt(it.p)) + '" rx="' + f(0.3 * SB) + '" ry="' + f(0.52 * SB) + '" transform="rotate(35 ' + f(x) + ' ' + f(yAt(it.p)) + ')" fill="#fff"/></g>');
     });
     return out.join('');
   }
@@ -3965,7 +3980,9 @@ var KeyboardRender = (function () {
         if (c.lit) {                              // drawn beneath the staff lines, in the key's own tint
           under.push('<rect class="lit-box" x="' + f(left + slot / 2 - boxW / 2) + '" y="' + f(YB - 4 * SB - 5.5 * SB) + '" width="' + f(boxW) + '" height="' + f(14.5 * SB + 40) + '" rx="8" fill="' + pal[0] + '" stroke="' + pal[1] + '" stroke-width="1.2"/>');
         }
-        if (!data.noNotes) out.push(chordOnStave(cx, c.notes, sigVal, ink, clef));
+        var shown = data.noNotes ? [] : c.notes;
+        if (c.echo && c.notes.length === 1) shown = shown.concat(echoNotes(c.notes[0], clef, data.echoSide));      // after a right answer: the same note in the other octaves, dimmed
+        if (shown.length) out.push(chordOnStave(cx, shown, sigVal, ink, clef));
         if (data.hits) {                          // Notes: each note is a button
           out.push('<rect class="note-hit" data-ni="' + j + '" tabindex="0" role="button" aria-label="Note ' + (j + 1) + '" x="' + f(left + 2) + '" y="' + f(YB - 4 * SB - 4 * SB) +
             '" width="' + f(slot - 4) + '" height="' + f(4 * SB + 8 * SB) + '" rx="6" fill="#2563eb" fill-opacity="0" />');
@@ -4009,8 +4026,8 @@ var KeyboardRender = (function () {
     function mk(clef, extra) { return bigStave(Object.assign({}, data, { clef: clef, fixedClef: true, grand: false }, extra), winL, winR, rootSpec, mode); }
     var x0 = winL + 6, yTop = YB - 4 * SB - 40, yBot = YB + 20;
     return '<g class="grand-staff" aria-label="Grand staff">' +
-      '<g transform="translate(0,-40)">' + mk('treble', { noNames: true, noNotes: noteClef !== 'treble' }) + '</g>' +
-      '<g transform="translate(0,20)">' + mk('bass', { noKey: true, noNotes: noteClef !== 'bass' }) + '</g>' +
+      '<g transform="translate(0,-40)">' + mk('treble', { noNames: true, noNotes: noteClef !== 'treble', echoSide: 'treble' }) + '</g>' +
+      '<g transform="translate(0,20)">' + mk('bass', { noKey: true, noNotes: noteClef !== 'bass', echoSide: 'bass' }) + '</g>' +
       '<line x1="' + f(x0) + '" y1="' + f(yTop) + '" x2="' + f(x0) + '" y2="' + f(yBot) + '" stroke="' + INK + '" stroke-width="1.4"/>' +
       '<path d="M' + f(x0 - 3) + ',' + f(yTop) + ' C' + f(x0 - 15) + ',' + f(yTop + 6) + ' ' + f(x0 - 3) + ',' + f((yTop + yBot) / 2 - 8) + ' ' + f(x0 - 14) + ',' + f((yTop + yBot) / 2) +
         ' C' + f(x0 - 3) + ',' + f((yTop + yBot) / 2 + 8) + ' ' + f(x0 - 15) + ',' + f(yBot - 6) + ' ' + f(x0 - 3) + ',' + f(yBot) + '" fill="none" stroke="' + INK + '" stroke-width="2"/>' +
@@ -5546,7 +5563,7 @@ var KeyboardRender = (function () {
     var flash = state.flash, card = state.card, answered = !!state.answered;
     if (flash && state.cardMode === 'play') {
       if (!card) return { kind: 'empty', clef: clefId, chords: [] };
-      return { kind: 'notes', clef: clefId, fixedClef: fixedClef, grand: card.lv === 3, slot: 260, chords: [{ notes: [{ midi: base + card.idx, name: card.name }], top: answered ? card.name : '', sub: '', lit: false }] };
+      return { kind: 'notes', clef: clefId, fixedClef: fixedClef, grand: card.lv === 3, slot: 260, chords: [{ notes: [{ midi: base + card.idx, name: card.name }], top: answered ? card.name : '', sub: '', lit: false, echo: answered }] };
     }
     var chords = [], sp = flash ? (card ? card.spell : 0) : noteSpell;
     for (var i = 0; i <= 24; i++) {
@@ -7815,7 +7832,7 @@ var KeyboardRender = (function () {
 </script>
   <script>
 /* generated by tools/build.py: do not edit */
-var APP_VERSION = '1.0 (build 8b1f596)';
+var APP_VERSION = '1.0 (build 8d5b2ed)';
 (function () {
   function show() { Array.prototype.forEach.call(document.querySelectorAll('[data-version]'), function (e) { e.textContent = APP_VERSION; }); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', show); else show();
