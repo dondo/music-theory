@@ -1600,7 +1600,7 @@
     var b = bubbles();
     return b.every(function (r) { return !!r; }) && b.filter(function (r) { return r === 'ok'; }).length >= FindChord.passMark(b.length);
   }
-  // the durability half (Find the chord): every card the level introduces has a half-life of 30 minutes or more
+  // the resilience half (Find the chord): every card the level introduces has a half-life of 30 minutes or more
   function ftcDurability() { return FindChord.durability(ftcMem, state.mode, ftcPop(), ftcLevelNo()); }
   window.musicTheoryLocalReady = function () {                  // local.js loads after the app starts: the streak length may change
     if (bubFull || (ftcBub && ftcBub.length)) bubFull = bubblesFull();
@@ -1635,7 +1635,7 @@
     st.setAttribute('aria-label', 'Last answers: ' + right + ' right out of ' + b.filter(Boolean).length + '; ' + FindChord.passMark(b.length) + ' of ' + b.length + ' needed');
     showDurability();
   }
-  // Find the chord: the thermometer of how durable the level's new cards are
+  // Find the chord: the resilience thermometer: how well the level's new cards are holding in memory
   function showDurability() {
     var el = document.getElementById('durability');
     if (!el) return;
@@ -1646,7 +1646,7 @@
     el.querySelector('i').style.width = pct + '%';
     el.classList.toggle('ready', d.ready);
     el.querySelector('.dur-count').textContent = d.done + '/' + d.total;
-    el.setAttribute('title', d.done + ' of ' + d.total + ' new cards are durable (they stay in memory for 30 minutes or more)');
+    el.setAttribute('title', d.done + ' of ' + d.total + ' new cards are resilient (their memory is set to last 30 minutes or more)');
     var bar = el.querySelector('.dur-bar');
     bar.setAttribute('aria-valuenow', String(pct));
   }
