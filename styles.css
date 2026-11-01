@@ -848,3 +848,11 @@ html.is-local body { border-top: 6px solid #ea580c; }
 .dev-dialog .dev-body { margin-top: 0; padding-top: 0; border-top: 0; padding-right: 22px; }
 
 .sync-body .dev-done { margin: 6px 0; }
+
+/* Durability: a thermometer for how long the level's new cards will stay in memory (full = all of them at 30 minutes or more) */
+.score-dur { display: inline-flex; align-items: center; gap: 6px; font-size: 0.85rem; color: var(--muted, #5d6475); line-height: 1; }
+.dur-bar { position: relative; display: inline-block; width: 120px; height: 12px; border-radius: 999px; background: #e3e7ef; border: 1px solid #b8c0cf; overflow: hidden; }
+.dur-bar i { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: #f59e0b; transition: width 0.4s ease; }
+.score-dur.ready .dur-bar i { background: #16a34a; }
+.dur-count { font-variant-numeric: tabular-nums; }
+@media (max-width: 600px) { .dur-bar { width: 80px; } .dur-label { display: none; } }

@@ -323,7 +323,38 @@
     return a.dim === 'K' ? { dim: 'K', keys: keys(mode, pop, a.to).slice(a.from), back: !!a.back } : { dim: 'C', chords: chords(mode, pop, a.to).slice(a.from), back: !!a.back };
   }
 
-  var STREAK = 10;                      // (the app drops this to 5 in the local copy, for testing)
+  var STREAK = 20;                      // the answers (bubbles) a level looks at; the slider in Settings changes it (1-30)
+  // Level-up: the last STREAK first-try answers must include at least passMark(STREAK) right ones (90%, misses rounded down: under 10 answers, all of them),
+  // and every card the level introduces must be durable (half-life of at least H_DURABLE).
+  function passMark(n) { return n - Math.floor(n / 10); }
+  var H_DURABLE = 30 * 60000;
+  // the key/chord pairs in play at level n
+  function pairsAt(mode, pop, n) {
+    var info = levelInfo(mode, pop, n), ks = keys(mode, pop, info.keys), cs = chords(mode, pop, info.chords), out = [];
+    ks.forEach(function (pc) { cs.forEach(function (c) { out.push({ pc: pc, deg: c.deg, type: c.type }); }); });
+    return out;
+  }
+  // the cards a level introduces: pairs in play that were not in play one level down (else the level's new key or chord, else everything in play)
+  function newCards(mode, pop, n) {
+    var all = pairsAt(mode, pop, n), out = all;
+    if (n > 1) {
+      var seen = {};
+      pairsAt(mode, pop, n - 1).forEach(function (q) { seen[q.pc + '|' + q.deg + '|' + q.type] = true; });
+      out = all.filter(function (q) { return !seen[q.pc + '|' + q.deg + '|' + q.type]; });
+    }
+    if (!out.length) { var f = freshTest(mode, pop, n); out = f ? all.filter(f) : all; }
+    return out.length ? out : all;
+  }
+  // how durable the level's new cards are: each card fills on a log scale from the starting half-life (empty) to H_DURABLE (full);
+  // `fill` is the average, `ready` is true when every card is there
+  function durability(mem, mode, pop, n) {
+    var cards = newCards(mode, pop, n).map(function (q) {
+      var m = mem.p[pairKey(mode, q)], h = m ? m.h : 0;
+      return { q: q, h: h, done: h >= H_DURABLE, fill: h ? clamp(Math.log(h / H0) / Math.log(H_DURABLE / H0), 0, 1) : 0 };
+    });
+    var done = cards.filter(function (c) { return c.done; }).length, sum = cards.reduce(function (a, c) { return a + c.fill; }, 0);
+    return { cards: cards, total: cards.length, done: done, fill: cards.length ? sum / cards.length : 1, ready: done === cards.length };
+  }
 
   // "Find a chord": which of the key's chords is exactly the notes picked on the keyboard?
   // `cands`: [{ deg, type, pcs: [absolute pitch classes], rootPc, rank }] (lower rank = more common);
@@ -351,7 +382,7 @@
     return hits[0];
   }
 
-  return { STREAK: STREAK, DATA: DATA, maxKeys: maxKeys, clamp: clamp, keys: keys, chords: chords, pick: pick,
+  return { STREAK: STREAK, passMark: passMark, H_DURABLE: H_DURABLE, pairsAt: pairsAt, newCards: newCards, durability: durability, DATA: DATA, maxKeys: maxKeys, clamp: clamp, keys: keys, chords: chords, pick: pick,
            ladder: ladder, levelCount: levelCount, levelInfo: levelInfo, levelAt: levelAt, stageSteps: stageSteps, stageIntro: stageIntro, mayInvert: mayInvert, stepAdds: stepAdds, stageCoverage: stageCoverage, freshTest: freshTest,
            identify: identify, weightKey: weightKey, weightOf: weightOf, miss: miss, hit: hit, loadWeights: loadWeights, saveWeights: saveWeights, resetWeights: resetWeights,
            describe: describe, checkAnswer: checkAnswer, needsQual: needsQual, needsSev: needsSev, pcName: pcName, answerName: answerName,

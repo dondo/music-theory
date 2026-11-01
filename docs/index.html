@@ -865,6 +865,14 @@ html.is-local body { border-top: 6px solid #ea580c; }
 .dev-dialog .dev-body { margin-top: 0; padding-top: 0; border-top: 0; padding-right: 22px; }
 
 .sync-body .dev-done { margin: 6px 0; }
+
+/* Durability: a thermometer for how long the level's new cards will stay in memory (full = all of them at 30 minutes or more) */
+.score-dur { display: inline-flex; align-items: center; gap: 6px; font-size: 0.85rem; color: var(--muted, #5d6475); line-height: 1; }
+.dur-bar { position: relative; display: inline-block; width: 120px; height: 12px; border-radius: 999px; background: #e3e7ef; border: 1px solid #b8c0cf; overflow: hidden; }
+.dur-bar i { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: #f59e0b; transition: width 0.4s ease; }
+.score-dur.ready .dur-bar i { background: #16a34a; }
+.dur-count { font-variant-numeric: tabular-nums; }
+@media (max-width: 600px) { .dur-bar { width: 80px; } .dur-label { display: none; } }
 </style>
 </head>
 <body>
@@ -961,6 +969,7 @@ html.is-local body { border-top: 6px solid #ea580c; }
       <div id="score" class="score" hidden aria-label="Score">
         <span class="score-ok"><span aria-hidden="true">✓</span> <b id="n-ok">0</b> correct</span>
         <span class="score-streak"><span id="streak-text"></span></span>
+        <span class="score-dur" id="durability" hidden><span class="dur-label">Durability</span><span class="dur-bar" role="progressbar" aria-label="Durability" aria-valuemin="0" aria-valuemax="100"><i></i></span><span class="dur-count"></span></span>
         <span class="score-bad"><span aria-hidden="true">✗</span> <b id="n-bad">0</b> incorrect</span>
         <button type="button" id="score-reset" class="btn-reset">Reset score</button>
       </div>
@@ -2816,7 +2825,38 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = Sync; }
     return a.dim === 'K' ? { dim: 'K', keys: keys(mode, pop, a.to).slice(a.from), back: !!a.back } : { dim: 'C', chords: chords(mode, pop, a.to).slice(a.from), back: !!a.back };
   }
 
-  var STREAK = 10;                      // (the app drops this to 5 in the local copy, for testing)
+  var STREAK = 20;                      // the answers (bubbles) a level looks at; the slider in Settings changes it (1-30)
+  // Level-up: the last STREAK first-try answers must include at least passMark(STREAK) right ones (90%, misses rounded down: under 10 answers, all of them),
+  // and every card the level introduces must be durable (half-life of at least H_DURABLE).
+  function passMark(n) { return n - Math.floor(n / 10); }
+  var H_DURABLE = 30 * 60000;
+  // the key/chord pairs in play at level n
+  function pairsAt(mode, pop, n) {
+    var info = levelInfo(mode, pop, n), ks = keys(mode, pop, info.keys), cs = chords(mode, pop, info.chords), out = [];
+    ks.forEach(function (pc) { cs.forEach(function (c) { out.push({ pc: pc, deg: c.deg, type: c.type }); }); });
+    return out;
+  }
+  // the cards a level introduces: pairs in play that were not in play one level down (else the level's new key or chord, else everything in play)
+  function newCards(mode, pop, n) {
+    var all = pairsAt(mode, pop, n), out = all;
+    if (n > 1) {
+      var seen = {};
+      pairsAt(mode, pop, n - 1).forEach(function (q) { seen[q.pc + '|' + q.deg + '|' + q.type] = true; });
+      out = all.filter(function (q) { return !seen[q.pc + '|' + q.deg + '|' + q.type]; });
+    }
+    if (!out.length) { var f = freshTest(mode, pop, n); out = f ? all.filter(f) : all; }
+    return out.length ? out : all;
+  }
+  // how durable the level's new cards are: each card fills on a log scale from the starting half-life (empty) to H_DURABLE (full);
+  // `fill` is the average, `ready` is true when every card is there
+  function durability(mem, mode, pop, n) {
+    var cards = newCards(mode, pop, n).map(function (q) {
+      var m = mem.p[pairKey(mode, q)], h = m ? m.h : 0;
+      return { q: q, h: h, done: h >= H_DURABLE, fill: h ? clamp(Math.log(h / H0) / Math.log(H_DURABLE / H0), 0, 1) : 0 };
+    });
+    var done = cards.filter(function (c) { return c.done; }).length, sum = cards.reduce(function (a, c) { return a + c.fill; }, 0);
+    return { cards: cards, total: cards.length, done: done, fill: cards.length ? sum / cards.length : 1, ready: done === cards.length };
+  }
 
   // "Find a chord": which of the key's chords is exactly the notes picked on the keyboard?
   // `cands`: [{ deg, type, pcs: [absolute pitch classes], rootPc, rank }] (lower rank = more common);
@@ -2844,7 +2884,7 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = Sync; }
     return hits[0];
   }
 
-  return { STREAK: STREAK, DATA: DATA, maxKeys: maxKeys, clamp: clamp, keys: keys, chords: chords, pick: pick,
+  return { STREAK: STREAK, passMark: passMark, H_DURABLE: H_DURABLE, pairsAt: pairsAt, newCards: newCards, durability: durability, DATA: DATA, maxKeys: maxKeys, clamp: clamp, keys: keys, chords: chords, pick: pick,
            ladder: ladder, levelCount: levelCount, levelInfo: levelInfo, levelAt: levelAt, stageSteps: stageSteps, stageIntro: stageIntro, mayInvert: mayInvert, stepAdds: stepAdds, stageCoverage: stageCoverage, freshTest: freshTest,
            identify: identify, weightKey: weightKey, weightOf: weightOf, miss: miss, hit: hit, loadWeights: loadWeights, saveWeights: saveWeights, resetWeights: resetWeights,
            describe: describe, checkAnswer: checkAnswer, needsQual: needsQual, needsSev: needsSev, pcName: pcName, answerName: answerName,
@@ -5813,6 +5853,13 @@ var KeyboardRender = (function () {
     return ftcBub;
   }
   function bubblesFull() { var b = bubbles(); return b.every(function (r) { return r === 'ok'; }); }
+  // the accuracy half of a level-up: the bubbles are all filled (a full window of answers) and enough are right (FindChord.passMark)
+  function windowPass() {
+    var b = bubbles();
+    return b.every(function (r) { return !!r; }) && b.filter(function (r) { return r === 'ok'; }).length >= FindChord.passMark(b.length);
+  }
+  // the durability half (Find the chord): every card the level introduces has a half-life of 30 minutes or more
+  function ftcDurability() { return FindChord.durability(ftcMem, state.mode, ftcPop(), ftcLevelNo()); }
   window.musicTheoryLocalReady = function () {                  // local.js loads after the app starts: the streak length may change
     if (bubFull || (ftcBub && ftcBub.length)) bubFull = bubblesFull();
     ftcStreak = Math.min(ftcStreak, streakNeed() - 1);
@@ -5843,7 +5890,23 @@ var KeyboardRender = (function () {
       st.appendChild(d);
     });
     st.setAttribute('role', 'img');
-    st.setAttribute('aria-label', 'Last answers: ' + right + ' right out of ' + b.filter(Boolean).length);
+    st.setAttribute('aria-label', 'Last answers: ' + right + ' right out of ' + b.filter(Boolean).length + '; ' + FindChord.passMark(b.length) + ' of ' + b.length + ' needed');
+    showDurability();
+  }
+  // Find the chord: the thermometer of how durable the level's new cards are
+  function showDurability() {
+    var el = document.getElementById('durability');
+    if (!el) return;
+    var on = quizOn() && !ftcTrial && !!ftcQ;
+    el.hidden = !on;
+    if (!on) return;
+    var d = ftcDurability(), pct = Math.round(d.fill * 100);
+    el.querySelector('i').style.width = pct + '%';
+    el.classList.toggle('ready', d.ready);
+    el.querySelector('.dur-count').textContent = d.done + '/' + d.total;
+    el.setAttribute('title', d.done + ' of ' + d.total + ' new cards are durable (they stay in memory for 30 minutes or more)');
+    var bar = el.querySelector('.dur-bar');
+    bar.setAttribute('aria-valuenow', String(pct));
   }
   var ftcFresh = { asked: 0, fresh: 0 };              // questions about the new challenge in the current run of five
   var ftcOpen = null;                                             // the first question of the new stage, already shown under its banner
@@ -5906,7 +5969,7 @@ var KeyboardRender = (function () {
       ftcStreak = Number.isInteger(o.streak) ? Math.max(0, Math.min(streakNeed() - 1, o.streak)) : 0;
       ftcTried = ftcRight = ftcStreak;
       ftcBub = Array.isArray(o.bub) ? o.bub.slice(0, 40) : null;
-      bubFull = bubblesFull();
+      bubFull = o.full === true || bubblesFull();
       trialUnlocked = o.trial === true;
       trialEver = o.ever === true || trialUnlocked;
       checkTrialUnlock();
@@ -5920,9 +5983,9 @@ var KeyboardRender = (function () {
     Object.keys(ftcLv).forEach(function (k) { if (ftcLvPrev[k] !== ftcLv[k]) { ftcLvT[k] = nowT; ftcLvPrev[k] = ftcLv[k]; } });
     ['play', 'find', 'key', 'sig'].forEach(function (m) { if (stepLvPrev[m] !== stepLv[m]) { stepLvT[m] = nowT; stepLvPrev[m] = stepLv[m]; } });
     var c = slots.chord || slotSnap();
-    try { window.localStorage.setItem(FTC_KEY, JSON.stringify({ lvl: ftcLv, lvt: ftcLvT, auto: ftcAuto, streak: c.streak, bub: c.bub || [], trial: c.unlocked, ever: c.ever, fresh: ftcFresh })); } catch (e) { /* storage unavailable */ }
+    try { window.localStorage.setItem(FTC_KEY, JSON.stringify({ lvl: ftcLv, lvt: ftcLvT, auto: ftcAuto, streak: c.streak, bub: c.bub || [], full: !!c.bubFull, trial: c.unlocked, ever: c.ever, fresh: ftcFresh })); } catch (e) { /* storage unavailable */ }
     var no = {};
-    ['play', 'find', 'key', 'sig'].forEach(function (m) { var q = slots[m] || {}; no[m] = { lv: stepLv[m], lt: +stepLvT[m] || 0, streak: q.streak | 0, bub: q.bub || [], trial: !!q.unlocked, ever: !!q.ever }; });
+    ['play', 'find', 'key', 'sig'].forEach(function (m) { var q = slots[m] || {}; no[m] = { lv: stepLv[m], lt: +stepLvT[m] || 0, streak: q.streak | 0, bub: q.bub || [], full: !!q.bubFull, trial: !!q.unlocked, ever: !!q.ever }; });
     try { window.localStorage.setItem(STEPS_KEY, JSON.stringify(no)); } catch (e) { /* storage unavailable */ }
   }
   function loadSteps() {
@@ -5936,7 +5999,7 @@ var KeyboardRender = (function () {
         stepLvPrev[m] = stepLv[m]; if (Number.isInteger(q.lt)) stepLvT[m] = q.lt;
         var b = Array.isArray(q.bub) ? q.bub.slice(0, 40).map(function (r) { return r === 'ok' || r === 'bad' ? r : null; }) : null, need = streakNeed();
         var st = Number.isInteger(q.streak) ? Math.max(0, Math.min(need - 1, q.streak)) : 0;
-        slots[m] = { bub: b, bubFull: !!b && b.length >= need && b.slice(0, need).every(function (r) { return r === 'ok'; }), streak: st, tried: st, right: st, unlocked: q.trial === true, ever: q.ever === true || q.trial === true };
+        slots[m] = { bub: b, bubFull: q.full === true || (!!b && b.length >= need && b.slice(0, need).every(function (r) { return r === 'ok'; })), streak: st, tried: st, right: st, unlocked: q.trial === true, ever: q.ever === true || q.trial === true };
       });
     } catch (e) { /* defaults */ }
   }
@@ -6632,7 +6695,7 @@ var KeyboardRender = (function () {
       if (ftcMissed) ftcStreak = 0;
       else {
         ftcStreak++; ftcTried++; ftcRight++; pushBub('ok');
-        if (ftcAuto && ftcStreak >= streakNeed()) {
+        if (ftcAuto && windowPass() && ftcDurability().ready) {
           var n0 = ftcLevelNo(), up = n0 < FindChord.levelCount(state.mode, ftcPop());
           if (up) {
             doneStage = FindChord.levelInfo(state.mode, ftcPop(), n0).stage;
@@ -6826,7 +6889,7 @@ var KeyboardRender = (function () {
     if (missedThisCard) ftcStreak = 0;
     else {
       ftcStreak++; ftcTried++; ftcRight++; pushBub('ok');
-      if (ftcAuto && ftcStreak >= streakNeed()) {
+      if (ftcAuto && windowPass()) {
         var n0 = stepNo(), can = n0 < STUDY_STEPS;
         if (can) { stepLv[studySlot()] = n0 + 1; trialUnlocked = false; syncTrialBox(); up = n0 + 1; }       // (a level-up locks Time Trial again)
         ftcStreak = 0; ftcTried = 0; ftcRight = 0;
@@ -7837,7 +7900,7 @@ var KeyboardRender = (function () {
 </script>
   <script>
 /* generated by tools/build.py: do not edit */
-var APP_VERSION = '1.0 (build b1f891c)';
+var APP_VERSION = '1.0 (build 0e8f94b)';
 (function () {
   function show() { Array.prototype.forEach.call(document.querySelectorAll('[data-version]'), function (e) { e.textContent = APP_VERSION; }); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', show); else show();

@@ -758,6 +758,28 @@ check('pop answers: described, checked and named like a lead sheet', function ()
   });
   console.log('ok quality tables');
 })();
+// level-up: the accuracy mark (90% of the bubbles, misses rounded down) and the cards a level introduces
+(function () {
+  var F = require('../js/findchord.js'), M = require('../js/memory.js');
+  assert.deepStrictEqual([1, 5, 9, 10, 20, 30].map(F.passMark), [1, 5, 9, 9, 18, 27]);
+  assert.strictEqual(F.STREAK, 20);
+  ['major', 'minor'].forEach(function (mode) { [true, false].forEach(function (pop) {
+    var N = F.levelCount(mode, pop);
+    for (var n = 1; n <= N; n++) assert.ok(F.newCards(mode, pop, n).length >= 1, mode + ' ' + pop + ' ' + n);
+  }); });
+  // the biggest level introduces 84 cards (Jazz, stage 21)
+  var mx = 0; for (var n = 1; n <= F.levelCount('major', false); n++) mx = Math.max(mx, F.newCards('major', false, n).length);
+  assert.strictEqual(mx, 84);
+  // durability: nothing seen = empty bar; every card at 30 minutes = ready
+  var mem = F.newMem(), d0 = F.durability(mem, 'major', true, 1);
+  assert.ok(d0.total >= 1 && d0.fill === 0 && !d0.ready);
+  var q = F.newCards('major', true, 1)[0], t = Date.now();
+  for (var i = 0; i < 12; i++) F.memAnswer(mem, 'major', q, true, 1500, 0, t + i * 5 * 60000);
+  var d1 = F.durability(mem, 'major', true, 1);
+  assert.ok(d1.fill > 0, 'half-life grows with right answers');
+  assert.ok(d1.ready === (d1.done === d1.total));
+})();
+
 // sync: credentials, the versioned envelope, merging
 var Sync = require('../js/sync.js');
 (async function () {

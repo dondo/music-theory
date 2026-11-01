@@ -1595,6 +1595,13 @@
     return ftcBub;
   }
   function bubblesFull() { var b = bubbles(); return b.every(function (r) { return r === 'ok'; }); }
+  // the accuracy half of a level-up: the bubbles are all filled (a full window of answers) and enough are right (FindChord.passMark)
+  function windowPass() {
+    var b = bubbles();
+    return b.every(function (r) { return !!r; }) && b.filter(function (r) { return r === 'ok'; }).length >= FindChord.passMark(b.length);
+  }
+  // the durability half (Find the chord): every card the level introduces has a half-life of 30 minutes or more
+  function ftcDurability() { return FindChord.durability(ftcMem, state.mode, ftcPop(), ftcLevelNo()); }
   window.musicTheoryLocalReady = function () {                  // local.js loads after the app starts: the streak length may change
     if (bubFull || (ftcBub && ftcBub.length)) bubFull = bubblesFull();
     ftcStreak = Math.min(ftcStreak, streakNeed() - 1);
@@ -1625,7 +1632,23 @@
       st.appendChild(d);
     });
     st.setAttribute('role', 'img');
-    st.setAttribute('aria-label', 'Last answers: ' + right + ' right out of ' + b.filter(Boolean).length);
+    st.setAttribute('aria-label', 'Last answers: ' + right + ' right out of ' + b.filter(Boolean).length + '; ' + FindChord.passMark(b.length) + ' of ' + b.length + ' needed');
+    showDurability();
+  }
+  // Find the chord: the thermometer of how durable the level's new cards are
+  function showDurability() {
+    var el = document.getElementById('durability');
+    if (!el) return;
+    var on = quizOn() && !ftcTrial && !!ftcQ;
+    el.hidden = !on;
+    if (!on) return;
+    var d = ftcDurability(), pct = Math.round(d.fill * 100);
+    el.querySelector('i').style.width = pct + '%';
+    el.classList.toggle('ready', d.ready);
+    el.querySelector('.dur-count').textContent = d.done + '/' + d.total;
+    el.setAttribute('title', d.done + ' of ' + d.total + ' new cards are durable (they stay in memory for 30 minutes or more)');
+    var bar = el.querySelector('.dur-bar');
+    bar.setAttribute('aria-valuenow', String(pct));
   }
   var ftcFresh = { asked: 0, fresh: 0 };              // questions about the new challenge in the current run of five
   var ftcOpen = null;                                             // the first question of the new stage, already shown under its banner
@@ -1688,7 +1711,7 @@
       ftcStreak = Number.isInteger(o.streak) ? Math.max(0, Math.min(streakNeed() - 1, o.streak)) : 0;
       ftcTried = ftcRight = ftcStreak;
       ftcBub = Array.isArray(o.bub) ? o.bub.slice(0, 40) : null;
-      bubFull = bubblesFull();
+      bubFull = o.full === true || bubblesFull();
       trialUnlocked = o.trial === true;
       trialEver = o.ever === true || trialUnlocked;
       checkTrialUnlock();
@@ -1702,9 +1725,9 @@
     Object.keys(ftcLv).forEach(function (k) { if (ftcLvPrev[k] !== ftcLv[k]) { ftcLvT[k] = nowT; ftcLvPrev[k] = ftcLv[k]; } });
     ['play', 'find', 'key', 'sig'].forEach(function (m) { if (stepLvPrev[m] !== stepLv[m]) { stepLvT[m] = nowT; stepLvPrev[m] = stepLv[m]; } });
     var c = slots.chord || slotSnap();
-    try { window.localStorage.setItem(FTC_KEY, JSON.stringify({ lvl: ftcLv, lvt: ftcLvT, auto: ftcAuto, streak: c.streak, bub: c.bub || [], trial: c.unlocked, ever: c.ever, fresh: ftcFresh })); } catch (e) { /* storage unavailable */ }
+    try { window.localStorage.setItem(FTC_KEY, JSON.stringify({ lvl: ftcLv, lvt: ftcLvT, auto: ftcAuto, streak: c.streak, bub: c.bub || [], full: !!c.bubFull, trial: c.unlocked, ever: c.ever, fresh: ftcFresh })); } catch (e) { /* storage unavailable */ }
     var no = {};
-    ['play', 'find', 'key', 'sig'].forEach(function (m) { var q = slots[m] || {}; no[m] = { lv: stepLv[m], lt: +stepLvT[m] || 0, streak: q.streak | 0, bub: q.bub || [], trial: !!q.unlocked, ever: !!q.ever }; });
+    ['play', 'find', 'key', 'sig'].forEach(function (m) { var q = slots[m] || {}; no[m] = { lv: stepLv[m], lt: +stepLvT[m] || 0, streak: q.streak | 0, bub: q.bub || [], full: !!q.bubFull, trial: !!q.unlocked, ever: !!q.ever }; });
     try { window.localStorage.setItem(STEPS_KEY, JSON.stringify(no)); } catch (e) { /* storage unavailable */ }
   }
   function loadSteps() {
@@ -1718,7 +1741,7 @@
         stepLvPrev[m] = stepLv[m]; if (Number.isInteger(q.lt)) stepLvT[m] = q.lt;
         var b = Array.isArray(q.bub) ? q.bub.slice(0, 40).map(function (r) { return r === 'ok' || r === 'bad' ? r : null; }) : null, need = streakNeed();
         var st = Number.isInteger(q.streak) ? Math.max(0, Math.min(need - 1, q.streak)) : 0;
-        slots[m] = { bub: b, bubFull: !!b && b.length >= need && b.slice(0, need).every(function (r) { return r === 'ok'; }), streak: st, tried: st, right: st, unlocked: q.trial === true, ever: q.ever === true || q.trial === true };
+        slots[m] = { bub: b, bubFull: q.full === true || (!!b && b.length >= need && b.slice(0, need).every(function (r) { return r === 'ok'; })), streak: st, tried: st, right: st, unlocked: q.trial === true, ever: q.ever === true || q.trial === true };
       });
     } catch (e) { /* defaults */ }
   }
@@ -2414,7 +2437,7 @@
       if (ftcMissed) ftcStreak = 0;
       else {
         ftcStreak++; ftcTried++; ftcRight++; pushBub('ok');
-        if (ftcAuto && ftcStreak >= streakNeed()) {
+        if (ftcAuto && windowPass() && ftcDurability().ready) {
           var n0 = ftcLevelNo(), up = n0 < FindChord.levelCount(state.mode, ftcPop());
           if (up) {
             doneStage = FindChord.levelInfo(state.mode, ftcPop(), n0).stage;
@@ -2608,7 +2631,7 @@
     if (missedThisCard) ftcStreak = 0;
     else {
       ftcStreak++; ftcTried++; ftcRight++; pushBub('ok');
-      if (ftcAuto && ftcStreak >= streakNeed()) {
+      if (ftcAuto && windowPass()) {
         var n0 = stepNo(), can = n0 < STUDY_STEPS;
         if (can) { stepLv[studySlot()] = n0 + 1; trialUnlocked = false; syncTrialBox(); up = n0 + 1; }       // (a level-up locks Time Trial again)
         ftcStreak = 0; ftcTried = 0; ftcRight = 0;
