@@ -2885,7 +2885,7 @@
       missedThisCard = true;
       var octave = find && pc === state.card.pc;                  // the right note name, the wrong octave
       var nat = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 }[state.card.name.charAt(0)], dn = (pc - nat + 12) % 12;
-      var alter = !find && !!(state.card.name && nat !== undefined && (dn === 0 || dn === 1 || dn === 11));      // Play the note: the right letter, the wrong accidental (B\u266F is C and F\u266D is E, so those count too)
+      var alter = !find && !!(state.card.name && nat !== undefined && (dn === 0 || (!/[\u266F\u266D]/.test(state.card.name) && (dn === 1 || dn === 11))));      // Play the note: the right letter, the wrong accidental (a plain card also takes a semitone either side, so B\u266F = C and F\u266D = E count; a sharp or flat card only takes the plain letter)
       state.guess = octave ? 'octave' : alter ? 'alter' : pc;
       lastResult = octave ? 'Right note, wrong octave: pick the one that matches the lit key.' : alter ? 'Right note\u2026 wrong alteration!' : 'Incorrect. That is ' + NOTE_SHARP[pc] + (NOTE_SHARP[pc] !== NOTE_FLAT[pc] ? ' / ' + NOTE_FLAT[pc] : '') + '.';
       updateScore();
