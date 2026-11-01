@@ -153,9 +153,18 @@ check('chords: every key, degree and type produces a well-formed chord', functio
 
 // ---- flashcard memory (Keys, Find the signature, Play / Find the note) ---------
 var Mem = require('../js/memory.js');
+check('Memory.seeded carries a card over with one miss; it must still be answered once', function () {
+  var day = 86400000, src = { h: day, t: 5, n: 4 }, sd = Mem.seeded({ p: {} }, src);
+  assert.strictEqual(sd.h, 0.35 * day); assert.strictEqual(sd.n, 0); assert.strictEqual(sd.t, 5);
+  var mem = { p: { a: sd, b: { h: 40 * 60000, n: 2 } } };
+  var r = Mem.resilience(mem, ['a', 'b']);
+  assert.strictEqual(r.done, 1); assert.strictEqual(r.ready, false);          // a is long-lived but unanswered
+  sd.n = 1; assert.strictEqual(Mem.resilience(mem, ['a', 'b']).ready, true);
+  assert.strictEqual(Mem.seeded({ p: {} }, { h: 30 * 60000, t: 0, n: 1 }).h, 10.5 * 60000);
+});
 check('Memory.resilience counts cards at 30+ minutes', function () {
   var mem = Mem.fresh ? Mem.fresh() : { p: {} };
-  mem.p = { a: { h: Mem.H_DURABLE }, b: { h: 3 * 60000 }, c: { h: 10 * Mem.H_DURABLE } };
+  mem.p = { a: { h: Mem.H_DURABLE, n: 1 }, b: { h: 3 * 60000, n: 1 }, c: { h: 10 * Mem.H_DURABLE, n: 1 } };
   var r = Mem.resilience(mem, ['a', 'b', 'c', 'd']);
   assert.strictEqual(r.total, 4); assert.strictEqual(r.done, 2); assert.strictEqual(r.ready, false);
   assert.ok(r.fill > 0.4 && r.fill < 0.6, 'fill ' + r.fill);

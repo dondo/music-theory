@@ -182,7 +182,7 @@
   function startCardClock(trusted) { cardT0 = performance.now(); cardTimed = trusted !== false && !document.hidden; }
   document.addEventListener('visibilitychange', function () { if (document.hidden) cardTimed = false; });
   // Each card is remembered per clef (a note on the treble stave and the same place on the bass stave are different cards), and the levels
-  // that mix clefs (3 and 5) have cards of their own: reading them side by side is a skill of its own, so they start unseen.
+  // that mix clefs (3 and 5) have cards of their own: reading them side by side is a skill of its own, so they start from the single-clef cards with one miss (seedMixed) and each must be answered there.
   // The context is the clef id ('treble', 'bass', ...) or 'm3-treble' for a drawn-in-a-mixed-level card.
   var MIXED_OWN_CARDS = true;                                    // false: a mixed level reuses each clef's own cards
   function studyCtx(lv, clef) {
@@ -205,7 +205,21 @@
     });
     return out;
   }
-  function stepResilience() { return Memory.resilience(cardMem, stepCardKeys()); }
+  // A mixed level's cards (3, 5) start from the same card in its own clef, as if it had just been missed once (half-life x0.35), and must
+  // each be answered at least once there before the level can be passed (Memory.resilience counts only answered cards as resilient).
+  function seedMixed(lv) {
+    var list = STEP_CLEFS[lv], now = Date.now(), changed = false;
+    if (!MIXED_OWN_CARDS || !list || list.length < 2 || !noteOn() && !state.mode) return;
+    var pre = noteOn() ? (state.cardMode === 'find' ? 'find|' : 'play|') : (state.cardMode === 'sig' ? 'sig|' : 'key|'), cnt = noteOn() ? 25 : 12;
+    list.forEach(function (c) {
+      for (var i = 0; i < cnt; i++) {
+        var tail = (noteOn() ? '' : state.mode + '|') + i, key = pre + studyCtx(lv, c) + '|' + tail, src = cardMem.p[pre + c + '|' + tail];
+        if (!cardMem.p[key] && src && src.n > 0) { cardMem.p[key] = Memory.seeded(cardMem, src); changed = true; }
+      }
+    });
+    if (changed) Memory.save(CARD_MEM_KEY, cardMem);
+  }
+  function stepResilience() { seedMixed(stepNo()); return Memory.resilience(cardMem, stepCardKeys()); }
   (function migrateCardMem() {                                   // saves from before cards were per clef: those answers were on the treble stave
     var p = cardMem.p, moved = false;
     Object.keys(p).forEach(function (k) {
@@ -2709,6 +2723,7 @@
     if (bubFull) { ftcBub = null; bubFull = false; }                                         // (a new step starts with empty bubbles)
     var avoid = state.card ? state.card.pc : -1, idx, pc, pre = state.cardMode === 'find' ? 'find|' : 'play|', keys = [];
     var dl = dealStep(state.card), ctx = studyCtx(dl.lv, dl.clef);
+    seedMixed(dl.lv);
     for (var i = 0; i < 25; i++) keys.push(pre + ctx + '|' + i);                            // two octaves from middle C: 0..24, each remembered on its own (per clef)
     idx = parseInt(Memory.pick(cardMem, keys, function (k) { return parseInt(k.split('|').pop(), 10) % 12 === avoid; }, Math.random, Date.now()).split('|').pop(), 10);
     pc = idx % 12;
@@ -2726,6 +2741,7 @@
     var avoid = state.card ? state.card.pc : -1, prevCard = state.card;
     var pre = state.cardMode === 'sig' ? 'sig|' : 'key|', keys = [], i;
     var dl = dealStep(prevCard), ctx = studyCtx(dl.lv, dl.clef);
+    seedMixed(dl.lv);
     for (i = 0; i < 12; i++) keys.push(pre + ctx + '|' + state.mode + '|' + i);
     var pc = parseInt(Memory.pick(cardMem, keys, function (k) { return parseInt(k.split('|').pop(), 10) === avoid; }, Math.random, Date.now()).split('|').pop(), 10);
     startCardClock(true);
