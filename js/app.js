@@ -3100,7 +3100,7 @@
     var nb = e.target.closest ? e.target.closest('.next-btn') : null;
     if (nb && (e.key === 'Enter' || e.key === ' ')) {
       e.preventDefault();
-      if (quizOn() && e.key === 'Enter' && !levelBanner.hidden) return;        // a banner is up: Enter doesn't skip it
+      if (gradBannerUp()) return;        // a level-up banner is up: Enter doesn't skip it (only the right arrow, Go or the stay button)
       nextCard(true);
       return;
     }
@@ -3136,6 +3136,7 @@
     e.preventDefault(); e.stopImmediatePropagation(); dismissWelcome();
   }, true);
 
+  function gradBannerUp() { return !levelBanner.hidden && !levelBanner.hasAttribute('data-welcome') && !!levelBanner.querySelector('.levelup-stay'); }
   // a level-up banner is up: the left arrow is "Not yet, I've got more in me" (the right arrow is Go, below)
   document.addEventListener('keydown', function (e) {
     if (e.key !== 'ArrowLeft' || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey || levelBanner.hidden) return;
@@ -3200,6 +3201,7 @@
     if (t && t.closest && t.closest('input, select, textarea')) return;
     if (e.key === 'Enter' && !e.altKey && !e.shiftKey) {
       if (!state.answered) return;
+      if (gradBannerUp()) { e.preventDefault(); return; }          // (a level-up banner: only the right arrow goes on)
       if (t && t !== document.body && t !== document.documentElement && !(t.closest && t.closest('#stage'))) return;
       e.preventDefault();
       nextCard(true);
