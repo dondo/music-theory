@@ -181,11 +181,41 @@
   var cardT0 = null, cardTimed = false;               // when the card went up; false when the page was hidden meanwhile (the time can't be trusted)
   function startCardClock(trusted) { cardT0 = performance.now(); cardTimed = trusted !== false && !document.hidden; }
   document.addEventListener('visibilitychange', function () { if (document.hidden) cardTimed = false; });
-  function cardMemKey() {
-    var c = state.card;
-    if (noteOn()) return (state.cardMode === 'find' ? 'find|' : 'play|') + c.idx;
-    return (state.cardMode === 'sig' ? 'sig|' : 'key|') + state.mode + '|' + c.pc;
+  // Each card is remembered per clef (a note on the treble stave and the same place on the bass stave are different cards), and the levels
+  // that mix clefs (3 and 5) have cards of their own: reading them side by side is a skill of its own, so they start unseen.
+  // The context is the clef id ('treble', 'bass', ...) or 'm3-treble' for a drawn-in-a-mixed-level card.
+  var MIXED_OWN_CARDS = true;                                    // false: a mixed level reuses each clef's own cards
+  function studyCtx(lv, clef) {
+    var list = STEP_CLEFS[lv];
+    if (MIXED_OWN_CARDS && list && list.length > 1 && clef) return 'm' + lv + '-' + clef;
+    return clef || (noteOn() && clefAllowed(state.clef) ? state.clef : 'treble');
   }
+  function cardMemKey() {
+    var c = state.card, ctx = studyCtx(c.lv || stepNo(), c.clef ? c.clef : (STEP_CLEFS[c.lv || stepNo()] || [null])[0]);
+    if (noteOn()) return (state.cardMode === 'find' ? 'find|' : 'play|') + ctx + '|' + c.idx;
+    return (state.cardMode === 'sig' ? 'sig|' : 'key|') + ctx + '|' + state.mode + '|' + c.pc;
+  }
+  // every card of the level in play (for the Resilience bar and the level-up check)
+  function stepCardKeys() {
+    var n = stepNo(), list = STEP_CLEFS[n], ctxs = list && list.length > 1 && MIXED_OWN_CARDS ? list.map(function (c) { return studyCtx(n, c); }) : [studyCtx(n, list ? list[0] : null)];
+    var out = [], pre = noteOn() ? (state.cardMode === 'find' ? 'find|' : 'play|') : (state.cardMode === 'sig' ? 'sig|' : 'key|'), i;
+    ctxs.forEach(function (ctx) {
+      if (noteOn()) for (i = 0; i < 25; i++) out.push(pre + ctx + '|' + i);
+      else for (i = 0; i < 12; i++) out.push(pre + ctx + '|' + state.mode + '|' + i);
+    });
+    return out;
+  }
+  function stepResilience() { return Memory.resilience(cardMem, stepCardKeys()); }
+  (function migrateCardMem() {                                   // saves from before cards were per clef: those answers were on the treble stave
+    var p = cardMem.p, moved = false;
+    Object.keys(p).forEach(function (k) {
+      var nk = null;
+      if (/^(play|find)\|\d+$/.test(k)) nk = k.replace('|', '|treble|');
+      else if (/^(key|sig)\|(major|minor)\|\d+$/.test(k)) nk = k.replace('|', '|treble|');
+      if (nk) { if (!p[nk]) p[nk] = p[k]; delete p[k]; moved = true; }
+    });
+    if (moved) Memory.save(CARD_MEM_KEY, cardMem);
+  })();
   // the first try at a card counts (later tries at the same card don't)
   function memRecord(correct) {
     if (missedThisCard || !state.card) return;
@@ -1639,14 +1669,15 @@
   function showDurability() {
     var el = document.getElementById('durability');
     if (!el) return;
-    var on = quizOn() && !ftcTrial && !!ftcQ;
+    var chordOn = quizOn() && !ftcTrial && !!ftcQ, studyOn = !quizOn() && studyQuizOn() && !ftcTrial && !!state.card, on = chordOn || studyOn;
     el.hidden = !on;
     if (!on) return;
-    var d = ftcDurability(), pct = Math.round(d.fill * 100);
+    var d = chordOn ? ftcDurability() : stepResilience(), pct = Math.round(d.fill * 100);
+    if (studyOn) d.cards = null;
     el.querySelector('i').style.width = pct + '%';
     el.classList.toggle('ready', d.ready);
     el.querySelector('.dur-count').textContent = d.done + '/' + d.total;
-    el.setAttribute('title', d.done + ' of ' + d.total + ' new cards are resilient (their memory is set to last 30 minutes or more)');
+    el.setAttribute('title', d.done + ' of ' + d.total + (studyOn ? ' cards at this level are resilient' : ' new cards are resilient') + ' (their memory is set to last 30 minutes or more)');
     var bar = el.querySelector('.dur-bar');
     bar.setAttribute('aria-valuenow', String(pct));
   }
@@ -2631,7 +2662,7 @@
     if (missedThisCard) ftcStreak = 0;
     else {
       ftcStreak++; ftcTried++; ftcRight++; pushBub('ok');
-      if (ftcAuto && windowPass()) {
+      if (ftcAuto && windowPass() && stepResilience().ready) {
         var n0 = stepNo(), can = n0 < STUDY_STEPS;
         if (can) { stepLv[studySlot()] = n0 + 1; trialUnlocked = false; syncTrialBox(); up = n0 + 1; }       // (a level-up locks Time Trial again)
         ftcStreak = 0; ftcTried = 0; ftcRight = 0;
@@ -2677,13 +2708,13 @@
     syncSlot();
     if (bubFull) { ftcBub = null; bubFull = false; }                                         // (a new step starts with empty bubbles)
     var avoid = state.card ? state.card.pc : -1, idx, pc, pre = state.cardMode === 'find' ? 'find|' : 'play|', keys = [];
-    for (var i = 0; i < 25; i++) keys.push(pre + i);                                        // two octaves from middle C: 0..24, each remembered on its own
-    idx = parseInt(Memory.pick(cardMem, keys, function (k) { return parseInt(k.slice(5), 10) % 12 === avoid; }, Math.random, Date.now()).slice(5), 10);
+    var dl = dealStep(state.card), ctx = studyCtx(dl.lv, dl.clef);
+    for (var i = 0; i < 25; i++) keys.push(pre + ctx + '|' + i);                            // two octaves from middle C: 0..24, each remembered on its own (per clef)
+    idx = parseInt(Memory.pick(cardMem, keys, function (k) { return parseInt(k.split('|').pop(), 10) % 12 === avoid; }, Math.random, Date.now()).split('|').pop(), 10);
     pc = idx % 12;
     startCardClock(true);
     var flat = noteLastSpell === 0;                           // Study: sharps and flats take turns
     noteLastSpell = flat ? 1 : 0;
-    var dl = dealStep(state.card);
     state.card = { idx: idx, pc: pc, spell: flat ? 1 : 0, name: (flat ? NOTE_FLAT : NOTE_SHARP)[pc], lv: dl.lv, clef: dl.clef };
     missedThisCard = false;
     state.guess = null;
@@ -2694,13 +2725,13 @@
     if (bubFull) { ftcBub = null; bubFull = false; }                                          // (a new step starts with empty bubbles)
     var avoid = state.card ? state.card.pc : -1, prevCard = state.card;
     var pre = state.cardMode === 'sig' ? 'sig|' : 'key|', keys = [], i;
-    for (i = 0; i < 12; i++) keys.push(pre + state.mode + '|' + i);
-    var pc = parseInt(Memory.pick(cardMem, keys, function (k) { return parseInt(k.split('|')[2], 10) === avoid; }, Math.random, Date.now()).split('|')[2], 10);
+    var dl = dealStep(prevCard), ctx = studyCtx(dl.lv, dl.clef);
+    for (i = 0; i < 12; i++) keys.push(pre + ctx + '|' + state.mode + '|' + i);
+    var pc = parseInt(Memory.pick(cardMem, keys, function (k) { return parseInt(k.split('|').pop(), 10) === avoid; }, Math.random, Date.now()).split('|').pop(), 10);
     startCardClock(true);
     missedThisCard = false;
     state.guess = null;
     // a two-spelling key shows one spelling on the cue (random), both once solved; the shown one is lit
-    var dl = dealStep(prevCard);
     state.card = { pc: pc, spell: Math.floor(Math.random() * Theory.specsFor(state.mode, pc).length), lv: dl.lv, clef: dl.clef };
     if (resumeQ && resumeQ.cardMode !== 'chord') {      // reloaded mid-question: the same card again
       state.card = { pc: resumeQ.pc, spell: resumeQ.spell, lv: dl.lv, clef: dl.clef };

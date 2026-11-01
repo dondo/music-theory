@@ -55,6 +55,19 @@ var Memory = (function () {
     return out;
   }
 
+  // how resilient a set of items is: each fills on a log scale from the starting half-life (empty) to H_DURABLE (30 min, full); `fill` is the average,
+  // `ready` when every item is there (an item never answered is empty)
+  var H_DURABLE = 30 * 60000;
+  function resilience(mem, keys) {
+    var done = 0, sum = 0;
+    keys.forEach(function (k) {
+      var m = mem.p[k], h = m ? m.h : 0;
+      if (h >= H_DURABLE) done++;
+      sum += h ? Math.max(0, Math.min(1, Math.log(h / H0) / Math.log(H_DURABLE / H0))) : 0;
+    });
+    return { total: keys.length, done: done, fill: keys.length ? sum / keys.length : 1, ready: done === keys.length };
+  }
+
   function storage() { try { return (typeof window !== 'undefined' && window.localStorage) || null; } catch (e) { return null; } }
   function load(storeKey, st) {
     st = st === undefined ? storage() : st;
@@ -77,7 +90,7 @@ var Memory = (function () {
 
   var api = {
     NOVEL: NOVEL, H0: H0, H_MIN: H_MIN, H_MAX: H_MAX, EPS: EPS, GAMMA: GAMMA, TREF_DEFAULT: TREF_DEFAULT,
-    create: create, recall: recall, weight: weight, pick: pick, tRef: tRef, grade: grade, answer: answer, load: load, save: save, reset: reset
+    H_DURABLE: H_DURABLE, resilience: resilience, create: create, recall: recall, weight: weight, pick: pick, tRef: tRef, grade: grade, answer: answer, load: load, save: save, reset: reset
   };
   if (typeof module !== 'undefined' && module.exports) { module.exports = api; }
   return api;

@@ -153,6 +153,14 @@ check('chords: every key, degree and type produces a well-formed chord', functio
 
 // ---- flashcard memory (Keys, Find the signature, Play / Find the note) ---------
 var Mem = require('../js/memory.js');
+check('Memory.resilience counts cards at 30+ minutes', function () {
+  var mem = Mem.fresh ? Mem.fresh() : { p: {} };
+  mem.p = { a: { h: Mem.H_DURABLE }, b: { h: 3 * 60000 }, c: { h: 10 * Mem.H_DURABLE } };
+  var r = Mem.resilience(mem, ['a', 'b', 'c', 'd']);
+  assert.strictEqual(r.total, 4); assert.strictEqual(r.done, 2); assert.strictEqual(r.ready, false);
+  assert.ok(r.fill > 0.4 && r.fill < 0.6, 'fill ' + r.fill);
+  assert.strictEqual(Mem.resilience(mem, ['a', 'c']).ready, true);
+});
 function seededRng(seed) { return function () { seed = (seed * 1664525 + 1013904223) % 4294967296; return seed / 4294967296; }; }
 check('memory: an unseen item is fully "forgotten"; recall halves every half-life; a miss shrinks it', function () {
   var mem = Mem.create(), now = 1e9;
