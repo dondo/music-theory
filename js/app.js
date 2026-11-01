@@ -2884,8 +2884,10 @@
       stepProgress(false);
       missedThisCard = true;
       var octave = find && pc === state.card.pc;                  // the right note name, the wrong octave
-      state.guess = octave ? 'octave' : pc;
-      lastResult = octave ? 'Right note, wrong octave: pick the one that matches the lit key.' : 'Incorrect. That is ' + NOTE_SHARP[pc] + (NOTE_SHARP[pc] !== NOTE_FLAT[pc] ? ' / ' + NOTE_FLAT[pc] : '') + '.';
+      var nat = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 }[state.card.name.charAt(0)], dn = (pc - nat + 12) % 12;
+      var alter = !find && !!(state.card.name && nat !== undefined && (pc === nat || ((dn === 1 || dn === 11) && NOTE_SHARP[pc] !== NOTE_FLAT[pc])));      // Play the note: the right letter, the wrong accidental
+      state.guess = octave ? 'octave' : alter ? 'alter' : pc;
+      lastResult = octave ? 'Right note, wrong octave: pick the one that matches the lit key.' : alter ? 'Right note\u2026 wrong alteration!' : 'Incorrect. That is ' + NOTE_SHARP[pc] + (NOTE_SHARP[pc] !== NOTE_FLAT[pc] ? ' / ' + NOTE_FLAT[pc] : '') + '.';
       updateScore();
       draw(false, false);
       feedback('nope', null);
