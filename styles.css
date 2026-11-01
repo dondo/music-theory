@@ -854,5 +854,4 @@ html.is-local body { border-top: 6px solid #ea580c; }
 .dur-bar { position: relative; display: inline-block; width: 120px; height: 12px; border-radius: 999px; background: #e3e7ef; border: 1px solid #b8c0cf; overflow: hidden; }
 .dur-bar i { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: #f59e0b; transition: width 0.4s ease; }
 .score-dur.ready .dur-bar i { background: #16a34a; }
-.dur-count { font-variant-numeric: tabular-nums; }
 @media (max-width: 600px) { .dur-bar { width: 80px; } .dur-label { display: none; } }

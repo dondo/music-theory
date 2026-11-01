@@ -1690,8 +1690,7 @@
     if (studyOn) d.cards = null;
     el.querySelector('i').style.width = pct + '%';
     el.classList.toggle('ready', d.ready);
-    el.querySelector('.dur-count').textContent = d.done + '/' + d.total;
-    el.setAttribute('title', d.done + ' of ' + d.total + (studyOn ? ' cards at this level are resilient' : ' new cards are resilient') + ' (their memory is set to last 30 minutes or more)');
+    el.setAttribute('title', 'Resilience: how firmly the ' + (studyOn ? 'cards at this level' : 'new cards') + ' have stuck. It fills as you get them right again after gaps; the level is done when every one has stuck.');
     var bar = el.querySelector('.dur-bar');
     bar.setAttribute('aria-valuenow', String(pct));
   }
