@@ -231,14 +231,6 @@
     return { keys: keys, view: view };
   }
   function stepResilienceFor(n) { var v = stepView(n); return Memory.resilience(v.view, v.keys); }
-  // the note cards of level n that haven't settled yet (not asked, or not yet at 30 minutes): [{ idx, pc, clef }]
-  function weakNotes(n) {
-    var v = stepView(n);
-    return v.keys.filter(function (k) { var m = v.view.p[k]; return !(m && m.h >= Memory.H_DURABLE && m.n > 0); }).map(function (k) {
-      var parts = k.split('|'), idx = parseInt(parts[2], 10);
-      return { idx: idx, pc: idx % 12, clef: parts[1].replace(/^m\d-/, '') };
-    });
-  }
   // TEMPORARY: a bar for every card of the current working set (shown in the session banner)
   function cardStrip() {
     if (!noteOn()) return '';
@@ -247,20 +239,10 @@
       var m = v.view.p[k], h = m ? m.h : 0, asked = m && m.n > 0, parts = k.split('|'), idx = parseInt(parts[2], 10);
       var fill = h ? Math.min(asked ? 1 : 0.95, Math.max(0, Math.log(h / Memory.H0) / Math.log(Memory.H_DURABLE / Memory.H0))) : 0, done = h >= Memory.H_DURABLE && asked;
       var sh = NOTE_SHARP[idx % 12], fl = NOTE_FLAT[idx % 12], oct = 4 + Math.floor(idx / 12), clefName = (KeyboardRender.CLEFS.filter(function (c) { return c.id === parts[1].replace(/^m\d-/, ''); })[0] || {}).name;
-      var tip = sh + oct + (sh !== fl ? '/' + fl + oct : '') + (multi && clefName ? ' (' + clefName + ')' : '') + ': ' + Math.round(fill * 100) + '%';
-      return '<span class="cs"' + (fill > 0.9 ? '' : ' data-tip="' + tip + '"') + '><i class="cs-bar"><b style="height:' + Math.round(fill * 100) + '%"' + (done ? ' class="cs-done"' : '') + '></b></i><u>' + NOTE_SHARP[idx % 12].replace('\u266F', '#') + (multi ? parts[1].replace(/^m\d-/, '').charAt(0) : '') + '</u></span>';
+      var nm = sh + oct + (sh !== fl ? '/' + fl + oct : '') + (multi && clefName ? ' (' + clefName + ')' : '');
+      var pop = fill < 1 ? '<span class="cs-pop">' + KeyboardRender.miniNote(parts[1].replace(/^m\d-/, ''), 60 + idx, sh) + '<span>' + nm + '<br><b>' + Math.round(fill * 100) + '%</b></span></span>' : '';
+      return '<span class="cs' + (pop ? ' cs-has' : '') + '"><i class="cs-bar"><b style="height:' + Math.round(fill * 100) + '%"' + (done ? ' class="cs-done"' : '') + '></b></i><u>' + NOTE_SHARP[idx % 12].replace('\u266F', '#') + (multi ? parts[1].replace(/^m\d-/, '').charAt(0) : '') + '</u>' + pop + '</span>';
     }).join('') + '</span>';
-  }
-  function weakNotesLine() {                                      // "Looks like you need to focus on the B and D notes." with a little staff for each
-    var weak = noteOn() ? weakNotes(stepNo()) : [];
-    if (!weak.length || weak.length > 2) return '';
-    var names = [];
-    weak.forEach(function (w) { var nm = NOTE_SHARP[w.pc] + (NOTE_SHARP[w.pc] !== NOTE_FLAT[w.pc] ? '/' + NOTE_FLAT[w.pc] : ''); if (names.indexOf(nm) < 0) names.push(nm); });
-    var staves = weak.map(function (w) {
-      var nm = NOTE_SHARP[w.pc];
-      return '<span class="mini-note">' + KeyboardRender.miniNote(w.clef, 60 + w.idx, nm) + '<b>' + NOTE_SHARP[w.pc] + (NOTE_SHARP[w.pc] !== NOTE_FLAT[w.pc] ? '/' + NOTE_FLAT[w.pc] : '') + '</b></span>';
-    }).join('');
-    return '<span class="levelup-line2">Looks like you need to focus on the ' + ftcJoin(names.map(function (x) { return '<strong>' + x + '</strong>'; })) + (names.length > 1 ? ' notes.' : ' note.') + '<span class="mini-notes">' + staves + '</span></span>';
   }
   function stepResilience() { seedMixed(stepNo()); return Memory.resilience(cardMem, stepCardKeys()); }
   (function migrateCardMem() {                                   // saves from before cards were per clef: those answers were on the treble stave
@@ -1977,7 +1959,7 @@
     if (levelBanner.parentNode !== ftcSection) ftcSection.appendChild(levelBanner);
     document.getElementById('ftc-levelup-icon').textContent = pickOne(SESSION_ICONS);
     document.getElementById('ftc-levelup-title').textContent = pickOne(pct >= 100 ? SESSION_CLOSE : good ? SESSION_GOOD : SESSION_MEH);
-    levelText.innerHTML = right + ' of ' + b.length + ' first tries right. ' + line + weakNotesLine() + cardStrip() +
+    levelText.innerHTML = right + ' of ' + b.length + ' first tries right. ' + line + cardStrip() +
       '<span class="levelup-go-row"><button type="button" class="btn-reset levelup-stay" data-kind="session">← Keep working</button>' +
       (last ? '' : '<button type="button" class="btn-reset levelup-go" data-kind="session">New challenge →</button>') + '</span>';
     levelBanner.hidden = false;
