@@ -1921,6 +1921,7 @@
   var SESSION_ICONS = ['\u{1F4AA}', '\u{1F624}', '\u{1F9D7}'];                  // flexed arm, steam from the nose, climber
   var SESSION_GOOD = ['Good session!', 'Your hard work is showing!', 'Solid session!', 'That’s real progress!', 'Nicely done!', 'Now we’re cooking!'];
   var SESSION_MEH = ['You’re getting there!', 'Keep at it!', 'Every session counts!', 'Slow and steady!', 'You’re building something here!', 'The cards are sinking in!'];
+  var SESSION_CLOSE = ['So close!', 'Almost there!', 'Just a little sharper!', 'The cards have stuck \u2014 now polish!'];      // (progress full, accuracy a bit short)
   function curLevelNo() { return quizOn() ? ftcLevelNo() : stepNo(); }
   function noteSessionStart() {                                  // a new question with empty bubbles: the level's progress now is the session's starting point
     if (ftcTrial) return;
@@ -1928,7 +1929,7 @@
   }
   function endSessionReset() {                                   // however the banner is left, the next session starts clean
     if (!sessionPending) return;
-    sessionPending = false; sess0 = null; ftcBub = null; bubFull = false; ftcStreak = 0; ftcTried = 0; ftcRight = 0;
+    sessionPending = false; sessionSureUp = false; sess0 = null; ftcBub = null; bubFull = false; ftcStreak = 0; ftcTried = 0; ftcRight = 0;
   }
   function pickOne(list) { return list[Math.floor(Math.random() * list.length)]; }
   function sessionEnd() {                                        // called after a solved card; shows the banner if the bubbles just filled
@@ -1936,10 +1937,11 @@
     sessionDone = false;
     if (!done || ftcTrial || !(quizOn() || studyQuizOn()) || !bubbles().every(function (r) { return !!r; })) return;
     var n = curLevelNo(), pct = levelPct(n);
-    if (pct >= 100) return;                                       // (a finished level that missed the accuracy mark just carries on)
-    var b = bubbles(), right = b.filter(function (r) { return r === 'ok'; }).length, good = right >= FindChord.passMark(b.length);
+    var b = bubbles(), right = b.filter(function (r) { return r === 'ok'; }).length, need = FindChord.passMark(b.length), good = right >= need;
+    if (pct >= 100 && good) return;                               // (nothing short: the level-up banner has it)
     var start = sess0 && sess0.lv === n ? sess0.pct : null, d = start == null ? 0 : pct - start, line;
-    if (start == null) line = 'Your progress on this level is now ' + pct + '%.';
+    if (pct >= 100) line = 'Your progress on this level is full \u2014 what\u2019s left is accuracy: it takes ' + need + ' of ' + b.length + ' first tries right to move on.';
+    else if (start == null) line = 'Your progress on this level is now ' + pct + '%.';
     else if (d > 0) line = 'This session took your progress on this level from ' + start + '% to <strong>' + pct + '%</strong> (+' + d + ').';
     else if (d === 0) line = 'Your progress on this level held steady at <strong>' + pct + '%</strong>.';
     else line = 'Your progress on this level slipped from ' + start + '% to <strong>' + pct + '%</strong> (−' + (-d) + '): missed cards lose ground, and they’ll come around more often now.';
@@ -1947,15 +1949,27 @@
     levelBanner.removeAttribute('data-welcome');
     if (levelBanner.parentNode !== ftcSection) ftcSection.appendChild(levelBanner);
     document.getElementById('ftc-levelup-icon').textContent = pickOne(SESSION_ICONS);
-    document.getElementById('ftc-levelup-title').textContent = pickOne(good ? SESSION_GOOD : SESSION_MEH);
+    document.getElementById('ftc-levelup-title').textContent = pickOne(pct >= 100 ? SESSION_CLOSE : good ? SESSION_GOOD : SESSION_MEH);
     levelText.innerHTML = right + ' of ' + b.length + ' first tries right. ' + line +
       '<span class="levelup-go-row"><button type="button" class="btn-reset levelup-stay" data-kind="session">← Keep working</button>' +
       (last ? '' : '<button type="button" class="btn-reset levelup-go" data-kind="session">New challenge →</button>') + '</span>';
     levelBanner.hidden = false;
     levelBanner.style.animation = 'none'; void levelBanner.offsetWidth; levelBanner.style.animation = '';
-    sessionPending = true;
+    sessionPending = true; sessionSureUp = false;
   }
-  function sessionNewChallenge() {                               // "New challenge": on to the next level, as a level-up would
+  var sessionSureUp = false;                                     // the "are you sure?" note is showing
+  function sessionSure() {                                       // "New challenge" asks once before moving on
+    sessionSureUp = true;
+    document.getElementById('ftc-levelup-icon').textContent = '\u{1F914}';
+    document.getElementById('ftc-levelup-title').textContent = 'Are you sure?';
+    levelText.innerHTML = 'It\u2019s just going to get harder from here\u2026 The surest way up is to stay until this level feels solid \u2014 then you\u2019ll get the big celebration, and the next level will go more easily.' +
+      '<span class="levelup-go-row"><button type="button" class="btn-reset levelup-stay" data-kind="session">\u2190 Stay and keep working</button>' +
+      '<button type="button" class="btn-reset levelup-go" data-kind="session" data-confirm="1">Move on anyway</button></span>';
+    levelBanner.style.animation = 'none'; void levelBanner.offsetWidth; levelBanner.style.animation = '';
+    var keep = levelBanner.querySelector('.levelup-stay'); if (keep) keep.focus({ preventScroll: true });
+  }
+  function sessionNewChallenge() {
+    sessionSureUp = false;                               // "New challenge": on to the next level, as a level-up would
     sessionPending = false; sess0 = null;
     var n = curLevelNo();
     ftcStreak = 0; ftcTried = 0; ftcRight = 0; ftcBub = null; bubFull = false;
@@ -2053,7 +2067,7 @@
     var stay = e.target.closest && e.target.closest('.levelup-stay');
     var goBtn = e.target.closest && e.target.closest('.levelup-go');
     if (sessionPending && (quizOn() || studyQuizOn()) && state.answered && (stay || goBtn)) {        // the end-of-session banner
-      if (goBtn) sessionNewChallenge(); else nextCard(false);                                       // ("Keep working": the next question starts a fresh session)
+      if (goBtn) { if (goBtn.hasAttribute('data-confirm')) sessionNewChallenge(); else sessionSure(); } else { sessionSureUp = false; nextCard(false); }                                       // ("Keep working": the next question starts a fresh session)
       return;
     }
     if (stay && (quizOn() || studyQuizOn()) && state.answered) {              // "Not yet, I can do better": take the level-up back, then go on
@@ -3390,7 +3404,7 @@
     }
     if (sessionPending && state.answered && !levelBanner.hidden) {          // the end-of-session banner: the right arrow is "New challenge"
       var sg = levelBanner.querySelector('.levelup-go'), st2 = e.target;
-      if (sg && !(st2 && st2.closest && st2.closest('input, select, textarea'))) { e.preventDefault(); sg.click(); return; }
+      if (sg && !(st2 && st2.closest && st2.closest('input, select, textarea'))) { e.preventDefault(); if (!sessionSureUp) sg.click(); return; }      // (the "are you sure?" note has to be answered with a click)
     }
     if (quizOn() && state.answered && !levelBanner.hidden) {              // Find the chord: the right arrow goes on from a banner
       e.preventDefault();
