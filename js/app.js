@@ -1959,9 +1959,9 @@
     if (levelBanner.parentNode !== ftcSection) ftcSection.appendChild(levelBanner);
     document.getElementById('ftc-levelup-icon').textContent = pickOne(SESSION_ICONS);
     document.getElementById('ftc-levelup-title').textContent = pickOne(pct >= 100 ? SESSION_CLOSE : good ? SESSION_GOOD : SESSION_MEH);
-    levelText.innerHTML = right + ' of ' + b.length + ' first tries right. ' + line + cardStrip() +
+    levelText.innerHTML = right + ' of ' + b.length + ' first tries right. ' + line + '<span class="session-foot">' + cardStrip() +
       '<span class="levelup-go-row"><button type="button" class="btn-reset levelup-stay" data-kind="session">← Keep working</button>' +
-      (last ? '' : '<button type="button" class="btn-reset levelup-go" data-kind="session">New challenge →</button>') + '</span>';
+      (last ? '' : '<button type="button" class="btn-reset levelup-go" data-kind="session">New challenge →</button>') + '</span></span>';
     levelBanner.hidden = false;
     levelBanner.style.animation = 'none'; void levelBanner.offsetWidth; levelBanner.style.animation = '';
     sessionPending = true; sessionSureUp = false;
