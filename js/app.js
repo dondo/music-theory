@@ -3120,15 +3120,25 @@
 
   var enterHeld = false;                                          // (the return key is down: a note picked now is ignored)
   document.addEventListener('keydown', function (e) { if (e.key === 'Enter') enterHeld = true; }, true);
-  document.addEventListener('keyup', function (e) { if (e.key === 'Enter') enterHeld = false; }, true);
-  window.addEventListener('blur', function () { enterHeld = false; });
+  var enterMark = null;                                           // the "let go of the return key" text: it stays up while the key is down, then fades
+  function releaseEnter() {
+    enterHeld = false;
+    var m = enterMark; enterMark = null;
+    if (!m) return;
+    m.style.opacity = '0';
+    if (m.isConnected && m.animate && !reduceMotion) m.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 700, easing: 'ease-out' });
+  }
+  document.addEventListener('keyup', function (e) { if (e.key === 'Enter') releaseEnter(); }, true);
+  window.addEventListener('blur', releaseEnter);
   function noteAnswer(val) {
     dismissWelcome();                             // play the note: the pitch class pressed (any octave); find the note: the staff note clicked (0..24)
     if (ftcTrial && (ftcTrial.counting || ftcTrial.done)) return;
     if (state.answered || !state.card) return;
-    if (enterHeld && !(ftcTrial && ftcTrial.note)) {              // the return key is still down from "Next": not an answer, just a gentle nudge
+    if (enterHeld) {              // the return key is still down from "Next": not an answer, just a gentle nudge
       state.guess = 'enter'; lastResult = 'Um\u2026 let go of the return key :)';
-      draw(false, false); feedback('quiet', null);
+      draw(false, false);
+      var svg0 = stage.firstElementChild, mk = svg0 && svg0.querySelector('.fb-nope');
+      if (mk) { mk.style.opacity = '1'; enterMark = mk; }          // (held up until the key is released)
       return;
     }
     var find = state.cardMode === 'find', pc = val % 12;
