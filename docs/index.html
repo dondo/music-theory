@@ -937,6 +937,12 @@ html.is-local body { border-top: 6px solid #ea580c; }
 .levelup-stay[data-kind="session"]:hover, .levelup-stay[data-kind="session"]:focus-visible { background: #bbf7d0; }
 .levelup-go[data-kind="session"] { padding: 8px 16px; border-color: #94a3b8; background: transparent; color: inherit; font-weight: 400; font-size: 0.95rem; }
 .levelup-go[data-kind="session"]:hover, .levelup-go[data-kind="session"]:focus-visible { background: rgba(148, 163, 184, 0.2); }
+
+/* end-of-session note: the one or two notes still to settle, each on a little staff */
+.mini-notes { display: inline-flex; gap: 14px; vertical-align: middle; margin-left: 12px; }
+.mini-note { display: inline-flex; flex-direction: column; align-items: center; gap: 2px; font-size: 0.85rem; }
+.mini-note svg { display: block; }
+.levelup-line2 { display: block; margin-top: 8px; }
 </style>
 </head>
 <body>
@@ -3854,6 +3860,21 @@ var KeyboardRender = (function () {
     return out.join('');
   }
 
+  // a little staff with one note marked on it (for the end-of-session message): clef, five lines, ledger lines, the note in blue
+  function miniNote(clefId, midi, name) {
+    var c = clefDef(clefId), sp = 8, k = sp / 250, p = notePosition(midi, name, c), val = accidentalValue(name), q, out = [];
+    var lo = Math.min(-2, p - 1), hi = Math.max(10, p + 1), minY = -hi * sp / 2 - 3, h = (hi - lo) * sp / 2 + 6;
+    var nx = 8 + c.w * k + (val ? 26 : 14), w = nx + 16, y = function (pos) { return -pos * sp / 2; };
+    out.push('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 ' + f(minY) + ' ' + f(w) + ' ' + f(h) + '" width="' + f(w) + '" height="' + f(h) + '" role="img" aria-label="' + esc(name) + ' on the ' + esc(c.name) + ' clef">');
+    for (q = 0; q < 5; q++) out.push('<line x1="1" y1="' + f(y(2 * q)) + '" x2="' + f(w - 1) + '" y2="' + f(y(2 * q)) + '" stroke="#555" stroke-width="0.9"/>');
+    out.push('<path d="' + G[c.glyph] + '" transform="translate(8,' + f(y(c.line * 2)) + ') scale(' + k + ',-' + k + ')" fill="#333"/>');
+    for (q = -2; q >= p; q -= 2) out.push('<line x1="' + f(nx - 9) + '" y1="' + f(y(q)) + '" x2="' + f(nx + 9) + '" y2="' + f(y(q)) + '" stroke="#555" stroke-width="0.9"/>');
+    for (q = 10; q <= p; q += 2) out.push('<line x1="' + f(nx - 9) + '" y1="' + f(y(q)) + '" x2="' + f(nx + 9) + '" y2="' + f(y(q)) + '" stroke="#555" stroke-width="0.9"/>');
+    if (val) out.push('<path d="' + G[val > 0 ? 'sharp' : 'flat'] + '" transform="translate(' + f(nx - 19) + ',' + f(y(p)) + ') scale(' + k + ',-' + k + ')" fill="#2563eb"/>');
+    out.push('<ellipse cx="' + f(nx) + '" cy="' + f(y(p)) + '" rx="' + f(0.72 * sp) + '" ry="' + f(0.5 * sp) + '" fill="#2563eb"/>'+'</svg>');
+    return out.join('');
+  }
+
   // staff position of a note: half-spaces above the bottom line of the clef
   function notePosition(midi, name, clef) {
     var letter = name.charAt(0);
@@ -4321,6 +4342,7 @@ var KeyboardRender = (function () {
     CLEFS: CLEFS,
     notePosition: notePosition,
     clefIcon: clefIcon,
+    miniNote: miniNote,
     windowGeom: windowGeom,
     windowRange: windowRange,
     WIDTH: WIDTH,
@@ -4558,14 +4580,34 @@ var KeyboardRender = (function () {
     if (changed) Memory.save(CARD_MEM_KEY, cardMem);
   }
   // how settled level n's cards are, without touching the saved memory (a mixed level's unseeded cards count as seeded from their single-clef twin)
-  function stepResilienceFor(n) {
+  function stepView(n) {
     var keys = stepCardKeys(n), view = { p: {} };
     keys.forEach(function (k) {
       var m = cardMem.p[k];
       if (!m && MIXED_OWN_CARDS && /\|m\d-/.test(k)) { var src = cardMem.p[k.replace(/\|m\d-/, '|')]; if (src && src.n > 0) m = Memory.seeded(cardMem, src); }
       if (m) view.p[k] = m;
     });
-    return Memory.resilience(view, keys);
+    return { keys: keys, view: view };
+  }
+  function stepResilienceFor(n) { var v = stepView(n); return Memory.resilience(v.view, v.keys); }
+  // the note cards of level n that haven't settled yet (not asked, or not yet at 30 minutes): [{ idx, pc, clef }]
+  function weakNotes(n) {
+    var v = stepView(n);
+    return v.keys.filter(function (k) { var m = v.view.p[k]; return !(m && m.h >= Memory.H_DURABLE && m.n > 0); }).map(function (k) {
+      var parts = k.split('|'), idx = parseInt(parts[2], 10);
+      return { idx: idx, pc: idx % 12, clef: parts[1].replace(/^m\d-/, '') };
+    });
+  }
+  function weakNotesLine() {                                      // "Looks like you need to focus on the B and D notes." with a little staff for each
+    var weak = noteOn() ? weakNotes(stepNo()) : [];
+    if (!weak.length || weak.length > 2) return '';
+    var names = [];
+    weak.forEach(function (w) { var nm = NOTE_SHARP[w.pc] + (NOTE_SHARP[w.pc] !== NOTE_FLAT[w.pc] ? '/' + NOTE_FLAT[w.pc] : ''); if (names.indexOf(nm) < 0) names.push(nm); });
+    var staves = weak.map(function (w) {
+      var nm = NOTE_SHARP[w.pc];
+      return '<span class="mini-note">' + KeyboardRender.miniNote(w.clef, 60 + w.idx, nm) + '<b>' + NOTE_SHARP[w.pc] + (NOTE_SHARP[w.pc] !== NOTE_FLAT[w.pc] ? '/' + NOTE_FLAT[w.pc] : '') + '</b></span>';
+    }).join('');
+    return '<span class="levelup-line2">Looks like you need to focus on the ' + ftcJoin(names.map(function (x) { return '<strong>' + x + '</strong>'; })) + (names.length > 1 ? ' notes.' : ' note.') + '<span class="mini-notes">' + staves + '</span></span>';
   }
   function stepResilience() { seedMixed(stepNo()); return Memory.resilience(cardMem, stepCardKeys()); }
   (function migrateCardMem() {                                   // saves from before cards were per clef: those answers were on the treble stave
@@ -6287,7 +6329,7 @@ var KeyboardRender = (function () {
     if (levelBanner.parentNode !== ftcSection) ftcSection.appendChild(levelBanner);
     document.getElementById('ftc-levelup-icon').textContent = pickOne(SESSION_ICONS);
     document.getElementById('ftc-levelup-title').textContent = pickOne(pct >= 100 ? SESSION_CLOSE : good ? SESSION_GOOD : SESSION_MEH);
-    levelText.innerHTML = right + ' of ' + b.length + ' first tries right. ' + line +
+    levelText.innerHTML = right + ' of ' + b.length + ' first tries right. ' + line + weakNotesLine() +
       '<span class="levelup-go-row"><button type="button" class="btn-reset levelup-stay" data-kind="session">← Keep working</button>' +
       (last ? '' : '<button type="button" class="btn-reset levelup-go" data-kind="session">New challenge →</button>') + '</span>';
     levelBanner.hidden = false;
@@ -8239,7 +8281,7 @@ var KeyboardRender = (function () {
 </script>
   <script>
 /* generated by tools/build.py: do not edit */
-var APP_VERSION = '1.0 (build 346cb6d)';
+var APP_VERSION = '1.0 (build 1926d63)';
 (function () {
   function show() { Array.prototype.forEach.call(document.querySelectorAll('[data-version]'), function (e) { e.textContent = APP_VERSION; }); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', show); else show();

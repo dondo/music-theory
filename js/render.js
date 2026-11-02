@@ -586,6 +586,21 @@ var KeyboardRender = (function () {
     return out.join('');
   }
 
+  // a little staff with one note marked on it (for the end-of-session message): clef, five lines, ledger lines, the note in blue
+  function miniNote(clefId, midi, name) {
+    var c = clefDef(clefId), sp = 8, k = sp / 250, p = notePosition(midi, name, c), val = accidentalValue(name), q, out = [];
+    var lo = Math.min(-2, p - 1), hi = Math.max(10, p + 1), minY = -hi * sp / 2 - 3, h = (hi - lo) * sp / 2 + 6;
+    var nx = 8 + c.w * k + (val ? 26 : 14), w = nx + 16, y = function (pos) { return -pos * sp / 2; };
+    out.push('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 ' + f(minY) + ' ' + f(w) + ' ' + f(h) + '" width="' + f(w) + '" height="' + f(h) + '" role="img" aria-label="' + esc(name) + ' on the ' + esc(c.name) + ' clef">');
+    for (q = 0; q < 5; q++) out.push('<line x1="1" y1="' + f(y(2 * q)) + '" x2="' + f(w - 1) + '" y2="' + f(y(2 * q)) + '" stroke="#555" stroke-width="0.9"/>');
+    out.push('<path d="' + G[c.glyph] + '" transform="translate(8,' + f(y(c.line * 2)) + ') scale(' + k + ',-' + k + ')" fill="#333"/>');
+    for (q = -2; q >= p; q -= 2) out.push('<line x1="' + f(nx - 9) + '" y1="' + f(y(q)) + '" x2="' + f(nx + 9) + '" y2="' + f(y(q)) + '" stroke="#555" stroke-width="0.9"/>');
+    for (q = 10; q <= p; q += 2) out.push('<line x1="' + f(nx - 9) + '" y1="' + f(y(q)) + '" x2="' + f(nx + 9) + '" y2="' + f(y(q)) + '" stroke="#555" stroke-width="0.9"/>');
+    if (val) out.push('<path d="' + G[val > 0 ? 'sharp' : 'flat'] + '" transform="translate(' + f(nx - 19) + ',' + f(y(p)) + ') scale(' + k + ',-' + k + ')" fill="#2563eb"/>');
+    out.push('<ellipse cx="' + f(nx) + '" cy="' + f(y(p)) + '" rx="' + f(0.72 * sp) + '" ry="' + f(0.5 * sp) + '" fill="#2563eb"/>'+'</svg>');
+    return out.join('');
+  }
+
   // staff position of a note: half-spaces above the bottom line of the clef
   function notePosition(midi, name, clef) {
     var letter = name.charAt(0);
@@ -1053,6 +1068,7 @@ var KeyboardRender = (function () {
     CLEFS: CLEFS,
     notePosition: notePosition,
     clefIcon: clefIcon,
+    miniNote: miniNote,
     windowGeom: windowGeom,
     windowRange: windowRange,
     WIDTH: WIDTH,

@@ -920,3 +920,9 @@ html.is-local body { border-top: 6px solid #ea580c; }
 .levelup-stay[data-kind="session"]:hover, .levelup-stay[data-kind="session"]:focus-visible { background: #bbf7d0; }
 .levelup-go[data-kind="session"] { padding: 8px 16px; border-color: #94a3b8; background: transparent; color: inherit; font-weight: 400; font-size: 0.95rem; }
 .levelup-go[data-kind="session"]:hover, .levelup-go[data-kind="session"]:focus-visible { background: rgba(148, 163, 184, 0.2); }
+
+/* end-of-session note: the one or two notes still to settle, each on a little staff */
+.mini-notes { display: inline-flex; gap: 14px; vertical-align: middle; margin-left: 12px; }
+.mini-note { display: inline-flex; flex-direction: column; align-items: center; gap: 2px; font-size: 0.85rem; }
+.mini-note svg { display: block; }
+.levelup-line2 { display: block; margin-top: 8px; }

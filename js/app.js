@@ -221,14 +221,34 @@
     if (changed) Memory.save(CARD_MEM_KEY, cardMem);
   }
   // how settled level n's cards are, without touching the saved memory (a mixed level's unseeded cards count as seeded from their single-clef twin)
-  function stepResilienceFor(n) {
+  function stepView(n) {
     var keys = stepCardKeys(n), view = { p: {} };
     keys.forEach(function (k) {
       var m = cardMem.p[k];
       if (!m && MIXED_OWN_CARDS && /\|m\d-/.test(k)) { var src = cardMem.p[k.replace(/\|m\d-/, '|')]; if (src && src.n > 0) m = Memory.seeded(cardMem, src); }
       if (m) view.p[k] = m;
     });
-    return Memory.resilience(view, keys);
+    return { keys: keys, view: view };
+  }
+  function stepResilienceFor(n) { var v = stepView(n); return Memory.resilience(v.view, v.keys); }
+  // the note cards of level n that haven't settled yet (not asked, or not yet at 30 minutes): [{ idx, pc, clef }]
+  function weakNotes(n) {
+    var v = stepView(n);
+    return v.keys.filter(function (k) { var m = v.view.p[k]; return !(m && m.h >= Memory.H_DURABLE && m.n > 0); }).map(function (k) {
+      var parts = k.split('|'), idx = parseInt(parts[2], 10);
+      return { idx: idx, pc: idx % 12, clef: parts[1].replace(/^m\d-/, '') };
+    });
+  }
+  function weakNotesLine() {                                      // "Looks like you need to focus on the B and D notes." with a little staff for each
+    var weak = noteOn() ? weakNotes(stepNo()) : [];
+    if (!weak.length || weak.length > 2) return '';
+    var names = [];
+    weak.forEach(function (w) { var nm = NOTE_SHARP[w.pc] + (NOTE_SHARP[w.pc] !== NOTE_FLAT[w.pc] ? '/' + NOTE_FLAT[w.pc] : ''); if (names.indexOf(nm) < 0) names.push(nm); });
+    var staves = weak.map(function (w) {
+      var nm = NOTE_SHARP[w.pc];
+      return '<span class="mini-note">' + KeyboardRender.miniNote(w.clef, 60 + w.idx, nm) + '<b>' + NOTE_SHARP[w.pc] + (NOTE_SHARP[w.pc] !== NOTE_FLAT[w.pc] ? '/' + NOTE_FLAT[w.pc] : '') + '</b></span>';
+    }).join('');
+    return '<span class="levelup-line2">Looks like you need to focus on the ' + ftcJoin(names.map(function (x) { return '<strong>' + x + '</strong>'; })) + (names.length > 1 ? ' notes.' : ' note.') + '<span class="mini-notes">' + staves + '</span></span>';
   }
   function stepResilience() { seedMixed(stepNo()); return Memory.resilience(cardMem, stepCardKeys()); }
   (function migrateCardMem() {                                   // saves from before cards were per clef: those answers were on the treble stave
@@ -1950,7 +1970,7 @@
     if (levelBanner.parentNode !== ftcSection) ftcSection.appendChild(levelBanner);
     document.getElementById('ftc-levelup-icon').textContent = pickOne(SESSION_ICONS);
     document.getElementById('ftc-levelup-title').textContent = pickOne(pct >= 100 ? SESSION_CLOSE : good ? SESSION_GOOD : SESSION_MEH);
-    levelText.innerHTML = right + ' of ' + b.length + ' first tries right. ' + line +
+    levelText.innerHTML = right + ' of ' + b.length + ' first tries right. ' + line + weakNotesLine() +
       '<span class="levelup-go-row"><button type="button" class="btn-reset levelup-stay" data-kind="session">← Keep working</button>' +
       (last ? '' : '<button type="button" class="btn-reset levelup-go" data-kind="session">New challenge →</button>') + '</span>';
     levelBanner.hidden = false;
