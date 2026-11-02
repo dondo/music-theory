@@ -3135,7 +3135,7 @@
 
   // Keys that are easy to fumble while typing a note: holding one of them when a note is picked means "not an answer".
   var HOLD_KEYS = { Enter: 'return key', NumpadEnter: 'return key', Minus: '- key', Equal: '= key', BracketLeft: '[ key', BracketRight: '] key', Backslash: '\\ key', KeyP: 'p key',
-    Backspace: 'delete key', Delete: 'delete key', ControlLeft: 'control key', ControlRight: 'control key', Space: 'space bar' };
+    Backspace: 'delete key', Delete: 'delete key', Space: 'space bar' };
   var heldKeys = [];                                              // the codes of those keys that are down now (latest last)
   var enterMark = null;                                           // the "let go of the ... key" text: it stays up while a key is down, then fades
   function heldLabel() { return heldKeys.length ? HOLD_KEYS[heldKeys[heldKeys.length - 1]] : ''; }
@@ -3502,8 +3502,7 @@
   // Notes, Play the note and Keys, Find the key: A-G name the note (Shift = sharp, Alt = flat); once solved, Enter (like the right arrow) goes on
   document.addEventListener('keydown', function (e) {
     var keyStudy = state.flash && !noteOn() && !chordy() && !!state.card && (state.cardMode === 'key' || state.cardMode === 'sig');     // Find the key / signature
-    var ctrlNote = e.ctrlKey && !e.metaKey && !e.altKey && state.cardMode === 'play' && !state.answered && NATURALS[e.code] !== undefined;      // (control held while a note is typed: the "let go" nudge)
-    if (e.defaultPrevented || (e.ctrlKey && !ctrlNote) || e.metaKey || !(noteCardOn() || keyStudy)) return;
+    if (e.defaultPrevented || e.ctrlKey || e.metaKey || !(noteCardOn() || keyStudy)) return;
     var t = e.target;
     if (t && t.closest && t.closest('input, select, textarea')) return;
     if (e.key === 'Enter' && !e.altKey && !e.shiftKey) {
