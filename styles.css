@@ -941,3 +941,5 @@ html.is-local body { border-top: 6px solid #ea580c; }
 .session-foot { display: flex; flex-wrap: wrap; align-items: flex-end; }
 .session-foot .card-strip { min-width: 360px; margin-left: 0; margin-right: 0; }
 .session-foot .levelup-go-row { flex: none; margin-left: auto; }
+.levelup-stay[data-kind="session"] { margin-right: 0; }
+.levelup-go[data-kind="session"] { margin-right: 10px; }

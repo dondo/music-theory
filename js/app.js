@@ -1973,8 +1973,8 @@
     document.getElementById('ftc-levelup-icon').textContent = pickOne(SESSION_ICONS);
     document.getElementById('ftc-levelup-title').textContent = pickOne(pct >= 100 ? SESSION_CLOSE : good ? SESSION_GOOD : SESSION_MEH);
     levelText.innerHTML = right + ' of ' + b.length + ' first tries right. ' + line + '<span class="session-foot">' + cardStrip() +
-      '<span class="levelup-go-row"><button type="button" class="btn-reset levelup-stay" data-kind="session">← Keep working</button>' +
-      (last ? '' : '<button type="button" class="btn-reset levelup-go" data-kind="session">New challenge →</button>') + '</span></span>';
+      '<span class="levelup-go-row">' + (last ? '' : '<button type="button" class="btn-reset levelup-go" data-kind="session">New challenge</button>') +
+      '<button type="button" class="btn-reset levelup-stay" data-kind="session">Keep working \u2192</button></span></span>';
     levelBanner.hidden = false;
     levelBanner.style.animation = 'none'; void levelBanner.offsetWidth; placeStrip(); levelBanner.style.animation = '';        // (measured with the entrance animation off)
     sessionPending = true; sessionSureUp = false;
@@ -1985,8 +1985,8 @@
     document.getElementById('ftc-levelup-icon').textContent = '\u{1F914}';
     document.getElementById('ftc-levelup-title').textContent = 'Are you sure?';
     levelText.innerHTML = 'It\u2019s just going to get harder from here\u2026 The surest way up is to stay until this level feels solid \u2014 then you\u2019ll get the big celebration, and the next level will go more easily.' +
-      '<span class="levelup-go-row"><button type="button" class="btn-reset levelup-stay" data-kind="session">\u2190 Stay and keep working</button>' +
-      '<button type="button" class="btn-reset levelup-go" data-kind="session" data-confirm="1">Move on anyway</button></span>';
+      '<span class="levelup-go-row"><button type="button" class="btn-reset levelup-go" data-kind="session" data-confirm="1">Move on anyway</button>' +
+      '<button type="button" class="btn-reset levelup-stay" data-kind="session">Stay and keep working \u2192</button></span>';
     levelBanner.style.animation = 'none'; void levelBanner.offsetWidth; levelBanner.style.animation = '';
     var keep = levelBanner.querySelector('.levelup-stay'); if (keep) keep.focus({ preventScroll: true });
   }
@@ -3436,7 +3436,7 @@
   function gradBannerUp() { return !levelBanner.hidden && !levelBanner.hasAttribute('data-welcome') && !!levelBanner.querySelector('.levelup-stay'); }
   // a level-up banner is up: the left arrow is "Not yet, I've got more in me" (the right arrow is Go, below)
   document.addEventListener('keydown', function (e) {
-    if (e.key !== 'ArrowLeft' || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey || levelBanner.hidden) return;
+    if (e.key !== 'ArrowLeft' || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey || levelBanner.hidden || sessionPending) return;      // (the session banner's "New challenge" is a click)
     var stayBtn = levelBanner.querySelector('.levelup-stay');
     if (!stayBtn) return;
     var t = e.target;
@@ -3451,9 +3451,9 @@
       var wt = e.target;
       if (!(wt && wt.closest && wt.closest('input, select, textarea'))) { e.preventDefault(); bannerHold = false; levelBanner.hidden = true; levelBanner.removeAttribute('data-welcome'); return; }
     }
-    if (sessionPending && state.answered && !levelBanner.hidden) {          // the end-of-session banner: the right arrow is "New challenge"
-      var sg = levelBanner.querySelector('.levelup-go'), st2 = e.target;
-      if (sg && !(st2 && st2.closest && st2.closest('input, select, textarea'))) { e.preventDefault(); if (!sessionSureUp) sg.click(); return; }      // (the "are you sure?" note has to be answered with a click)
+    if (sessionPending && state.answered && !levelBanner.hidden) {          // the end-of-session banner: the right arrow is "Keep working" (also on the "are you sure?" note)
+      var sg = levelBanner.querySelector('.levelup-stay'), st2 = e.target;
+      if (sg && !(st2 && st2.closest && st2.closest('input, select, textarea'))) { e.preventDefault(); sg.click(); return; }
     }
     if (quizOn() && state.answered && !levelBanner.hidden) {              // Find the chord: the right arrow goes on from a banner
       e.preventDefault();
