@@ -4269,7 +4269,7 @@ var KeyboardRender = (function () {
     if (noteMode) {
       parts.push((state.staff && state.staff.grand ? grandStave : bigStave)(state.staff || { kind: 'empty', clef: 'treble', chords: [] }, winL, winR, rootSpec, mode));
       if (noteStudy) {
-        parts.push('<text class="fb-nope" x="' + f(WIDTH / 2) + '" y="50" text-anchor="middle" ' + (state.guess === 'enter' ? 'font-size="26" fill="#64748b"' : 'font-size="34" font-weight="bold" fill="#dc2626"') + ' opacity="0" pointer-events="none">' + (state.guess === 'enter' ? '' : '\u2717 ') + (state.guess === 'enter' ? 'um\u2026 let go of the return key :)' : state.guess === 'octave' ? 'Right note, wrong octave' : state.guess === 'alter' ? 'Right note\u2026 wrong alteration!' : typeof state.guess === 'number' ? 'That was ' + ['C', 'C\u266F/D\u266D', 'D', 'D\u266F/E\u266D', 'E', 'F', 'F\u266F/G\u266D', 'G', 'G\u266F/A\u266D', 'A', 'A\u266F/B\u266D', 'B'][state.guess] + (state.card && /[\u266F\u266D]/.test(state.card.name || '') && ENHARM_WHITE[state.guess] ? ' (' + ENHARM_WHITE[state.guess] + ')' : '') : 'Nope') + '</text>' +
+        parts.push('<text class="fb-nope" x="' + f(WIDTH / 2) + '" y="50" text-anchor="middle" ' + (state.guess === 'enter' ? 'font-size="26" fill="#64748b"' : 'font-size="34" font-weight="bold" fill="#dc2626"') + ' opacity="0" pointer-events="none">' + (state.guess === 'enter' ? '' : '\u2717 ') + (state.guess === 'enter' ? (state.heldText || 'um\u2026 let go of the return key :)') : state.guess === 'octave' ? 'Right note, wrong octave' : state.guess === 'alter' ? 'Right note\u2026 wrong alteration!' : typeof state.guess === 'number' ? 'That was ' + ['C', 'C\u266F/D\u266D', 'D', 'D\u266F/E\u266D', 'E', 'F', 'F\u266F/G\u266D', 'G', 'G\u266F/A\u266D', 'A', 'A\u266F/B\u266D', 'B'][state.guess] + (state.card && /[\u266F\u266D]/.test(state.card.name || '') && ENHARM_WHITE[state.guess] ? ' (' + ENHARM_WHITE[state.guess] + ')' : '') : 'Nope') + '</text>' +
           '<text class="fb-yes" x="' + f(WIDTH / 2) + '" y="50" text-anchor="middle" font-size="34" font-weight="bold" fill="#16a34a" opacity="0" pointer-events="none">\u2713 Yes!</text>');
         if (state.answered) parts.push(nextButton(winR - 150, 36));
       }
@@ -7492,27 +7492,35 @@ var KeyboardRender = (function () {
     card.animate([{ transform: 'translateX(' + d + 'px)', opacity: 0 }, { transform: 'translateX(0)', opacity: 1 }], opts);
   }
 
-  var enterHeld = false;                                          // (the return key is down: a note picked now is ignored)
-  document.addEventListener('keydown', function (e) { if (e.key === 'Enter') enterHeld = true; }, true);
-  var enterMark = null;                                           // the "let go of the return key" text: it stays up while the key is down, then fades
-  function releaseEnter() {
-    enterHeld = false;
+  // Keys that are easy to fumble while typing a note: holding one of them when a note is picked means "not an answer".
+  var HOLD_KEYS = { Enter: 'return key', NumpadEnter: 'return key', Minus: '- key', Equal: '= key', BracketLeft: '[ key', BracketRight: '] key', Backslash: '\\ key', KeyP: 'p key',
+    Backspace: 'delete key', Delete: 'delete key', ControlLeft: 'control key', ControlRight: 'control key', Space: 'space bar' };
+  var heldKeys = [];                                              // the codes of those keys that are down now (latest last)
+  var enterMark = null;                                           // the "let go of the ... key" text: it stays up while a key is down, then fades
+  function heldLabel() { return heldKeys.length ? HOLD_KEYS[heldKeys[heldKeys.length - 1]] : ''; }
+  document.addEventListener('keydown', function (e) { if (HOLD_KEYS[e.code] && heldKeys.indexOf(e.code) < 0) heldKeys.push(e.code); }, true);
+  function fadeHeldMark() {
     var m = enterMark; enterMark = null;
     if (!m) return;
     m.style.opacity = '0';
     if (m.isConnected && m.animate && !reduceMotion) m.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 700, easing: 'ease-out' });
   }
-  document.addEventListener('keyup', function (e) { if (e.key === 'Enter') releaseEnter(); }, true);
-  window.addEventListener('blur', releaseEnter);
+  function releaseHeld(code) {
+    heldKeys = code ? heldKeys.filter(function (c) { return c !== code; }) : [];
+    if (!heldKeys.length) fadeHeldMark();
+    else if (enterMark) enterMark.textContent = 'um\u2026 let go of the ' + heldLabel() + ' :)';
+  }
+  document.addEventListener('keyup', function (e) { if (HOLD_KEYS[e.code]) releaseHeld(e.code); }, true);
+  window.addEventListener('blur', function () { releaseHeld(null); });
   function noteAnswer(val) {
     dismissWelcome();                             // play the note: the pitch class pressed (any octave); find the note: the staff note clicked (0..24)
     if (ftcTrial && (ftcTrial.counting || ftcTrial.done)) return;
     if (state.answered || !state.card) return;
-    if (enterHeld) {              // the return key is still down from "Next": not an answer, just a gentle nudge
-      state.guess = 'enter'; lastResult = 'Um\u2026 let go of the return key :)';
+    if (heldKeys.length) {        // a key like return is still down: not an answer, just a gentle nudge
+      state.guess = 'enter'; state.heldText = 'um\u2026 let go of the ' + heldLabel() + ' :)'; lastResult = state.heldText.charAt(0).toUpperCase() + state.heldText.slice(1);
       draw(false, false);
       var svg0 = stage.firstElementChild, mk = svg0 && svg0.querySelector('.fb-nope');
-      if (mk) { mk.style.opacity = '1'; enterMark = mk; }          // (held up until the key is released)
+      if (mk) { mk.style.opacity = '1'; enterMark = mk; }          // (held up until the keys are released)
       return;
     }
     var find = state.cardMode === 'find', pc = val % 12;
@@ -7853,7 +7861,8 @@ var KeyboardRender = (function () {
   // Notes, Play the note and Keys, Find the key: A-G name the note (Shift = sharp, Alt = flat); once solved, Enter (like the right arrow) goes on
   document.addEventListener('keydown', function (e) {
     var keyStudy = state.flash && !noteOn() && !chordy() && !!state.card && (state.cardMode === 'key' || state.cardMode === 'sig');     // Find the key / signature
-    if (e.defaultPrevented || e.ctrlKey || e.metaKey || !(noteCardOn() || keyStudy)) return;
+    var ctrlNote = e.ctrlKey && !e.metaKey && !e.altKey && state.cardMode === 'play' && !state.answered && NATURALS[e.code] !== undefined;      // (control held while a note is typed: the "let go" nudge)
+    if (e.defaultPrevented || (e.ctrlKey && !ctrlNote) || e.metaKey || !(noteCardOn() || keyStudy)) return;
     var t = e.target;
     if (t && t.closest && t.closest('input, select, textarea')) return;
     if (e.key === 'Enter' && !e.altKey && !e.shiftKey) {
@@ -8276,7 +8285,7 @@ var KeyboardRender = (function () {
 </script>
   <script>
 /* generated by tools/build.py: do not edit */
-var APP_VERSION = '1.0 (build a5f24ad)';
+var APP_VERSION = '1.0 (build 5f26be7)';
 (function () {
   function show() { Array.prototype.forEach.call(document.querySelectorAll('[data-version]'), function (e) { e.textContent = APP_VERSION; }); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', show); else show();

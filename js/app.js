@@ -3133,27 +3133,35 @@
     card.animate([{ transform: 'translateX(' + d + 'px)', opacity: 0 }, { transform: 'translateX(0)', opacity: 1 }], opts);
   }
 
-  var enterHeld = false;                                          // (the return key is down: a note picked now is ignored)
-  document.addEventListener('keydown', function (e) { if (e.key === 'Enter') enterHeld = true; }, true);
-  var enterMark = null;                                           // the "let go of the return key" text: it stays up while the key is down, then fades
-  function releaseEnter() {
-    enterHeld = false;
+  // Keys that are easy to fumble while typing a note: holding one of them when a note is picked means "not an answer".
+  var HOLD_KEYS = { Enter: 'return key', NumpadEnter: 'return key', Minus: '- key', Equal: '= key', BracketLeft: '[ key', BracketRight: '] key', Backslash: '\\ key', KeyP: 'p key',
+    Backspace: 'delete key', Delete: 'delete key', ControlLeft: 'control key', ControlRight: 'control key', Space: 'space bar' };
+  var heldKeys = [];                                              // the codes of those keys that are down now (latest last)
+  var enterMark = null;                                           // the "let go of the ... key" text: it stays up while a key is down, then fades
+  function heldLabel() { return heldKeys.length ? HOLD_KEYS[heldKeys[heldKeys.length - 1]] : ''; }
+  document.addEventListener('keydown', function (e) { if (HOLD_KEYS[e.code] && heldKeys.indexOf(e.code) < 0) heldKeys.push(e.code); }, true);
+  function fadeHeldMark() {
     var m = enterMark; enterMark = null;
     if (!m) return;
     m.style.opacity = '0';
     if (m.isConnected && m.animate && !reduceMotion) m.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 700, easing: 'ease-out' });
   }
-  document.addEventListener('keyup', function (e) { if (e.key === 'Enter') releaseEnter(); }, true);
-  window.addEventListener('blur', releaseEnter);
+  function releaseHeld(code) {
+    heldKeys = code ? heldKeys.filter(function (c) { return c !== code; }) : [];
+    if (!heldKeys.length) fadeHeldMark();
+    else if (enterMark) enterMark.textContent = 'um\u2026 let go of the ' + heldLabel() + ' :)';
+  }
+  document.addEventListener('keyup', function (e) { if (HOLD_KEYS[e.code]) releaseHeld(e.code); }, true);
+  window.addEventListener('blur', function () { releaseHeld(null); });
   function noteAnswer(val) {
     dismissWelcome();                             // play the note: the pitch class pressed (any octave); find the note: the staff note clicked (0..24)
     if (ftcTrial && (ftcTrial.counting || ftcTrial.done)) return;
     if (state.answered || !state.card) return;
-    if (enterHeld) {              // the return key is still down from "Next": not an answer, just a gentle nudge
-      state.guess = 'enter'; lastResult = 'Um\u2026 let go of the return key :)';
+    if (heldKeys.length) {        // a key like return is still down: not an answer, just a gentle nudge
+      state.guess = 'enter'; state.heldText = 'um\u2026 let go of the ' + heldLabel() + ' :)'; lastResult = state.heldText.charAt(0).toUpperCase() + state.heldText.slice(1);
       draw(false, false);
       var svg0 = stage.firstElementChild, mk = svg0 && svg0.querySelector('.fb-nope');
-      if (mk) { mk.style.opacity = '1'; enterMark = mk; }          // (held up until the key is released)
+      if (mk) { mk.style.opacity = '1'; enterMark = mk; }          // (held up until the keys are released)
       return;
     }
     var find = state.cardMode === 'find', pc = val % 12;
@@ -3494,7 +3502,8 @@
   // Notes, Play the note and Keys, Find the key: A-G name the note (Shift = sharp, Alt = flat); once solved, Enter (like the right arrow) goes on
   document.addEventListener('keydown', function (e) {
     var keyStudy = state.flash && !noteOn() && !chordy() && !!state.card && (state.cardMode === 'key' || state.cardMode === 'sig');     // Find the key / signature
-    if (e.defaultPrevented || e.ctrlKey || e.metaKey || !(noteCardOn() || keyStudy)) return;
+    var ctrlNote = e.ctrlKey && !e.metaKey && !e.altKey && state.cardMode === 'play' && !state.answered && NATURALS[e.code] !== undefined;      // (control held while a note is typed: the "let go" nudge)
+    if (e.defaultPrevented || (e.ctrlKey && !ctrlNote) || e.metaKey || !(noteCardOn() || keyStudy)) return;
     var t = e.target;
     if (t && t.closest && t.closest('input, select, textarea')) return;
     if (e.key === 'Enter' && !e.altKey && !e.shiftKey) {
