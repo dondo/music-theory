@@ -865,26 +865,27 @@ html.is-local body { border-top: 6px solid #ea580c; }
 .ftc-head .score, .ftc-head .ftc-side-row, .ftc-head .ftc-local { display: contents; }
 .ftc-head .score[hidden], .ftc-head .ftc-side-row[hidden] { display: none; }
 .ftc-head .score-streak { order: 1; gap: 10px; margin-right: 6px; }
-.ftc-head #ftc-easier { order: 2; margin-left: auto; }
-.ftc-head .ftc-level { order: 3; white-space: nowrap; }
-.ftc-head #ftc-harder { order: 4; }
-.ftc-head .score-dur { order: 5; margin-left: auto; }
+.ftc-head .score-dur { order: 2; margin-left: 12px; }
+.ftc-head #ftc-easier { order: 3; margin-left: auto; }
+.ftc-head .ftc-level { order: 4; white-space: nowrap; }
+.ftc-head #ftc-harder { order: 5; }
+.dur-bar { top: 1px; }
 .row-label { font-size: 1.2rem; font-weight: 700; color: var(--ink, #1c2330); }
 .ftc-head .ftc-btn { width: 30px; height: 30px; border-radius: 50%; font-size: 0.85rem; }
 .dur-label { font-size: 1.2rem; }
 @media (max-width: 600px) {
   .ftc-head { flex-wrap: wrap; }
   .ftc-head .score-streak { flex: 1 0 100%; margin-right: 0; }
-  .ftc-head #ftc-easier { margin-left: 0; }
   .ftc-head .ftc-level { font-size: 1.05rem; }
   .ftc-head .row-label { font-size: 1.05rem; }
   .ftc-head #streak-text { flex: 1 1 auto; min-width: 0; gap: 2px; }
   .ftc-head .bub { flex: 1 1 0; width: auto; height: auto; min-width: 0; max-width: 20px; aspect-ratio: 1; font-size: 0.6rem; }
   .ftc-head { gap: 6px 6px; }
   .ftc-head .ftc-btn { width: 26px; height: 26px; }
-  .ftc-head .score-dur { flex: 1 1 70px; min-width: 0; margin-left: 4px; }
+  .ftc-head .score-dur { flex: 1 1 70px; min-width: 0; margin-left: 0; }
   .ftc-head .dur-bar { flex: 1 1 40px; width: auto; min-width: 40px; }
   .dur-label { display: inline; }
 }
 @media (max-width: 400px) { .ftc-head .score-dur .dur-label { display: none; } }
-@media (max-width: 1000px) { .ftc-head .score-streak { flex: 1 0 100%; margin-right: 0; } .ftc-head #ftc-easier { margin-left: 0; } }      /* (too narrow for one line: bubbles first, then menus, arrows and bar) */
+@media (max-width: 1000px) { .ftc-head .score-streak { flex: 1 0 100%; margin-right: 0; } .ftc-head .score-dur { margin-left: 0; flex: 1 1 70px; min-width: 0; } .ftc-head .dur-bar { flex: 1 1 40px; width: auto; min-width: 40px; } }      /* (too narrow for one line: bubbles first, then the bar and the menus) */
+@media (max-width: 600px) { .ftc-head { gap: 6px 4px; } .ftc-head .ftc-btn { width: 24px; height: 24px; } .ftc-head .ftc-level { font-size: 0.95rem; } .ftc-head .score-dur { flex: 1 1 0; min-width: 0; } .ftc-head .dur-bar { flex: 1 1 0; min-width: 24px; } .ftc-head .level-pick { padding-right: 11px; } }
