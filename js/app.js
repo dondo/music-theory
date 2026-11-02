@@ -1963,6 +1963,8 @@
       '<span class="levelup-go-row"><button type="button" class="btn-reset levelup-stay" data-kind="session">← Keep working</button>' +
       (last ? '' : '<button type="button" class="btn-reset levelup-go" data-kind="session">New challenge →</button>') + '</span></span>';
     levelBanner.hidden = false;
+    var foot = levelText.querySelector('.session-foot');         // (the bars are centred between the banner's left edge and the buttons, not between the text's left edge and them)
+    if (foot) { var fl = foot.getBoundingClientRect().left - levelBanner.getBoundingClientRect().left - 2; foot.style.marginLeft = (fl > 0 ? -fl : 0) + 'px'; }
     levelBanner.style.animation = 'none'; void levelBanner.offsetWidth; levelBanner.style.animation = '';
     sessionPending = true; sessionSureUp = false;
   }
