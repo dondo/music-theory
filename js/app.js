@@ -235,13 +235,17 @@
   function cardStrip() {
     if (!noteOn()) return '';
     var v = stepView(stepNo()), multi = !/^[a-z]+\|[a-z]+\|/.test('') && v.keys.some(function (k) { return k.split('|')[1].replace(/^m\d-/, '') !== v.keys[0].split('|')[1].replace(/^m\d-/, ''); });
+    var groups = {}, order = [];                                    // octave brackets under the bars: idx 0-11 is one octave, 12-24 the next (the top C joins it), per clef
+    v.keys.forEach(function (k) { var pr = k.split('|'), g = pr[1] + '|' + (parseInt(pr[2], 10) >= 12 ? 1 : 0); if (!groups[g]) { groups[g] = { first: k, n: 0 }; order.push(g); } groups[g].n++; });
     return '<span class="card-strip">' + v.keys.map(function (k) {
       var m = v.view.p[k], h = m ? m.h : 0, asked = m && m.n > 0, parts = k.split('|'), idx = parseInt(parts[2], 10);
       var fill = h ? Math.min(asked ? 1 : 0.95, Math.max(0, Math.log(h / Memory.H0) / Math.log(Memory.H_DURABLE / Memory.H0))) : 0, done = h >= Memory.H_DURABLE && asked;
       var sh = NOTE_SHARP[idx % 12], fl = NOTE_FLAT[idx % 12], cdef = KeyboardRender.CLEFS.filter(function (c) { return c.id === parts[1].replace(/^m\d-/, ''); })[0] || {}, midi = 60 + 12 * Math.round(((cdef.mid || 72) - 72) / 12) + idx, oct = Math.floor(midi / 12) - 1, clefName = cdef.name;      // (each clef's run sits around its own middle, as on the stave)
       var nm = sh + oct + (sh !== fl ? '/' + fl + oct : '') + (multi && clefName ? ' (' + clefName + ')' : '');
-      var pop = fill < 1 ? '<span class="cs-pop">' + KeyboardRender.miniNote(parts[1].replace(/^m\d-/, ''), midi, sh) + '<span class="cs-info">' + nm + '<br><b>' + Math.round(fill * 100) + '%</b><span class="cs-oct"><i></i><em>Octave ' + oct + '</em></span></span></span>' : '';
-      return '<span class="cs' + (pop ? ' cs-has' : '') + '"><i class="cs-bar"><b style="height:' + Math.round(fill * 100) + '%"' + (done ? ' class="cs-done"' : '') + '></b></i><u>' + NOTE_SHARP[idx % 12].replace('\u266F', '#') + (multi ? parts[1].replace(/^m\d-/, '').charAt(0) : '') + '</u>' + pop + '</span>';
+      var pop = fill < 1 ? '<span class="cs-pop">' + KeyboardRender.miniNote(parts[1].replace(/^m\d-/, ''), midi, sh) + '<span class="cs-info">' + nm + '<br><b>' + Math.round(fill * 100) + '%</b></span></span>' : '';
+      var gk = parts[1] + '|' + (idx >= 12 ? 1 : 0), gr = groups[gk], bracket = '';
+      if (gr && gr.first === k) bracket = '<span class="cs-br" style="width:' + (gr.n * 14 - 4) + 'px"><i></i><em>' + (multi && clefName ? clefName + ' \u00b7 ' : '') + 'Octave ' + oct + '</em></span>';
+      return '<span class="cs' + (pop ? ' cs-has' : '') + '"><i class="cs-bar"><b style="height:' + Math.round(fill * 100) + '%"' + (done ? ' class="cs-done"' : '') + '></b></i><u>' + NOTE_SHARP[idx % 12].replace('\u266F', '#') + (multi ? parts[1].replace(/^m\d-/, '').charAt(0) : '') + '</u>' + pop + bracket + '</span>';
     }).join('') + '</span>';
   }
   function stepResilience() { seedMixed(stepNo()); return Memory.resilience(cardMem, stepCardKeys()); }

@@ -944,8 +944,8 @@ html.is-local body { border-top: 6px solid #ea580c; }
 .levelup-stay[data-kind="session"] { margin-right: 0; }
 .levelup-go[data-kind="session"] { margin-right: 10px; }
 
-/* the hover's octave marker: a rule with a tick at each end, the octave under it */
-.cs-info { display: block; }
-.cs-oct { display: block; margin-top: 4px; text-align: center; }
-.cs-oct i { display: block; height: 7px; border-left: 1px solid #64748b; border-right: 1px solid #64748b; background: linear-gradient(#64748b, #64748b) center / 100% 1px no-repeat; }
-.cs-oct em { display: block; font-style: normal; font-size: 11px; color: #475569; }
+/* octave brackets under the card bars: a rule with a tick up at each end, the octave under it */
+.card-strip { padding-bottom: 36px; }
+.cs-br { position: absolute; top: calc(100% + 3px); left: 0; text-align: center; pointer-events: none; }
+.cs-br i { display: block; height: 7px; border: 2px solid #1e293b; border-top: 0; }
+.cs-br em { display: block; margin-top: 2px; font-style: normal; font-weight: 700; font-size: 13px; color: #1e293b; white-space: nowrap; }
