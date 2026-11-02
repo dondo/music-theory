@@ -236,11 +236,14 @@
   function ftcStrip() {
     var mode = state.mode, pop = ftcPop(), d = FindChord.durability(ftcMem, mode, pop, ftcLevelNo()), first = {}, count = {};
     d.cards.forEach(function (c) { count[c.q.pc] = (count[c.q.pc] || 0) + 1; });
-    return '<span class="card-strip">' + d.cards.map(function (c) {
+    var host = levelBanner.parentNode, bw = 0;
+    while (host && !(bw = host.getBoundingClientRect().width)) host = host.parentNode;      // (a wrapper with display: contents has no width of its own)
+    var avail = bw - 61 - 340 - 28 - 32, cw = Math.max(14, Math.min(76, Math.floor(avail / Math.max(1, d.cards.length)))), full = cw >= 64;      // (room for the whole annotation, "C:ii (Dm)", or just the numeral)
+    return '<span class="card-strip' + (full ? ' cs-full' : '') + '" style="--cw:' + cw + 'px">' + d.cards.map(function (c) {
       var spec = Theory.specsFor(mode, c.q.pc)[0], ch = Chords.chordInKey(spec.name, mode, c.q.deg, c.q.type), pct = Math.round(c.fill * 100), br = '';
-      if (!first[c.q.pc]) { first[c.q.pc] = true; br = '<span class="cs-br" style="width:' + (count[c.q.pc] * 14 - 4) + 'px"><i></i><em>' + ftcKeyName(c.q.pc) + '</em></span>'; }
+      if (!first[c.q.pc]) { first[c.q.pc] = true; br = '<span class="cs-br" style="width:' + (count[c.q.pc] * (cw + 2) - 4) + 'px"><i></i><em>' + ftcKeyName(c.q.pc) + '</em></span>'; }
       var pop_ = c.fill < 1 ? '<span class="cs-pop"><span class="cs-info">' + ch.roman + ' in ' + ftcKeyName(c.q.pc) + (mode === 'minor' ? '' : ' major') + '<br>' + ch.symbol + '<br><b>' + pct + '%</b></span></span>' : '';
-      return '<span class="cs' + (pop_ ? ' cs-has' : '') + '"><i class="cs-bar"><b style="height:' + pct + '%"' + (c.done ? ' class="cs-done"' : '') + '></b></i><u>' + ch.roman + '</u>' + pop_ + br + '</span>';
+      return '<span class="cs' + (pop_ ? ' cs-has' : '') + '"><i class="cs-bar"><b style="height:' + pct + '%"' + (c.done ? ' class="cs-done"' : '') + '></b></i><u>' + (full ? spec.name + ':' + ch.roman + ' (' + ch.symbol + ')' : ch.roman) + '</u>' + pop_ + br + '</span>';
     }).join('') + '</span>';
   }
   function cardStrip() {
