@@ -858,3 +858,33 @@ html.is-local body { border-top: 6px solid #ea580c; }
 .dur-bar i { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: #f59e0b; transition: width 0.4s ease; }
 .score-dur.ready .dur-bar i { background: #16a34a; }
 @media (max-width: 600px) { .dur-bar { width: 80px; } .dur-label { display: none; } }
+
+/* the progress row: Session bubbles | < Stage n: Level m > | Progress bar. On a narrow screen the bubbles take a line of their own,
+   and the level menus and arrows share the next with the bar. */
+.ftc-head { flex-wrap: wrap; gap: 8px 10px; }
+.ftc-head .score, .ftc-head .ftc-side-row, .ftc-head .ftc-local { display: contents; }
+.ftc-head .score[hidden], .ftc-head .ftc-side-row[hidden] { display: none; }
+.ftc-head .score-streak { order: 1; gap: 10px; margin-right: 6px; }
+.ftc-head #ftc-easier { order: 2; margin-left: auto; }
+.ftc-head .ftc-level { order: 3; white-space: nowrap; }
+.ftc-head #ftc-harder { order: 4; }
+.ftc-head .score-dur { order: 5; margin-left: auto; }
+.row-label { font-size: 1.2rem; font-weight: 700; color: var(--ink, #1c2330); }
+.ftc-head .ftc-btn { width: 30px; height: 30px; border-radius: 50%; font-size: 0.85rem; }
+.dur-label { font-size: 1.2rem; }
+@media (max-width: 600px) {
+  .ftc-head { flex-wrap: wrap; }
+  .ftc-head .score-streak { flex: 1 0 100%; margin-right: 0; }
+  .ftc-head #ftc-easier { margin-left: 0; }
+  .ftc-head .ftc-level { font-size: 1.05rem; }
+  .ftc-head .row-label { font-size: 1.05rem; }
+  .ftc-head #streak-text { flex: 1 1 auto; min-width: 0; gap: 2px; }
+  .ftc-head .bub { flex: 1 1 0; width: auto; height: auto; min-width: 0; max-width: 20px; aspect-ratio: 1; font-size: 0.6rem; }
+  .ftc-head { gap: 6px 6px; }
+  .ftc-head .ftc-btn { width: 26px; height: 26px; }
+  .ftc-head .score-dur { flex: 1 1 70px; min-width: 0; margin-left: 4px; }
+  .ftc-head .dur-bar { flex: 1 1 40px; width: auto; min-width: 40px; }
+  .dur-label { display: inline; }
+}
+@media (max-width: 400px) { .ftc-head .score-dur .dur-label { display: none; } }
+@media (max-width: 1000px) { .ftc-head .score-streak { flex: 1 0 100%; margin-right: 0; } .ftc-head #ftc-easier { margin-left: 0; } }      /* (too narrow for one line: bubbles first, then menus, arrows and bar) */

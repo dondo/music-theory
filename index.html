@@ -109,8 +109,8 @@
       <button type="button" id="reset" class="btn-reset" hidden>Reset view</button>
       <div id="score" class="score" hidden aria-label="Score">
         <span class="score-ok"><span aria-hidden="true">✓</span> <b id="n-ok">0</b> correct</span>
-        <span class="score-streak"><span id="streak-text"></span></span>
-        <span class="score-dur" id="durability" hidden><span class="dur-label">Resilience</span><span class="dur-bar" role="progressbar" aria-label="Resilience" aria-valuemin="0" aria-valuemax="100"><i></i></span></span>
+        <span class="score-streak"><span class="row-label">Session</span><span id="streak-text"></span></span>
+        <span class="score-dur" id="durability" hidden><span class="dur-label row-label">Progress</span><span class="dur-bar" role="progressbar" aria-label="Progress" aria-valuemin="0" aria-valuemax="100"><i></i></span></span>
         <span class="score-bad"><span aria-hidden="true">✗</span> <b id="n-bad">0</b> incorrect</span>
         <button type="button" id="score-reset" class="btn-reset">Reset score</button>
       </div>
@@ -153,8 +153,8 @@
       <span id="ftc-level" class="ftc-level">Stage 1: Level 1</span>
       <div class="ftc-side-row" id="ftc-autorow">
         <span class="ftc-local" aria-label="Change level">
-          <button type="button" id="ftc-harder" class="btn-reset ftc-btn" aria-label="Harder level" title="Harder level">&#9650;</button>
-          <button type="button" id="ftc-easier" class="btn-reset ftc-btn" aria-label="Easier level" title="Easier level">&#9660;</button>
+          <button type="button" id="ftc-easier" class="btn-reset ftc-btn" aria-label="Easier level" title="Easier level">&#9664;</button>
+          <button type="button" id="ftc-harder" class="btn-reset ftc-btn" aria-label="Harder level" title="Harder level">&#9654;</button>
         </span>
         </div>
     </section>

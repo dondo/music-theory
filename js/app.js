@@ -1690,7 +1690,7 @@
     if (studyOn) d.cards = null;
     el.querySelector('i').style.width = pct + '%';
     el.classList.toggle('ready', d.ready);
-    el.setAttribute('title', 'Resilience: how firmly the ' + (studyOn ? 'cards at this level' : 'new cards') + ' have stuck. It fills as you get them right again after gaps; the level is done when every one has stuck.');
+    el.setAttribute('title', 'Progress: how firmly the ' + (studyOn ? 'cards at this level' : 'new cards') + ' have stuck. It fills as you get them right again after gaps; the level is done when every one has stuck.');
     var bar = el.querySelector('.dur-bar');
     bar.setAttribute('aria-valuenow', String(pct));
   }
