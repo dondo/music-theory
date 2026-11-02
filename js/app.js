@@ -1951,8 +1951,8 @@
     var rg = document.createRange(); rg.setStartBefore(document.getElementById('ftc-levelup-title')); rg.setEndBefore(foot);
     var tb = rg.getBoundingClientRect(), textC = (tb.left + tb.right) / 2, L = foot.getBoundingClientRect().left;
     var sr = strip.getBoundingClientRect(), br = btns.getBoundingClientRect();
-    var btnL = foot.getBoundingClientRect().right - btns.offsetWidth, wrapped = br.top >= sr.bottom - 1, c = wrapped ? textC : Math.min(textC, (L + btnL) / 2);
-    strip.style.flex = 'none'; strip.style.width = Math.max(strip.scrollWidth, 2 * (c - L)) + 'px';
+    var btnL = foot.getBoundingClientRect().right - btns.offsetWidth, wrapped = br.top >= sr.bottom - 1, GAP = 28, c = wrapped ? textC : Math.min(textC, (L + btnL - GAP) / 2);       // (a wider gap before the buttons than between them)
+    strip.style.flex = 'none'; strip.style.width = (wrapped ? Math.max(strip.scrollWidth, 2 * (c - L)) : Math.min(btnL - L - GAP, Math.max(strip.scrollWidth, 2 * (c - L)))) + 'px';
   }
   function sessionEnd() {                                        // called after a solved card; shows the banner if the bubbles just filled
     var done = sessionDone;
