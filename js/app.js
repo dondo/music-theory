@@ -246,7 +246,9 @@
     return '<span class="card-strip">' + v.keys.map(function (k) {
       var m = v.view.p[k], h = m ? m.h : 0, asked = m && m.n > 0, parts = k.split('|'), idx = parseInt(parts[2], 10);
       var fill = h ? Math.min(asked ? 1 : 0.95, Math.max(0, Math.log(h / Memory.H0) / Math.log(Memory.H_DURABLE / Memory.H0))) : 0, done = h >= Memory.H_DURABLE && asked;
-      return '<span class="cs" title="' + k + ': ' + Math.round(fill * 100) + '%"><i class="cs-bar"><b style="height:' + Math.round(fill * 100) + '%"' + (done ? ' class="cs-done"' : '') + '></b></i><u>' + NOTE_SHARP[idx % 12].replace('\u266F', '#') + (multi ? parts[1].replace(/^m\d-/, '').charAt(0) : '') + '</u></span>';
+      var sh = NOTE_SHARP[idx % 12], fl = NOTE_FLAT[idx % 12], oct = 4 + Math.floor(idx / 12), clefName = (KeyboardRender.CLEFS.filter(function (c) { return c.id === parts[1].replace(/^m\d-/, ''); })[0] || {}).name;
+      var tip = sh + oct + (sh !== fl ? '/' + fl + oct : '') + (multi && clefName ? ' (' + clefName + ')' : '') + ': ' + Math.round(fill * 100) + '%';
+      return '<span class="cs"' + (fill > 0.9 ? '' : ' data-tip="' + tip + '"') + '><i class="cs-bar"><b style="height:' + Math.round(fill * 100) + '%"' + (done ? ' class="cs-done"' : '') + '></b></i><u>' + NOTE_SHARP[idx % 12].replace('\u266F', '#') + (multi ? parts[1].replace(/^m\d-/, '').charAt(0) : '') + '</u></span>';
     }).join('') + '</span>';
   }
   function weakNotesLine() {                                      // "Looks like you need to focus on the B and D notes." with a little staff for each
