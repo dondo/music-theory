@@ -943,3 +943,9 @@ html.is-local body { border-top: 6px solid #ea580c; }
 .session-foot .levelup-go-row { flex: none; margin-left: auto; }
 .levelup-stay[data-kind="session"] { margin-right: 0; }
 .levelup-go[data-kind="session"] { margin-right: 10px; }
+
+/* the hover's octave marker: a rule with a tick at each end, the octave under it */
+.cs-info { display: block; }
+.cs-oct { display: block; margin-top: 4px; text-align: center; }
+.cs-oct i { display: block; height: 7px; border-left: 1px solid #64748b; border-right: 1px solid #64748b; background: linear-gradient(#64748b, #64748b) center / 100% 1px no-repeat; }
+.cs-oct em { display: block; font-style: normal; font-size: 11px; color: #475569; }

@@ -238,9 +238,9 @@
     return '<span class="card-strip">' + v.keys.map(function (k) {
       var m = v.view.p[k], h = m ? m.h : 0, asked = m && m.n > 0, parts = k.split('|'), idx = parseInt(parts[2], 10);
       var fill = h ? Math.min(asked ? 1 : 0.95, Math.max(0, Math.log(h / Memory.H0) / Math.log(Memory.H_DURABLE / Memory.H0))) : 0, done = h >= Memory.H_DURABLE && asked;
-      var sh = NOTE_SHARP[idx % 12], fl = NOTE_FLAT[idx % 12], oct = 4 + Math.floor(idx / 12), clefName = (KeyboardRender.CLEFS.filter(function (c) { return c.id === parts[1].replace(/^m\d-/, ''); })[0] || {}).name;
+      var sh = NOTE_SHARP[idx % 12], fl = NOTE_FLAT[idx % 12], cdef = KeyboardRender.CLEFS.filter(function (c) { return c.id === parts[1].replace(/^m\d-/, ''); })[0] || {}, midi = 60 + 12 * Math.round(((cdef.mid || 72) - 72) / 12) + idx, oct = Math.floor(midi / 12) - 1, clefName = cdef.name;      // (each clef's run sits around its own middle, as on the stave)
       var nm = sh + oct + (sh !== fl ? '/' + fl + oct : '') + (multi && clefName ? ' (' + clefName + ')' : '');
-      var pop = fill < 1 ? '<span class="cs-pop">' + KeyboardRender.miniNote(parts[1].replace(/^m\d-/, ''), 60 + idx, sh) + '<span>' + nm + '<br><b>' + Math.round(fill * 100) + '%</b></span></span>' : '';
+      var pop = fill < 1 ? '<span class="cs-pop">' + KeyboardRender.miniNote(parts[1].replace(/^m\d-/, ''), midi, sh) + '<span class="cs-info">' + nm + '<br><b>' + Math.round(fill * 100) + '%</b><span class="cs-oct"><i></i><em>Octave ' + oct + '</em></span></span></span>' : '';
       return '<span class="cs' + (pop ? ' cs-has' : '') + '"><i class="cs-bar"><b style="height:' + Math.round(fill * 100) + '%"' + (done ? ' class="cs-done"' : '') + '></b></i><u>' + NOTE_SHARP[idx % 12].replace('\u266F', '#') + (multi ? parts[1].replace(/^m\d-/, '').charAt(0) : '') + '</u>' + pop + '</span>';
     }).join('') + '</span>';
   }
