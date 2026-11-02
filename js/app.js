@@ -2556,24 +2556,29 @@
   }
   // plain-text descriptions for the menus
   function plainNames(list) { return list.map(function (x) { return typeof x === 'string' ? x : x.r; }); }
-  function chordListText(chords) {                                          // 'iii and V7', or for a whole type at once 'Sus4 chords on 7 degrees'
-    var blk = ftcBlockLabel(chords);
-    return blk ? blk.replace(/ on $/, '') + ' on ' + chords.length + ' degrees' : ftcJoin(plainNames(ftcNames(chords, false)));
+  function chordListText(chords) {                                          // 'iii and V7 chords', or for a whole type at once 'Sus4 chords on every degree'
+    var blk = ftcBlockLabel(chords), n = chords.length;
+    if (blk) return blk.replace(/ on $/, '') + ' on ' + (n >= 7 ? 'every degree' : n + ' of the 7 degrees');
+    return ftcJoin(plainNames(ftcNames(chords, false))) + (n === 1 ? ' chord' : ' chords');
+  }
+  function keyListText(pcs) { return ftcJoin(plainNames(ftcNames(pcs, true))) + (pcs.length === 1 ? ' key' : ' keys'); }
+  function startText(lv) {                                                  // the starting keys and chords
+    var mode = state.mode, pop = ftcPop(), ks = FindChord.keys(mode, pop, lv.keys).map(function (pc) { return plainNames(ftcNames([pc], true))[0]; });
+    return ftcJoin(ks) + ' with ' + ftcJoin(plainNames(ftcNames(FindChord.chords(mode, pop, lv.chords), false)));
   }
   function stepText(n) {                                                  // what level n of the ladder puts in play
-    var mode = state.mode, pop = ftcPop(), add = FindChord.stepAdds(mode, pop, n), lv, one;
-    if (!add) { lv = FindChord.levelAt(mode, pop, n); return ftcJoin(plainNames(ftcNames(FindChord.keys(mode, pop, lv.keys), true))) + ' with ' + chordListText(FindChord.chords(mode, pop, lv.chords)); }
+    var mode = state.mode, pop = ftcPop(), add = FindChord.stepAdds(mode, pop, n), lv;
+    if (!add) { lv = FindChord.levelAt(mode, pop, n); return startText(lv); }
     if (add.dim === 'I') return 'inversions of ' + ftcJoin(plainNames(ftcNames(add.chords, false)));
-    if (add.dim === 'K') { one = add.keys.length === 1; return (add.back ? 'back to ' : 'new ') + (one ? 'key ' : 'keys ') + ftcJoin(plainNames(ftcNames(add.keys, true))); }
-    one = add.chords.length === 1; return (add.back ? 'back to ' : 'new ') + (one ? 'chord ' : (ftcBlockLabel(add.chords) ? '' : 'chords ')) + chordListText(add.chords);
+    if (add.dim === 'K') return (add.back ? 'back to ' : '') + keyListText(add.keys);
+    return (add.back ? 'back to ' : '') + chordListText(add.chords);
   }
   function stageText(stage) {                                             // what stage `stage` introduces
     var mode = state.mode, pop = ftcPop(), L = FindChord.ladder(mode, pop), first = 0, it;
     for (var i = 0; i < L.length; i++) if (L[i].stage === stage) { first = i + 1; break; }
-    if (stage === 1) { var last = first; while (last < L.length && L[last].stage === 1) last++; var lv = FindChord.levelAt(mode, pop, last);       // (the whole starting stage)
-      return 'the starting set: ' + ftcJoin(plainNames(ftcNames(FindChord.keys(mode, pop, lv.keys), true))) + ' with ' + chordListText(FindChord.chords(mode, pop, lv.chords)); }
+    if (stage === 1) { var last = first; while (last < L.length && L[last].stage === 1) last++; return startText(FindChord.levelAt(mode, pop, last)); }       // (the whole starting stage)
     it = FindChord.stageIntro(mode, pop, stage);
-    return it.kind === 'K' ? (it.keys.length === 1 ? 'new key ' : 'new keys ') + ftcJoin(plainNames(ftcNames(it.keys, true))) : (it.chords.length === 1 ? 'new chord ' : (ftcBlockLabel(it.chords) ? 'new ' : 'new chords ')) + chordListText(it.chords);
+    return it.kind === 'K' ? keyListText(it.keys) : chordListText(it.chords);
   }
   var NOTE_LEVEL_TEXT = [null, null, 'bass clef', 'treble and bass clefs, taking turns', 'alto clef', 'treble, bass and alto clefs, taking turns'];
   function noteLevelText(n) { return n === 1 ? (noteOn() ? 'the clef chosen in Notes (treble to start)' : 'treble clef') : NOTE_LEVEL_TEXT[n]; }
