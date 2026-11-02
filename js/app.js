@@ -3628,7 +3628,8 @@
   // the top-level topic: Note | Key | Pop Chord | Minor key | Jazz Chord (drives the hidden level and mode switches)
   function applyAppMode(am) {
     if (am === appMode) return;
-    if (state.flash) { setView(false); var er = document.querySelector('input[name="view"][value="explore"]'); if (er) er.checked = true; }      // a new topic always opens in Explore
+    var keepStudy = state.flash;                           // a new topic opens in the same view: Study stays Study, Explore stays Explore
+    if (state.flash) { setView(false); var er = document.querySelector('input[name="view"][value="explore"]'); if (er) er.checked = true; }      // (set up in Explore, then back into Study below)
     appMode = am;
     var wantLevel = theoryMode() ? (progsMode() ? progLevelPref : 'jazz') : 'pop';
     var wantMode = appIsMinor() ? 'minor' : 'major';
@@ -3645,6 +3646,7 @@
       if (!chordy()) { state.selected = false; state.root = 0; state.spell = 0; }      // the key-signature panel, nothing picked
       else if (!state.selected) { selectRoot(0, 0, false, null); }                       // the chord modes need a key: C
     }
+    if (keepStudy) { var fr = document.querySelector('input[name="view"][value="flash"]'); if (fr) fr.checked = true; setView(true); }
     updateScore();
     draw(false, false);
   }
