@@ -668,7 +668,7 @@ var KeyboardRender = (function () {
     var solid = items.filter(function (i) { return !i.dim; }), sLo = solid.length ? solid[0].p : minP, sHi = solid.length ? solid[solid.length - 1].p : maxP;
     lines.forEach(function (l) {
       out.push('<line x1="' + f(cx - 1.25 * SB) + '" y1="' + f(yAt(l)) + '" x2="' + f(cx + (items.some(function (i) { return i.right; }) ? 2.1 : 1.25) * SB) +
-        '" y2="' + f(yAt(l)) + '" stroke="' + ink + '" stroke-width="1.1"' + (l < sLo || l > sHi ? ' opacity="0.3"' : '') + '/>');
+        '" y2="' + f(yAt(l)) + '" stroke="' + ink + '" stroke-width="1.1"' + (l < sLo || l > sHi ? ' opacity="0.6"' : '') + '/>');
     });
     // accidentals, stacked leftwards so close ones do not collide (highest note first)
     var cols = [];
