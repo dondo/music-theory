@@ -2538,18 +2538,59 @@
     chordsPanel.classList.toggle('quizzing', on);
     if (non) { updateStudyHead(); return; }
     if (!on || !ftcQ) return;
-    var li = FindChord.levelInfo(state.mode, ftcPop(), ftcLevelNo());
-    document.getElementById('ftc-level').textContent = (ftcTrial ? 'Trial \u00b7 ' : '') + 'Stage ' + li.stage + ': Level ' + li.step;
-    document.getElementById('ftc-level').title = 'Level ' + li.step + ' of ' + FindChord.stageSteps(state.mode, ftcPop(), ftcLevelNo());
+    buildLevelTag(levelTag);
     showStreak();
   }
 
+  // The level indicator is a menu: Find the chord has a Stage and a Level (within the stage) picker, the other study activities a Level picker.
+  // (The harder / easier arrows still step one level at a time.) Rebuilt only when what it shows changes, so an open list isn't disturbed.
+  function levelPicker(label, count, cur, onPick) {
+    var sel = el('select', 'level-pick');
+    sel.setAttribute('aria-label', label); sel.title = 'Choose a ' + label.toLowerCase();
+    for (var i = 1; i <= count; i++) { var o = el('option', null, String(i)); o.value = String(i); sel.appendChild(o); }
+    sel.value = String(cur);
+    sel.addEventListener('change', function () { var v = parseInt(sel.value, 10); sel.blur(); onPick(v); });
+    return sel;
+  }
+  function buildLevelTag(tag) {
+    var sig, ftcMode = !studyQuizOn();
+    if (ftcTrial) {
+      sig = 'trial|' + ftcMode + '|' + ftcTrial.level;
+      if (tag.getAttribute('data-sig') === sig) return;
+      tag.setAttribute('data-sig', sig);
+      tag.textContent = 'Trial \u00b7 ' + (ftcMode ? stageLabel(ftcLevelNo()) : 'Level ' + stepNo());
+      tag.removeAttribute('title');
+      return;
+    }
+    tag.removeAttribute('title');
+    if (!ftcMode) {
+      sig = 'step|' + stepNo();
+      if (tag.getAttribute('data-sig') === sig) return;
+      tag.setAttribute('data-sig', sig); tag.textContent = 'Level ';
+      tag.appendChild(levelPicker('Level', STUDY_STEPS, stepNo(), stepJump));
+      return;
+    }
+    var pop = ftcPop(), L = FindChord.ladder(state.mode, pop), n = ftcLevelNo(), li = L[n - 1], stages = L[L.length - 1].stage, steps = FindChord.stageSteps(state.mode, pop, n);
+    sig = 'ftc|' + state.mode + '|' + pop + '|' + li.stage + '|' + li.step;
+    if (tag.getAttribute('data-sig') === sig) return;
+    tag.setAttribute('data-sig', sig); tag.textContent = 'Stage ';
+    function lvlOf(stage, step) { for (var i = 0; i < L.length; i++) if (L[i].stage === stage && L[i].step === step) return i + 1; return 0; }
+    tag.appendChild(levelPicker('Stage', stages, li.stage, function (st) { ftcJump(lvlOf(st, 1)); }));
+    tag.appendChild(document.createTextNode(': Level '));
+    tag.appendChild(levelPicker('Level', steps, li.step, function (k) { ftcJump(lvlOf(li.stage, k)); }));
+  }
   // local testing: the same one-step-at-a-time moves the automatic level-up makes, up or back down
   function ftcDifficulty(dir) {
     if (ftcTrial) return;
-    if (studyQuizOn()) { stepDifficulty(dir); return; }
-    var n = ftcLevelNo(), to = n + dir;
-    if (to < 1 || to > FindChord.levelCount(state.mode, ftcPop())) return;
+    if (studyQuizOn()) { stepJump(stepNo() + dir); return; }
+    ftcJump(ftcLevelNo() + dir);
+  }
+  // go straight to level `to` (the arrows move one; the Stage / Level menu in the header can go anywhere)
+  function ftcJump(to) {
+    if (ftcTrial) return;
+    var n = ftcLevelNo();
+    if (to === n || to < 1 || to > FindChord.levelCount(state.mode, ftcPop())) return;
+    var dir = to > n ? 1 : -1;
     ftcSetLevel(to);
     ftcRaised(dir > 0);
     ftcStreak = 0; ftcTried = 0; ftcRight = 0; ftcBub = null; bubFull = false;
@@ -2686,9 +2727,9 @@
     return up;
   }
   // local testing: the same one-step moves the streak makes
-  function stepDifficulty(dir) {
-    var n = stepNo(), to = n + dir;
-    if (to < 1 || to > STUDY_STEPS) return;
+  function stepJump(to) {
+    var n = stepNo(), dir = to > n ? 1 : -1;
+    if (to === n || to < 1 || to > STUDY_STEPS) return;
     stepLv[studySlot()] = to;
     if (dir > 0) { trialUnlocked = false; syncTrialBox(); }
     ftcStreak = 0; ftcTried = 0; ftcRight = 0; ftcBub = null; bubFull = false;
@@ -2706,8 +2747,7 @@
     placeTrialBox(on);
     if (!on) return;
     syncSlot();
-    levelTag.textContent = (ftcTrial ? 'Trial \u00b7 ' : '') + 'Level ' + stepNo();
-    levelTag.title = 'Level ' + stepNo() + ' of ' + STUDY_STEPS;
+    buildLevelTag(levelTag);
     quizHead.appendChild(levelTag);
     quizHead.appendChild(scoreBox); scoreBox.hidden = false;
     quizHead.appendChild(autoRow);
