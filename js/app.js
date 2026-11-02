@@ -3445,6 +3445,18 @@
     btn.click();
   });
 
+  // In Play the note and Find the key / signature the ' key held down is a second Shift (sharp) and the ; key a second Alt (flat)
+  // (Find the chord keeps ; and ' for the seventh, so they only act as modifiers here)
+  var quoteHeld = false, semiHeld = false;
+  function noteKeysOn() { return state.flash && !!state.card && (noteCardOn() || (!noteOn() && !chordy() && (state.cardMode === 'key' || state.cardMode === 'sig'))); }
+  document.addEventListener('keydown', function (e) {
+    if ((e.code !== 'Quote' && e.code !== 'Semicolon') || e.ctrlKey || e.metaKey || e.altKey || e.shiftKey || !noteKeysOn()) return;
+    var t = e.target; if (t && t.closest && t.closest('input, select, textarea')) return;
+    if (e.code === 'Quote') quoteHeld = true; else semiHeld = true;
+    e.preventDefault();                                          // (no browser quick-find)
+  }, true);
+  document.addEventListener('keyup', function (e) { if (e.code === 'Quote') quoteHeld = false; else if (e.code === 'Semicolon') semiHeld = false; }, true);
+  window.addEventListener('blur', function () { quoteHeld = semiHeld = false; });
   // Notes, Play the note and Keys, Find the key: A-G name the note (Shift = sharp, Alt = flat); once solved, Enter (like the right arrow) goes on
   document.addEventListener('keydown', function (e) {
     var keyStudy = state.flash && !noteOn() && !chordy() && !!state.card && (state.cardMode === 'key' || state.cardMode === 'sig');     // Find the key / signature
@@ -3461,7 +3473,7 @@
     }
     if ((state.cardMode === 'play' || state.cardMode === 'key') && !state.answered && NATURALS[e.code] !== undefined) {
       e.preventDefault();
-      var npc = (NATURALS[e.code] + (e.shiftKey ? 1 : 0) - (flatHeld(e) ? 1 : 0) + 12) % 12;
+      var npc = (NATURALS[e.code] + (e.shiftKey || quoteHeld ? 1 : 0) - (flatHeld(e) || semiHeld ? 1 : 0) + 12) % 12;
       if (state.cardMode === 'play') noteAnswer(npc); else answer(npc, true, null, null);
     }
   });
