@@ -1415,7 +1415,7 @@
     var flash = state.flash, card = state.card, answered = !!state.answered;
     if (flash && state.cardMode === 'play') {
       if (!card) return { kind: 'empty', clef: clefId, chords: [] };
-      return { kind: 'notes', clef: clefId, fixedClef: fixedClef, grand: card.lv === 3, slot: 260, chords: [{ notes: [{ midi: base + card.idx, name: card.name }], top: answered ? card.name : '', sub: '', lit: false, echo: answered }] };
+      return { kind: 'notes', clef: clefId, fixedClef: fixedClef, grand: card.lv === 3 || card.lv === 2, slot: 260, chords: [{ notes: [{ midi: base + card.idx, name: card.name }], top: answered ? card.name : '', sub: '', lit: false, echo: answered }] };
     }
     var chords = [], sp = flash ? (card ? card.spell : 0) : noteSpell;
     for (var i = 0; i <= 24; i++) {
