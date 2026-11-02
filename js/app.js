@@ -2580,8 +2580,8 @@
     it = FindChord.stageIntro(mode, pop, stage);
     return it.kind === 'K' ? keyListText(it.keys) : chordListText(it.chords);
   }
-  var NOTE_LEVEL_TEXT = [null, null, 'bass clef', 'treble and bass clefs, taking turns', 'alto clef', 'treble, bass and alto clefs, taking turns'];
-  function noteLevelText(n) { return n === 1 ? (noteOn() ? 'the clef chosen in Notes (treble to start)' : 'treble clef') : NOTE_LEVEL_TEXT[n]; }
+  var NOTE_LEVEL_TEXT = [null, 'treble clef', 'bass clef', 'grand clef', 'alto clef (optional!)', 'all three'];
+  function noteLevelText(n) { return NOTE_LEVEL_TEXT[n]; }
   function buildLevelTag(tag) {
     var sig, ftcMode = !studyQuizOn();
     if (ftcTrial) {
@@ -2723,7 +2723,7 @@
   var NOTE_FLAT = ['C', 'D\u266D', 'D', 'E\u266D', 'E', 'F', 'G\u266D', 'G', 'A\u266D', 'A', 'B\u266D', 'B'];
   // Play the note, Find the note, Find the key and Find the signature each have five steps, tracked apart:
   // 1 the clef of your choice in Notes (treble in Keys), 2 bass, 3 treble and bass taking turns, 4 alto, 5 treble, bass and alto taking turns
-  var STEP_CLEFS = [null, null, ['bass'], ['treble', 'bass'], ['alto'], ['treble', 'bass', 'alto']];
+  var STEP_CLEFS = [null, ['treble'], ['bass'], ['treble', 'bass'], ['alto'], ['treble', 'bass', 'alto']];
   function studyQuizOn() {
     if (!state.flash) return false;
     if (noteOn()) return state.cardMode === 'play' || state.cardMode === 'find';

@@ -1,5 +1,5 @@
-/* Offline cache. c3f1a96ba6 is replaced by tools/build.py so each deploy refreshes the cache. */
-var CACHE = 'music-theory-c3f1a96ba6';
+/* Offline cache. 67dddb7164 is replaced by tools/build.py so each deploy refreshes the cache. */
+var CACHE = 'music-theory-67dddb7164';
 var FILES = ['./', 'index.html', 'manifest.webmanifest',
   'icons/icon-180.png', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png'];
 
