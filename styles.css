@@ -939,5 +939,5 @@ html.is-local body { border-top: 6px solid #ea580c; }
 
 /* the session banner's foot: the card bars centred in the room left of the buttons (they wrap onto their own lines when it is tight) */
 .session-foot { display: flex; flex-wrap: wrap; align-items: flex-end; }
-.session-foot .card-strip { min-width: 360px; }
+.session-foot .card-strip { min-width: 360px; margin-left: 0; margin-right: 0; }
 .session-foot .levelup-go-row { flex: none; margin-left: auto; }

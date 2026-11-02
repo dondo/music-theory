@@ -1941,6 +1941,19 @@
     sessionPending = false; sessionSureUp = false; sess0 = null; ftcBub = null; bubFull = false; ftcStreak = 0; ftcTried = 0; ftcRight = 0;
   }
   function pickOne(list) { return list[Math.floor(Math.random() * list.length)]; }
+  // The card bars sit centred under the text when it is short; when the text is long, no further right than the middle of the space between the banner's left edge and the buttons.
+  function placeStrip() {
+    var foot = levelText.querySelector('.session-foot'), strip = foot && foot.querySelector('.card-strip'), btns = foot && foot.querySelector('.levelup-go-row');
+    if (!strip) return;
+    foot.style.marginLeft = ''; strip.style.flex = ''; strip.style.width = '';
+    var bl = levelBanner.getBoundingClientRect().left, fl = foot.getBoundingClientRect().left;
+    foot.style.marginLeft = -Math.max(0, fl - bl - 2) + 'px';                     // (the foot spans the banner's full width)
+    var rg = document.createRange(); rg.setStartBefore(document.getElementById('ftc-levelup-title')); rg.setEndBefore(foot);
+    var tb = rg.getBoundingClientRect(), textC = (tb.left + tb.right) / 2, L = foot.getBoundingClientRect().left;
+    var sr = strip.getBoundingClientRect(), br = btns.getBoundingClientRect();
+    var btnL = foot.getBoundingClientRect().right - btns.offsetWidth, wrapped = br.top >= sr.bottom - 1, c = wrapped ? textC : Math.min(textC, (L + btnL) / 2);
+    strip.style.flex = 'none'; strip.style.width = Math.max(strip.scrollWidth, 2 * (c - L)) + 'px';
+  }
   function sessionEnd() {                                        // called after a solved card; shows the banner if the bubbles just filled
     var done = sessionDone;
     sessionDone = false;
@@ -1963,9 +1976,7 @@
       '<span class="levelup-go-row"><button type="button" class="btn-reset levelup-stay" data-kind="session">← Keep working</button>' +
       (last ? '' : '<button type="button" class="btn-reset levelup-go" data-kind="session">New challenge →</button>') + '</span></span>';
     levelBanner.hidden = false;
-    var foot = levelText.querySelector('.session-foot');         // (the bars are centred between the banner's left edge and the buttons, not between the text's left edge and them)
-    if (foot) { var fl = foot.getBoundingClientRect().left - levelBanner.getBoundingClientRect().left - 2; foot.style.marginLeft = (fl > 0 ? -fl : 0) + 'px'; }
-    levelBanner.style.animation = 'none'; void levelBanner.offsetWidth; levelBanner.style.animation = '';
+    levelBanner.style.animation = 'none'; void levelBanner.offsetWidth; placeStrip(); levelBanner.style.animation = '';        // (measured with the entrance animation off)
     sessionPending = true; sessionSureUp = false;
   }
   var sessionSureUp = false;                                     // the "are you sure?" note is showing
