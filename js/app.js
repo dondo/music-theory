@@ -1617,6 +1617,9 @@
   // The last few first-try answers as bubbles, newest on the left: green when right, a red X when wrong. A full green row is a level-up.
   var TRIAL_LEN = 10, TRIAL_PENALTY = 10000;                   // a time trial: ten questions, ten seconds for each wrong answer
   var ftcBub = null, bubFull = false;
+  // A session is one filling of the bubbles. `sess0` is the level's progress when it began ({ lv, pct }); `sessionDone` says the last answer
+  // filled the bubbles; `sessionPending` that the end-of-session banner is up (any way of going on starts a fresh session).
+  var sess0 = null, sessionDone = false, sessionPending = false;
   var ftcTrial = null;                                          // a time trial in progress (see below)
   // Play the note and Find the note have their own steps, bubbles and Time Trial, apart from Find the chord's and from each other.
   // The progress variables above and below belong to whichever activity is showing ('chord' | 'play' | 'find'); the others wait in `slots`.
@@ -1625,9 +1628,10 @@
   // when each level last changed (for sync: the newer change wins, so a deliberate step back isn't undone by a higher level elsewhere)
   var ftcLvT = {}, stepLvT = {}, ftcLvPrev = {}, stepLvPrev = { play: 1, find: 1, key: 1, sig: 1 };
   var slots = {}, curSlot = 'chord';
-  function slotSnap() { return { bub: ftcBub, bubFull: bubFull, streak: ftcStreak, tried: ftcTried, right: ftcRight, unlocked: trialUnlocked, ever: trialEver }; }
+  function slotSnap() { return { sess: sess0, bub: ftcBub, bubFull: bubFull, streak: ftcStreak, tried: ftcTried, right: ftcRight, unlocked: trialUnlocked, ever: trialEver }; }
   function slotLoad(o) {
     o = o || {};
+    sess0 = o.sess || null; sessionDone = sessionPending = false;
     ftcBub = o.bub || null; bubFull = !!o.bubFull; ftcStreak = o.streak | 0; ftcTried = o.tried | 0; ftcRight = o.right | 0;
     trialUnlocked = !!o.unlocked; trialEver = !!o.ever;
   }
@@ -1672,8 +1676,9 @@
   }
   function pushBub(result) {
     if (bubFull) { ftcBub = null; bubFull = false; }          // (the full green row stayed up for the celebration)
-    var b = bubbles();
+    var b = bubbles(), wasFull = b.every(function (r) { return !!r; });
     b.unshift(result); b.length = bubN();
+    if (!ftcTrial && !wasFull && b.every(function (r) { return !!r; })) sessionDone = true;      // (the banner waits for the card to be solved)
     checkTrialUnlock();
   }
   function showStreak() {
@@ -1769,6 +1774,7 @@
       ftcTried = ftcRight = ftcStreak;
       ftcBub = Array.isArray(o.bub) ? o.bub.slice(0, 40) : null;
       bubFull = o.full === true || bubblesFull();
+      sess0 = o.sess && Number.isInteger(o.sess.lv) && isFinite(o.sess.pct) ? { lv: o.sess.lv, pct: o.sess.pct } : null;
       trialUnlocked = o.trial === true;
       trialEver = o.ever === true || trialUnlocked;
       checkTrialUnlock();
@@ -1782,9 +1788,9 @@
     Object.keys(ftcLv).forEach(function (k) { if (ftcLvPrev[k] !== ftcLv[k]) { ftcLvT[k] = nowT; ftcLvPrev[k] = ftcLv[k]; } });
     ['play', 'find', 'key', 'sig'].forEach(function (m) { if (stepLvPrev[m] !== stepLv[m]) { stepLvT[m] = nowT; stepLvPrev[m] = stepLv[m]; } });
     var c = slots.chord || slotSnap();
-    try { window.localStorage.setItem(FTC_KEY, JSON.stringify({ lvl: ftcLv, lvt: ftcLvT, auto: ftcAuto, streak: c.streak, bub: c.bub || [], full: !!c.bubFull, trial: c.unlocked, ever: c.ever, fresh: ftcFresh })); } catch (e) { /* storage unavailable */ }
+    try { window.localStorage.setItem(FTC_KEY, JSON.stringify({ lvl: ftcLv, lvt: ftcLvT, auto: ftcAuto, streak: c.streak, sess: c.sess || null, bub: c.bub || [], full: !!c.bubFull, trial: c.unlocked, ever: c.ever, fresh: ftcFresh })); } catch (e) { /* storage unavailable */ }
     var no = {};
-    ['play', 'find', 'key', 'sig'].forEach(function (m) { var q = slots[m] || {}; no[m] = { lv: stepLv[m], lt: +stepLvT[m] || 0, streak: q.streak | 0, bub: q.bub || [], full: !!q.bubFull, trial: !!q.unlocked, ever: !!q.ever }; });
+    ['play', 'find', 'key', 'sig'].forEach(function (m) { var q = slots[m] || {}; no[m] = { lv: stepLv[m], lt: +stepLvT[m] || 0, streak: q.streak | 0, sess: q.sess || null, bub: q.bub || [], full: !!q.bubFull, trial: !!q.unlocked, ever: !!q.ever }; });
     try { window.localStorage.setItem(STEPS_KEY, JSON.stringify(no)); } catch (e) { /* storage unavailable */ }
   }
   function loadSteps() {
@@ -1798,14 +1804,14 @@
         stepLvPrev[m] = stepLv[m]; if (Number.isInteger(q.lt)) stepLvT[m] = q.lt;
         var b = Array.isArray(q.bub) ? q.bub.slice(0, 40).map(function (r) { return r === 'ok' || r === 'bad' ? r : null; }) : null, need = streakNeed();
         var st = Number.isInteger(q.streak) ? Math.max(0, Math.min(need - 1, q.streak)) : 0;
-        slots[m] = { bub: b, bubFull: q.full === true || (!!b && b.length >= need && b.slice(0, need).every(function (r) { return r === 'ok'; })), streak: st, tried: st, right: st, unlocked: q.trial === true, ever: q.ever === true || q.trial === true };
+        slots[m] = { sess: q.sess && Number.isInteger(q.sess.lv) && isFinite(q.sess.pct) ? { lv: q.sess.lv, pct: q.sess.pct } : null, bub: b, bubFull: q.full === true || (!!b && b.length >= need && b.slice(0, need).every(function (r) { return r === 'ok'; })), streak: st, tried: st, right: st, unlocked: q.trial === true, ever: q.ever === true || q.trial === true };
       });
     } catch (e) { /* defaults */ }
   }
   function resetFtc() {
     abortTrial();
     ftcLv = {}; ftcLvT = {}; ftcLvPrev = {}; stepLvT = {}; stepLvPrev = { play: 1, find: 1, key: 1, sig: 1 };
-    trialUnlocked = trialEver = false; ftcAuto = true; ftcStreak = 0; ftcTried = 0; ftcRight = 0; ftcBub = null; bubFull = false; ftcFresh = { asked: 0, fresh: 0 };
+    trialUnlocked = trialEver = false; ftcAuto = true; ftcStreak = 0; ftcTried = 0; ftcRight = 0; ftcBub = null; bubFull = false; sess0 = null; sessionDone = sessionPending = false; ftcFresh = { asked: 0, fresh: 0 };
     stepLv = { play: 1, find: 1, key: 1, sig: 1 }; slots = {}; slots[curSlot] = slotSnap(); if (curSlot !== 'chord') slots.chord = slotSnap();
     try { window.localStorage.removeItem(STEPS_KEY); } catch (e) { /* storage unavailable */ }
     try { window.localStorage.removeItem(FTC_KEY); window.localStorage.removeItem(TRIALS_KEY); window.localStorage.removeItem(WELCOME_KEY); window.localStorage.removeItem(STUDY_WELCOME_KEY); } catch (e) { /* storage unavailable */ }   // (the time trial bests go too)
@@ -1911,6 +1917,52 @@
     confetti(r.left + r.width / 2, Math.max(60, r.top + r.height / 2));
   }
   // Play / Find the note: a level-up (n: the step just reached)
+  // ---- the end of a session: the bubbles are full but the level isn't done ----
+  var SESSION_ICONS = ['\u{1F4AA}', '\u{1F624}', '\u{1F9D7}'];                  // flexed arm, steam from the nose, climber
+  var SESSION_GOOD = ['Good session!', 'Your hard work is showing!', 'Solid session!', 'That’s real progress!', 'Nicely done!', 'Now we’re cooking!'];
+  var SESSION_MEH = ['You’re getting there!', 'Keep at it!', 'Every session counts!', 'Slow and steady!', 'You’re building something here!', 'The cards are sinking in!'];
+  function curLevelNo() { return quizOn() ? ftcLevelNo() : stepNo(); }
+  function noteSessionStart() {                                  // a new question with empty bubbles: the level's progress now is the session's starting point
+    if (ftcTrial) return;
+    if (bubbles().every(function (r) { return !r; })) sess0 = { lv: curLevelNo(), pct: levelPct(curLevelNo()) };
+  }
+  function endSessionReset() {                                   // however the banner is left, the next session starts clean
+    if (!sessionPending) return;
+    sessionPending = false; sess0 = null; ftcBub = null; bubFull = false; ftcStreak = 0; ftcTried = 0; ftcRight = 0;
+  }
+  function pickOne(list) { return list[Math.floor(Math.random() * list.length)]; }
+  function sessionEnd() {                                        // called after a solved card; shows the banner if the bubbles just filled
+    var done = sessionDone;
+    sessionDone = false;
+    if (!done || ftcTrial || !(quizOn() || studyQuizOn()) || !bubbles().every(function (r) { return !!r; })) return;
+    var n = curLevelNo(), pct = levelPct(n);
+    if (pct >= 100) return;                                       // (a finished level that missed the accuracy mark just carries on)
+    var b = bubbles(), right = b.filter(function (r) { return r === 'ok'; }).length, good = right >= FindChord.passMark(b.length);
+    var start = sess0 && sess0.lv === n ? sess0.pct : null, d = start == null ? 0 : pct - start, line;
+    if (start == null) line = 'Your progress on this level is now ' + pct + '%.';
+    else if (d > 0) line = 'This session took your progress on this level from ' + start + '% to <strong>' + pct + '%</strong> (+' + d + ').';
+    else if (d === 0) line = 'Your progress on this level held steady at <strong>' + pct + '%</strong>.';
+    else line = 'Your progress on this level slipped from ' + start + '% to <strong>' + pct + '%</strong> (−' + (-d) + '): missed cards lose ground, and they’ll come around more often now.';
+    var last = quizOn() ? n >= FindChord.levelCount(state.mode, ftcPop()) : n >= STUDY_STEPS;
+    levelBanner.removeAttribute('data-welcome');
+    if (levelBanner.parentNode !== ftcSection) ftcSection.appendChild(levelBanner);
+    document.getElementById('ftc-levelup-icon').textContent = pickOne(SESSION_ICONS);
+    document.getElementById('ftc-levelup-title').textContent = pickOne(good ? SESSION_GOOD : SESSION_MEH);
+    levelText.innerHTML = right + ' of ' + b.length + ' first tries right. ' + line +
+      '<span class="levelup-go-row"><button type="button" class="btn-reset levelup-stay" data-kind="session">← Keep working</button>' +
+      (last ? '' : '<button type="button" class="btn-reset levelup-go" data-kind="session">New challenge →</button>') + '</span>';
+    levelBanner.hidden = false;
+    levelBanner.style.animation = 'none'; void levelBanner.offsetWidth; levelBanner.style.animation = '';
+    sessionPending = true;
+  }
+  function sessionNewChallenge() {                               // "New challenge": on to the next level, as a level-up would
+    sessionPending = false; sess0 = null;
+    var n = curLevelNo();
+    ftcStreak = 0; ftcTried = 0; ftcRight = 0; ftcBub = null; bubFull = false;
+    if (quizOn()) { ftcSetLevel(n + 1); ftcRaised(true); saveFtc(); updateFtc(); updateChordPanel(); }
+    else { stepLv[studySlot()] = n + 1; trialUnlocked = false; syncTrialBox(); saveFtc(); }
+    nextCard(false);
+  }
   function celebrateStep(n) {
     levelBanner.removeAttribute('data-welcome');
     var html = 'You\u2019ve completed Level ' + (n - 1) + ' (of ' + STUDY_STEPS + '). On to level ' + n + ', ' +
@@ -1999,6 +2051,11 @@
   levelBanner.addEventListener('click', function (e) {
     if (levelBanner.hasAttribute('data-welcome') && e.target.closest && e.target.closest('.levelup-go')) { bannerHold = false; levelBanner.hidden = true; levelBanner.removeAttribute('data-welcome'); return; }
     var stay = e.target.closest && e.target.closest('.levelup-stay');
+    var goBtn = e.target.closest && e.target.closest('.levelup-go');
+    if (sessionPending && (quizOn() || studyQuizOn()) && state.answered && (stay || goBtn)) {        // the end-of-session banner
+      if (goBtn) sessionNewChallenge(); else nextCard(false);                                       // ("Keep working": the next question starts a fresh session)
+      return;
+    }
     if (stay && (quizOn() || studyQuizOn()) && state.answered) {              // "Not yet, I can do better": take the level-up back, then go on
       if (stay.getAttribute('data-kind') === 'ftc') { ftcSetLevel(ftcLevelNo() - 1); ftcRaised(false); }
       else stepLv[studySlot()] = Math.max(1, stepNo() - 1);
@@ -2135,7 +2192,9 @@
   }
 
   function ftcNewQuestion(animate) {
+    endSessionReset();
     if (bubFull) { ftcBub = null; bubFull = false; showStreak(); }                  // ("Next": the new level starts with empty bubbles)
+    noteSessionStart();
     var l = ftcLevels();
     var isFresh = ftcTrial ? null : FindChord.freshTest(state.mode, ftcPop(), ftcLevelNo());
     var nowMs = Date.now();
@@ -2269,7 +2328,7 @@
   function closeTrialList() { if (trialListOpen) { trialListOpen = false; syncTrialBox(); } }
   document.addEventListener('click', function (e) { if (trialListOpen && !trialBox.contains(e.target) && !(e.target.closest && e.target.closest('.tr-menu'))) closeTrialList(); });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && trialListOpen) { closeTrialList(); trialBtn.focus(); } });
-  function stageLabel(n) { if (studyQuizOn()) return 'Level ' + n; var i = FindChord.levelInfo(state.mode, ftcPop(), n); return 'Stage ' + i.stage + ': Level ' + i.step; }
+  function stageLabel(n) { if (studyQuizOn()) return 'Level ' + n; var i = FindChord.levelInfo(state.mode, ftcPop(), n); return 'Stage ' + i.stage + ' \u2013 Level ' + i.step; }
   // two levels: the stages (newest first; only the current one open to start with), and under each the steps reached so far
   function buildTrialList() {
     trialList.textContent = '';
@@ -2513,7 +2572,7 @@
       updateScore();
       draw(false, false);
       feedback('yes');
-      if (levelUpNote) celebrate(levelUpNote, newStage, doneStage);
+      if (levelUpNote) celebrate(levelUpNote, newStage, doneStage); else sessionEnd();
       return;
     }
     score.bad++;
@@ -2636,7 +2695,7 @@
       var avg = Math.round(ps.reduce(function (a, b) { return a + b; }, 0) / ps.length), done = ps.filter(function (x) { return x === 100; }).length;
       return !avg && !done ? '' : done === ps.length ? 'complete' : avg + '%' + (done ? ' (' + done + ' of ' + ps.length + ' levels done)' : '');
     }));
-    tag.appendChild(document.createTextNode(': Level '));
+    tag.appendChild(document.createTextNode(' \u2013 Level '));
     tag.appendChild(levelPicker('Level', ll, li.step, function (k) { ftcJump(lvlOf(li.stage, k)); }, function (k) { var p = levelPct(lvlOf(li.stage, k)); return p ? p + '%' : ''; }));
   }
   // local testing: the same one-step-at-a-time moves the automatic level-up makes, up or back down
@@ -2819,7 +2878,9 @@
   var noteSpell = 0, noteLastSpell = 1;                // Explore's sharps(0)/flats(1) toggle; Study alternates, starting with sharps
   function newNoteCard() {
     syncSlot();
+    endSessionReset();
     if (bubFull) { ftcBub = null; bubFull = false; }                                         // (a new step starts with empty bubbles)
+    noteSessionStart();
     var avoid = state.card ? state.card.pc : -1, idx, pc, pre = state.cardMode === 'find' ? 'find|' : 'play|', keys = [];
     var dl = dealStep(state.card), ctx = studyCtx(dl.lv, dl.clef);
     seedMixed(dl.lv);
@@ -2836,7 +2897,9 @@
   function newCard() {
     if (noteOn()) { newNoteCard(); return; }
     syncSlot();
+    endSessionReset();
     if (bubFull) { ftcBub = null; bubFull = false; }                                          // (a new step starts with empty bubbles)
+    noteSessionStart();
     var avoid = state.card ? state.card.pc : -1, prevCard = state.card;
     var pre = state.cardMode === 'sig' ? 'sig|' : 'key|', keys = [], i;
     var dl = dealStep(prevCard), ctx = studyCtx(dl.lv, dl.clef);
@@ -2945,7 +3008,7 @@
     updateScore();
     draw(rotated && fromS != null ? { oldKeyS: fromS } : false, false);
     feedback('yes');
-    if (upTo) celebrateStep(upTo);
+    if (upTo) celebrateStep(upTo); else sessionEnd();
     if (viaKeyboard) {
       var nb = stage.querySelector('.next-btn');
       if (nb) nb.focus({ preventScroll: true });
@@ -2989,7 +3052,7 @@
     state.spell = pick.spell;
     updateScore();
     draw(false, false);
-    if (upTo) celebrateStep(upTo);
+    if (upTo) celebrateStep(upTo); else sessionEnd();
     var nb = stage.querySelector('.next-btn');
     if (nb && box.getAttribute('data-kbd') === '1') nb.focus({ preventScroll: true });
   }
@@ -3070,7 +3133,7 @@
     updateScore();
     draw(false, false);
     feedback('yes');
-    if (upTo) celebrateStep(upTo);
+    if (upTo) celebrateStep(upTo); else sessionEnd();
   }
   function press(pc, spell, viaKeyboard, fromS, keyEl) {
     if (noteOn()) {
@@ -3324,6 +3387,10 @@
     if (state.flash && !levelBanner.hidden && levelBanner.hasAttribute('data-welcome')) {      // the welcome banner: the right arrow is "Go"
       var wt = e.target;
       if (!(wt && wt.closest && wt.closest('input, select, textarea'))) { e.preventDefault(); bannerHold = false; levelBanner.hidden = true; levelBanner.removeAttribute('data-welcome'); return; }
+    }
+    if (sessionPending && state.answered && !levelBanner.hidden) {          // the end-of-session banner: the right arrow is "New challenge"
+      var sg = levelBanner.querySelector('.levelup-go'), st2 = e.target;
+      if (sg && !(st2 && st2.closest && st2.closest('input, select, textarea'))) { e.preventDefault(); sg.click(); return; }
     }
     if (quizOn() && state.answered && !levelBanner.hidden) {              // Find the chord: the right arrow goes on from a banner
       e.preventDefault();
