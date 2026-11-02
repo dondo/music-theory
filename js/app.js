@@ -232,7 +232,19 @@
   }
   function stepResilienceFor(n) { var v = stepView(n); return Memory.resilience(v.view, v.keys); }
   // TEMPORARY: a bar for every card of the current working set (shown in the session banner)
+  // Find the chord: a bar for every key/chord card the level introduces, a bracket under each key's cards
+  function ftcStrip() {
+    var mode = state.mode, pop = ftcPop(), d = FindChord.durability(ftcMem, mode, pop, ftcLevelNo()), first = {}, count = {};
+    d.cards.forEach(function (c) { count[c.q.pc] = (count[c.q.pc] || 0) + 1; });
+    return '<span class="card-strip">' + d.cards.map(function (c) {
+      var spec = Theory.specsFor(mode, c.q.pc)[0], ch = Chords.chordInKey(spec.name, mode, c.q.deg, c.q.type), pct = Math.round(c.fill * 100), br = '';
+      if (!first[c.q.pc]) { first[c.q.pc] = true; br = '<span class="cs-br" style="width:' + (count[c.q.pc] * 14 - 4) + 'px"><i></i><em>' + ftcKeyName(c.q.pc) + '</em></span>'; }
+      var pop_ = c.fill < 1 ? '<span class="cs-pop"><span class="cs-info">' + ch.roman + ' in ' + ftcKeyName(c.q.pc) + (mode === 'minor' ? '' : ' major') + '<br>' + ch.symbol + '<br><b>' + pct + '%</b></span></span>' : '';
+      return '<span class="cs' + (pop_ ? ' cs-has' : '') + '"><i class="cs-bar"><b style="height:' + pct + '%"' + (c.done ? ' class="cs-done"' : '') + '></b></i><u>' + ch.roman + '</u>' + pop_ + br + '</span>';
+    }).join('') + '</span>';
+  }
   function cardStrip() {
+    if (quizOn()) return ftcStrip();
     if (!noteOn()) return '';
     var v = stepView(stepNo()), multi = !/^[a-z]+\|[a-z]+\|/.test('') && v.keys.some(function (k) { return k.split('|')[1].replace(/^m\d-/, '') !== v.keys[0].split('|')[1].replace(/^m\d-/, ''); });
     var groups = {}, order = [];                                    // octave brackets under the bars: idx 0-11 is one octave, 12-24 the next (the top C joins it), per clef
