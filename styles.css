@@ -947,5 +947,5 @@ html.is-local body { border-top: 6px solid #ea580c; }
 /* octave brackets under the card bars: a rule with a tick up at each end, the octave under it */
 .card-strip { padding-bottom: 36px; }
 .cs-br { position: absolute; top: calc(100% + 3px); left: 0; text-align: center; pointer-events: none; }
-.cs-br i { display: block; height: 7px; border: 2px solid #475569; border-top: 0; }
-.cs-br em { display: block; margin-top: 2px; font-style: normal; font-weight: 700; font-size: 13px; color: #475569; white-space: nowrap; }
+.cs-br i { display: block; height: 7px; border: 2px solid #b6bcc6; border-top: 0; }
+.cs-br em { display: block; margin-top: 2px; font-style: normal; font-weight: 600; font-size: 13px; color: #8c94a1; white-space: nowrap; }
