@@ -3118,10 +3118,19 @@
     card.animate([{ transform: 'translateX(' + d + 'px)', opacity: 0 }, { transform: 'translateX(0)', opacity: 1 }], opts);
   }
 
+  var enterHeld = false;                                          // (the return key is down: a note picked now is ignored)
+  document.addEventListener('keydown', function (e) { if (e.key === 'Enter') enterHeld = true; }, true);
+  document.addEventListener('keyup', function (e) { if (e.key === 'Enter') enterHeld = false; }, true);
+  window.addEventListener('blur', function () { enterHeld = false; });
   function noteAnswer(val) {
     dismissWelcome();                             // play the note: the pitch class pressed (any octave); find the note: the staff note clicked (0..24)
     if (ftcTrial && (ftcTrial.counting || ftcTrial.done)) return;
     if (state.answered || !state.card) return;
+    if (enterHeld && !(ftcTrial && ftcTrial.note)) {              // the return key is still down from "Next": not an answer, just a gentle nudge
+      state.guess = 'enter'; lastResult = 'Um\u2026 let go of the return key :)';
+      draw(false, false); feedback('quiet', null);
+      return;
+    }
     var find = state.cardMode === 'find', pc = val % 12;
     if (ftcTrial && ftcTrial.note) { trialAnswer(find ? val === state.card.idx : pc === state.card.pc); return; }       // (a trial moves on whatever the answer)
     if (find ? val !== state.card.idx : pc !== state.card.pc) {
