@@ -2544,14 +2544,39 @@
 
   // The level indicator is a menu: Find the chord has a Stage and a Level (within the stage) picker, the other study activities a Level picker.
   // (The harder / easier arrows still step one level at a time.) Rebuilt only when what it shows changes, so an open list isn't disturbed.
-  function levelPicker(label, count, cur, onPick) {
-    var sel = el('select', 'level-pick');
-    sel.setAttribute('aria-label', label); sel.title = 'Choose a ' + label.toLowerCase();
-    for (var i = 1; i <= count; i++) { var o = el('option', null, String(i)); o.value = String(i); sel.appendChild(o); }
+  // `labels[i]` describes item i+1. The heading shows just the number; the open list shows "number - what it covers".
+  function levelPicker(label, labels, cur, onPick) {
+    var wrap = el('span', 'level-pick'), shown = el('span', 'level-pick-n', String(cur)), sel = el('select', 'level-pick-sel');
+    sel.setAttribute('aria-label', label); sel.title = 'Choose a ' + label.toLowerCase() + ': ' + labels[cur - 1];
+    labels.forEach(function (t, i) { var o = el('option', null, (i + 1) + ' \u2013 ' + t); o.value = String(i + 1); sel.appendChild(o); });
     sel.value = String(cur);
     sel.addEventListener('change', function () { var v = parseInt(sel.value, 10); sel.blur(); onPick(v); });
-    return sel;
+    wrap.appendChild(shown); wrap.appendChild(sel);
+    return wrap;
   }
+  // plain-text descriptions for the menus
+  function plainNames(list) { return list.map(function (x) { return typeof x === 'string' ? x : x.r; }); }
+  function chordListText(chords) {                                          // 'iii and V7', or for a whole type at once 'Sus4 chords on 7 degrees'
+    var blk = ftcBlockLabel(chords);
+    return blk ? blk.replace(/ on $/, '') + ' on ' + chords.length + ' degrees' : ftcJoin(plainNames(ftcNames(chords, false)));
+  }
+  function stepText(n) {                                                  // what level n of the ladder puts in play
+    var mode = state.mode, pop = ftcPop(), add = FindChord.stepAdds(mode, pop, n), lv, one;
+    if (!add) { lv = FindChord.levelAt(mode, pop, n); return ftcJoin(plainNames(ftcNames(FindChord.keys(mode, pop, lv.keys), true))) + ' with ' + chordListText(FindChord.chords(mode, pop, lv.chords)); }
+    if (add.dim === 'I') return 'inversions of ' + ftcJoin(plainNames(ftcNames(add.chords, false)));
+    if (add.dim === 'K') { one = add.keys.length === 1; return (add.back ? 'back to ' : 'new ') + (one ? 'key ' : 'keys ') + ftcJoin(plainNames(ftcNames(add.keys, true))); }
+    one = add.chords.length === 1; return (add.back ? 'back to ' : 'new ') + (one ? 'chord ' : (ftcBlockLabel(add.chords) ? '' : 'chords ')) + chordListText(add.chords);
+  }
+  function stageText(stage) {                                             // what stage `stage` introduces
+    var mode = state.mode, pop = ftcPop(), L = FindChord.ladder(mode, pop), first = 0, it;
+    for (var i = 0; i < L.length; i++) if (L[i].stage === stage) { first = i + 1; break; }
+    if (stage === 1) { var last = first; while (last < L.length && L[last].stage === 1) last++; var lv = FindChord.levelAt(mode, pop, last);       // (the whole starting stage)
+      return 'the starting set: ' + ftcJoin(plainNames(ftcNames(FindChord.keys(mode, pop, lv.keys), true))) + ' with ' + chordListText(FindChord.chords(mode, pop, lv.chords)); }
+    it = FindChord.stageIntro(mode, pop, stage);
+    return it.kind === 'K' ? (it.keys.length === 1 ? 'new key ' : 'new keys ') + ftcJoin(plainNames(ftcNames(it.keys, true))) : (it.chords.length === 1 ? 'new chord ' : (ftcBlockLabel(it.chords) ? 'new ' : 'new chords ')) + chordListText(it.chords);
+  }
+  var NOTE_LEVEL_TEXT = [null, null, 'bass clef', 'treble and bass clefs, taking turns', 'alto clef', 'treble, bass and alto clefs, taking turns'];
+  function noteLevelText(n) { return n === 1 ? (noteOn() ? 'the clef chosen in Notes (treble to start)' : 'treble clef') : NOTE_LEVEL_TEXT[n]; }
   function buildLevelTag(tag) {
     var sig, ftcMode = !studyQuizOn();
     if (ftcTrial) {
@@ -2567,7 +2592,8 @@
       sig = 'step|' + stepNo();
       if (tag.getAttribute('data-sig') === sig) return;
       tag.setAttribute('data-sig', sig); tag.textContent = 'Level ';
-      tag.appendChild(levelPicker('Level', STUDY_STEPS, stepNo(), stepJump));
+      var nl = []; for (var q = 1; q <= STUDY_STEPS; q++) nl.push(noteLevelText(q));
+      tag.appendChild(levelPicker('Level', nl, stepNo(), stepJump));
       return;
     }
     var pop = ftcPop(), L = FindChord.ladder(state.mode, pop), n = ftcLevelNo(), li = L[n - 1], stages = L[L.length - 1].stage, steps = FindChord.stageSteps(state.mode, pop, n);
@@ -2575,9 +2601,12 @@
     if (tag.getAttribute('data-sig') === sig) return;
     tag.setAttribute('data-sig', sig); tag.textContent = 'Stage ';
     function lvlOf(stage, step) { for (var i = 0; i < L.length; i++) if (L[i].stage === stage && L[i].step === step) return i + 1; return 0; }
-    tag.appendChild(levelPicker('Stage', stages, li.stage, function (st) { ftcJump(lvlOf(st, 1)); }));
+    var sl = [], ll = [], q;
+    for (q = 1; q <= stages; q++) sl.push(stageText(q));
+    for (q = 1; q <= steps; q++) ll.push(stepText(lvlOf(li.stage, q)));
+    tag.appendChild(levelPicker('Stage', sl, li.stage, function (st) { ftcJump(lvlOf(st, 1)); }));
     tag.appendChild(document.createTextNode(': Level '));
-    tag.appendChild(levelPicker('Level', steps, li.step, function (k) { ftcJump(lvlOf(li.stage, k)); }));
+    tag.appendChild(levelPicker('Level', ll, li.step, function (k) { ftcJump(lvlOf(li.stage, k)); }));
   }
   // local testing: the same one-step-at-a-time moves the automatic level-up makes, up or back down
   function ftcDifficulty(dir) {
