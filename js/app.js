@@ -196,8 +196,9 @@
     return (state.cardMode === 'sig' ? 'sig|' : 'key|') + ctx + '|' + state.mode + '|' + c.pc;
   }
   // every card of the level in play (for the Resilience bar and the level-up check)
-  function stepCardKeys() {
-    var n = stepNo(), list = STEP_CLEFS[n], ctxs = list && list.length > 1 && MIXED_OWN_CARDS ? list.map(function (c) { return studyCtx(n, c); }) : [studyCtx(n, list ? list[0] : null)];
+  function stepCardKeys(n) {
+    n = n || stepNo();
+    var list = STEP_CLEFS[n], ctxs = list && list.length > 1 && MIXED_OWN_CARDS ? list.map(function (c) { return studyCtx(n, c); }) : [studyCtx(n, list ? list[0] : null)];
     var out = [], pre = noteOn() ? (state.cardMode === 'find' ? 'find|' : 'play|') : (state.cardMode === 'sig' ? 'sig|' : 'key|'), i;
     ctxs.forEach(function (ctx) {
       if (noteOn()) for (i = 0; i < 25; i++) out.push(pre + ctx + '|' + i);
@@ -218,6 +219,16 @@
       }
     });
     if (changed) Memory.save(CARD_MEM_KEY, cardMem);
+  }
+  // how settled level n's cards are, without touching the saved memory (a mixed level's unseeded cards count as seeded from their single-clef twin)
+  function stepResilienceFor(n) {
+    var keys = stepCardKeys(n), view = { p: {} };
+    keys.forEach(function (k) {
+      var m = cardMem.p[k];
+      if (!m && MIXED_OWN_CARDS && /\|m\d-/.test(k)) { var src = cardMem.p[k.replace(/\|m\d-/, '|')]; if (src && src.n > 0) m = Memory.seeded(cardMem, src); }
+      if (m) view.p[k] = m;
+    });
+    return Memory.resilience(view, keys);
   }
   function stepResilience() { seedMixed(stepNo()); return Memory.resilience(cardMem, stepCardKeys()); }
   (function migrateCardMem() {                                   // saves from before cards were per clef: those answers were on the treble stave
@@ -1688,7 +1699,9 @@
     if (!on) return;
     var d = chordOn ? ftcDurability() : stepResilience(), pct = Math.round(d.fill * 100);
     if (studyOn) d.cards = null;
+    pct = d.ready ? 100 : Math.min(99, pct);
     el.querySelector('i').style.width = pct + '%';
+    el.querySelector('.dur-pct').textContent = pct + '%';
     el.classList.toggle('ready', d.ready);
     el.setAttribute('title', 'Progress: how firmly the ' + (studyOn ? 'cards at this level' : 'new cards') + ' have stuck. It fills as you get them right again after gaps; the level is done when every one has stuck.');
     var bar = el.querySelector('.dur-bar');
@@ -2545,14 +2558,23 @@
   // The level indicator is a menu: Find the chord has a Stage and a Level (within the stage) picker, the other study activities a Level picker.
   // (The harder / easier arrows still step one level at a time.) Rebuilt only when what it shows changes, so an open list isn't disturbed.
   // `labels[i]` describes item i+1. The heading shows just the number; the open list shows "number - what it covers".
-  function levelPicker(label, labels, cur, onPick) {
+  function levelPicker(label, labels, cur, onPick, extra) {
     var wrap = el('span', 'level-pick'), shown = el('span', 'level-pick-n', String(cur)), sel = el('select', 'level-pick-sel');
     sel.setAttribute('aria-label', label); sel.title = 'Choose a ' + label.toLowerCase() + ': ' + labels[cur - 1];
-    labels.forEach(function (t, i) { var o = el('option', null, (i + 1) + ' \u2013 ' + t); o.value = String(i + 1); sel.appendChild(o); });
+    labels.forEach(function (t, i) { var o = el('option', null, ''); o.value = String(i + 1); sel.appendChild(o); });
+    function fill() {                                           // (progress in the list is worked out when it opens, so it is always fresh)
+      for (var i = 0; i < labels.length; i++) { var x = extra ? extra(i + 1) : ''; sel.options[i].textContent = (i + 1) + ' \u2013 ' + labels[i] + (x ? ' \u2014 ' + x : ''); }
+    }
+    fill();
+    ['mousedown', 'focus', 'touchstart'].forEach(function (ev) { sel.addEventListener(ev, fill); });
     sel.value = String(cur);
     sel.addEventListener('change', function () { var v = parseInt(sel.value, 10); sel.blur(); onPick(v); });
     wrap.appendChild(shown); wrap.appendChild(sel);
     return wrap;
+  }
+  function levelPct(n) {                                                  // 0-100: how settled level n's own cards are (100 only when every one is)
+    var d = studyQuizOn() ? stepResilienceFor(n) : FindChord.durability(ftcMem, state.mode, ftcPop(), n);
+    return d.ready ? 100 : Math.min(99, Math.round(d.fill * 100));
   }
   // plain-text descriptions for the menus
   function plainNames(list) { return list.map(function (x) { return typeof x === 'string' ? x : x.r; }); }
@@ -2598,7 +2620,7 @@
       if (tag.getAttribute('data-sig') === sig) return;
       tag.setAttribute('data-sig', sig); tag.textContent = 'Level ';
       var nl = []; for (var q = 1; q <= STUDY_STEPS; q++) nl.push(noteLevelText(q));
-      tag.appendChild(levelPicker('Level', nl, stepNo(), stepJump));
+      tag.appendChild(levelPicker('Level', nl, stepNo(), stepJump, function (k) { var p = levelPct(k); return p ? p + '%' : ''; }));
       return;
     }
     var pop = ftcPop(), L = FindChord.ladder(state.mode, pop), n = ftcLevelNo(), li = L[n - 1], stages = L[L.length - 1].stage, steps = FindChord.stageSteps(state.mode, pop, n);
@@ -2609,9 +2631,13 @@
     var sl = [], ll = [], q;
     for (q = 1; q <= stages; q++) sl.push(stageText(q));
     for (q = 1; q <= steps; q++) ll.push(stepText(lvlOf(li.stage, q)));
-    tag.appendChild(levelPicker('Stage', sl, li.stage, function (st) { ftcJump(lvlOf(st, 1)); }));
+    tag.appendChild(levelPicker('Stage', sl, li.stage, function (st) { ftcJump(lvlOf(st, 1)); }, function (st) {
+      var ps = [], q2; for (q2 = 1; lvlOf(st, q2); q2++) ps.push(levelPct(lvlOf(st, q2)));
+      var avg = Math.round(ps.reduce(function (a, b) { return a + b; }, 0) / ps.length), done = ps.filter(function (x) { return x === 100; }).length;
+      return !avg && !done ? '' : done === ps.length ? 'complete' : avg + '%' + (done ? ' (' + done + ' of ' + ps.length + ' levels done)' : '');
+    }));
     tag.appendChild(document.createTextNode(': Level '));
-    tag.appendChild(levelPicker('Level', ll, li.step, function (k) { ftcJump(lvlOf(li.stage, k)); }));
+    tag.appendChild(levelPicker('Level', ll, li.step, function (k) { ftcJump(lvlOf(li.stage, k)); }, function (k) { var p = levelPct(lvlOf(li.stage, k)); return p ? p + '%' : ''; }));
   }
   // local testing: the same one-step-at-a-time moves the automatic level-up makes, up or back down
   function ftcDifficulty(dir) {
