@@ -239,6 +239,16 @@
       return { idx: idx, pc: idx % 12, clef: parts[1].replace(/^m\d-/, '') };
     });
   }
+  // TEMPORARY: a bar for every card of the current working set (shown in the session banner)
+  function cardStrip() {
+    if (!noteOn()) return '';
+    var v = stepView(stepNo()), multi = !/^[a-z]+\|[a-z]+\|/.test('') && v.keys.some(function (k) { return k.split('|')[1].replace(/^m\d-/, '') !== v.keys[0].split('|')[1].replace(/^m\d-/, ''); });
+    return '<span class="card-strip">' + v.keys.map(function (k) {
+      var m = v.view.p[k], h = m ? m.h : 0, asked = m && m.n > 0, parts = k.split('|'), idx = parseInt(parts[2], 10);
+      var fill = h ? Math.min(asked ? 1 : 0.95, Math.max(0, Math.log(h / Memory.H0) / Math.log(Memory.H_DURABLE / Memory.H0))) : 0, done = h >= Memory.H_DURABLE && asked;
+      return '<span class="cs" title="' + k + ': ' + Math.round(fill * 100) + '%"><i class="cs-bar"><b style="height:' + Math.round(fill * 100) + '%"' + (done ? ' class="cs-done"' : '') + '></b></i><u>' + NOTE_SHARP[idx % 12].replace('\u266F', '#') + (multi ? parts[1].replace(/^m\d-/, '').charAt(0) : '') + '</u></span>';
+    }).join('') + '</span>';
+  }
   function weakNotesLine() {                                      // "Looks like you need to focus on the B and D notes." with a little staff for each
     var weak = noteOn() ? weakNotes(stepNo()) : [];
     if (!weak.length || weak.length > 2) return '';
@@ -1965,7 +1975,7 @@
     if (levelBanner.parentNode !== ftcSection) ftcSection.appendChild(levelBanner);
     document.getElementById('ftc-levelup-icon').textContent = pickOne(SESSION_ICONS);
     document.getElementById('ftc-levelup-title').textContent = pickOne(pct >= 100 ? SESSION_CLOSE : good ? SESSION_GOOD : SESSION_MEH);
-    levelText.innerHTML = right + ' of ' + b.length + ' first tries right. ' + line + weakNotesLine() +
+    levelText.innerHTML = right + ' of ' + b.length + ' first tries right. ' + line + weakNotesLine() + cardStrip() +
       '<span class="levelup-go-row"><button type="button" class="btn-reset levelup-stay" data-kind="session">← Keep working</button>' +
       (last ? '' : '<button type="button" class="btn-reset levelup-go" data-kind="session">New challenge →</button>') + '</span>';
     levelBanner.hidden = false;
