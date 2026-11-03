@@ -524,6 +524,7 @@ check('find the chord: every key opens with I IV V, then vi ii iii (i iv v, III 
     for (var k = 0; k < 5; k++) {
       var g = tri.filter(function (l) { return l.keyIdx === k; });
       var want = ['first', 'review', 'second', 'second', 'second', 'review', 'dim', 'full'];
+      if (k === 0) want.pop();                                         // (in the first key the diminished level already holds every chord: no separate full review)
       if (!c[1] && k === 0) want.splice(1, 1);                         // Jazz starts on numerals: no repeat of the first three
       assert.deepStrictEqual(g.map(function (l) { return l.role; }), want, tag + ' key ' + k);
       assert.strictEqual(g[0].fresh.length, 3);
@@ -541,7 +542,8 @@ check('find the chord: levelInfo / levelAt clamp and agree', function () {
   var n = FC.levelCount('major', true);
   assert.deepStrictEqual(FC.levelInfo('major', true, 0), FC.levelInfo('major', true, 1));
   assert.deepStrictEqual(FC.levelInfo('major', true, n + 5), FC.levelInfo('major', true, n));
-  assert.strictEqual(FC.levelAt('major', true, 3).cards.length, 1);
+  assert.strictEqual(FC.levelAt('major', true, 3).cards.length, 4);               // vi joins I IV V
+  assert.strictEqual(FC.levelInfo('major', true, 3).fresh.length, 1);
 });
 
 // ---- Find a chord: identifying the picked notes ----

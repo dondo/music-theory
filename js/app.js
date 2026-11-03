@@ -499,11 +499,11 @@
       } else {
         var c = Chords.chordInKey(rootName, state.mode, d, type);
         var hideSym = quizOn() && !state.answered;                  // Find the chord: the names would give the answer away until the guess is right (or given up)
-        b.setAttribute('aria-label', c.roman + (hideSym ? '' : ', ' + c.symbol) + (pop ? '' : ', ' + c.mode));
+        b.setAttribute('aria-label', c.roman + ', ' + (hideSym ? c.rootName : c.symbol) + (pop ? '' : ', ' + c.mode));
         if (!pop) b.setAttribute('data-dark', c.darkness);           // gentle shading: brightest mode to darkest
         if (pop && !numQuiz) b.appendChild(el('span', 'chip-num', c.symbol));      // Pop: chord symbols (Am), as on a lead sheet
         if (pop && !numQuiz && progsMode()) b.appendChild(el('span', 'chip-sym', c.roman));    // (Progressions: the roman numeral too, small, underneath)
-        else { b.appendChild(el('span', 'chip-num', c.roman)); b.appendChild(el('span', 'chip-sym', hideSym ? '\u00a0' : c.symbol)); }
+        else { b.appendChild(el('span', 'chip-num', c.roman)); b.appendChild(el('span', 'chip-sym', hideSym ? c.rootName : c.symbol)); }       // (before the answer, just the letter: the quality and type are the other chips' job)
         if (!pop) b.appendChild(el('span', 'chip-mode', c.mode));
       }
       chordDegrees.appendChild(b);

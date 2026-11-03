@@ -242,7 +242,7 @@
   // one key at a time (see README, "Find the chord: the ladder"). Each level is an explicit list of cards (key + chord pairs), not a product of keys x chords.
   // For every chord type, and for each key in turn (a STAGE), the levels are:
   //   1. the key's first-group chords (major: I IV V),  2. a review of those across the keys so far,
-  //   3-5. each second-group chord alone in the key (major: vi, ii, iii),  6. a review of those across the keys so far,
+  //   3-5. each second-group chord added in turn to the key's chords so far (major: vi, ii, iii; the new one is what's fresh),  6. a review of those across the keys so far,
   //   7. the diminished chord alone (vii°; types that have one),  8. a full review of every chord of the type across the keys so far.
   // (Sus4 and sus2 have no major/minor split: all six chords in the key at once, then a review.) A review identical to the level before it is left out,
   // except in Pop's very first stage, where level 1 answers by letter names (C, F, G) and level 2 repeats it answering by roman numerals.
@@ -285,9 +285,9 @@
           var a = cards([pcX], g.first, type);
           add('first', a, a, ki === 0 ? { dim: 'C', chords: g.first.map(function (d) { return { deg: d, type: type }; }), back: false } : { dim: 'K', keys: [pcX], back: false });
           add('review', cards(seen, g.first, type), []);
-          g.second.forEach(function (d) { var c1 = cards([pcX], [d], type); add('second', c1, c1, { dim: 'C', chords: [{ deg: d, type: type }], back: false }); });
+          g.second.forEach(function (d, si) { var c1 = cards([pcX], [d], type), cs1 = cards([pcX], g.first.concat(g.second.slice(0, si + 1)), type); add('second', cs1, c1, { dim: 'C', chords: [{ deg: d, type: type }], back: false }); });
           add('review', cards(seen, g.second, type), []);
-          if (HAS_DIM[type]) { var cd = cards([pcX], [g.dim], type); add('dim', cd, cd, { dim: 'C', chords: [{ deg: g.dim, type: type }], back: false }); }
+          if (HAS_DIM[type]) { var cd = cards([pcX], [g.dim], type), cs2 = cards([pcX], all.concat([g.dim]), type); add('dim', cs2, cd, { dim: 'C', chords: [{ deg: g.dim, type: type }], back: false }); }
           add('full', cards(seen, HAS_DIM[type] ? all.concat([g.dim]) : all, type), []);
         }
         if (first && cfg.letters) lv[0].ans = 'letters';           // Pop's very first level answers by letter names; the repeat that follows uses numerals
