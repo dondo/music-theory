@@ -1936,6 +1936,8 @@
       html = 'You have completed Stage ' + doneStage + ' (' + stageText(doneStage) + ').<span class="levelup-line2">' + stageNote(FindChord.levelInfo(state.mode, pop, n).stage) + '</span>';
       goRow = true;
     } else { html = stepNote(n); goRow = true; }
+    if (n === 2 && pop && !newStage)                                  // Pop's level 1 was answered by letter: why numerals?
+      html += '<span class="levelup-line2">From here on the chords are named by Roman numerals. They\u2019re a bit less intuitive to start, but they work across keys, so they make learning a lot easier in the long term.</span>';
     var allTriads = function (k) { return FindChord.chords(state.mode, pop, FindChord.levelAt(state.mode, pop, k).chords).every(function (c) { return c.type === 'triad'; }); };
     if (n > 1 && allTriads(n - 1) && !allTriads(n))                  // the TYPE chips have just appeared
       html += '<span class="levelup-line2">Since we now have both triads and seventh chords, you\u2019ll have to select the \u2018type\u2019 as well as the ' + (pop ? 'root and quality' : 'degree') + '. Ready?</span>';
@@ -1943,7 +1945,7 @@
     if (levelBanner.parentNode !== home) home.insertBefore(levelBanner, newStage ? home.firstChild : null);
     document.getElementById('ftc-levelup-icon').textContent = '\u{1F389}';
     document.getElementById('ftc-levelup-title').textContent = title;
-    if (goRow) html += '<span class="levelup-go-row">'+'<button type="button" class="btn-reset levelup-stay" data-kind="ftc">\u2190 Not yet \u2014 I\u2019ve got more in me\u2026</button>'+'<button type="button" class="btn-reset levelup-go">Go \u2192</button></span>';   // (the same as Next)
+    if (goRow) html += '<span class="levelup-go-row">'+'<button type="button" class="btn-reset levelup-go">Go \u2192</button></span>';   // (the same as Next)
     levelText.innerHTML = html;
     levelBanner.hidden = false;
     levelBanner.style.animation = 'none'; void levelBanner.offsetWidth; levelBanner.style.animation = '';
@@ -2031,7 +2033,7 @@
     var html = 'You\u2019ve completed Level ' + (n - 1) + ' (of ' + STUDY_STEPS + '). On to level ' + n + ', ' +
       ['', '', 'the <strong>bass clef</strong>!', 'where <strong>treble and bass</strong> take turns!', 'introducing the <strong>alto clef</strong>!', 'where <strong>treble, bass and alto</strong> all take turns!'][n] +
       (n === 4 ? '<span class="levelup-line2">Note: few people need to know about this, except my sister, who was the violist and most skilled musician in our terrible family quartet.</span>' : '') +
-      '<span class="levelup-go-row">'+'<button type="button" class="btn-reset levelup-stay" data-kind="step">\u2190 Not yet \u2014 I\u2019ve got more in me\u2026</button>'+'<button type="button" class="btn-reset levelup-go">Go \u2192</button></span>';
+      '<span class="levelup-go-row">'+'<button type="button" class="btn-reset levelup-go">Go \u2192</button></span>';
     if (levelBanner.parentNode !== ftcSection) ftcSection.appendChild(levelBanner);
     document.getElementById('ftc-levelup-icon').textContent = '\u{1F389}';
     document.getElementById('ftc-levelup-title').textContent = 'Nice work!';
@@ -3440,7 +3442,7 @@
     e.preventDefault(); e.stopImmediatePropagation(); dismissWelcome();
   }, true);
 
-  function gradBannerUp() { return !levelBanner.hidden && !levelBanner.hasAttribute('data-welcome') && !!levelBanner.querySelector('.levelup-stay'); }
+  function gradBannerUp() { return !levelBanner.hidden && !levelBanner.hasAttribute('data-welcome') && !!levelBanner.querySelector('.levelup-go'); }
   // a level-up banner is up: the left arrow is "Not yet, I've got more in me" (the right arrow is Go, below)
   document.addEventListener('keydown', function (e) {
     if (e.key !== 'ArrowLeft' || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey || levelBanner.hidden || sessionPending) return;      // (the session banner's "New challenge" is a click)
