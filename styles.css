@@ -893,7 +893,6 @@ html.is-local body { border-top: 6px solid #ea580c; }
 /* the bar sits under the level menus, with its percentage */
 .ftc-head .score-dur { order: 6; flex: 0 0 100%; justify-content: flex-end; margin-left: 0; gap: 8px; }
 .ftc-head .dur-bar { flex: 0 0 160px; width: 160px; top: 0; }
-.dur-pct { font-variant-numeric: tabular-nums; font-weight: 700; min-width: 2.6em; text-align: right; color: var(--ink, #1c2330); font-size: 0.95rem; }
 @media (max-width: 600px) { .ftc-head .score-dur { flex: 0 0 100%; } .ftc-head .dur-bar { flex: 1 1 0; width: auto; } .ftc-head .score-streak + * { } }
 
 /* the progress row as a grid: Session bubbles centred on the left; on the right the level menus with the bar centred under them */

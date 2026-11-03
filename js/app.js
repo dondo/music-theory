@@ -1739,7 +1739,6 @@
     if (studyOn) d.cards = null;
     pct = d.ready ? 100 : Math.min(99, pct);
     el.querySelector('i').style.width = pct + '%';
-    el.querySelector('.dur-pct').textContent = pct + '%';
     el.classList.toggle('ready', d.ready);
     el.setAttribute('title', 'Progress: how firmly the ' + (studyOn ? 'cards at this level' : 'new cards') + ' have stuck. It fills as you get them right again after gaps; the level is done when every one has stuck.');
     var bar = el.querySelector('.dur-bar');
