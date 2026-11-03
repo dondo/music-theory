@@ -154,6 +154,7 @@ var Sync = (function () {
   function mergeFtc(a, b, aNewer) {                  // Find the chord progress: the most recently changed level per mode, the rest from the newer side
     var x = parse(a), y = parse(b);
     if (!isObj(x) || !isObj(y)) return null;
+    if ((x.ladder | 0) !== (y.ladder | 0)) { var nx = (x.ladder | 0) > (y.ladder | 0) ? x : y; return JSON.stringify(Object.assign({}, nx, { ever: !!(x.ever || y.ever) })); }   // levels of different ladders mean different things: the newer ladder wins whole
     var out = Object.assign({}, aNewer ? x : y), lvl = {};
     var xl = isObj(x.lvl) ? x.lvl : {}, yl = isObj(y.lvl) ? y.lvl : {}, xt = isObj(x.lvt) ? x.lvt : {}, yt = isObj(y.lvt) ? y.lvt : {}, lvt = {};
     Object.keys(xl).concat(Object.keys(yl)).forEach(function (k) {       // per mode: the most recently changed level wins (no stamps: the higher)

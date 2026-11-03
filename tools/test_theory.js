@@ -483,96 +483,65 @@ check('progtext: reports what it cannot read', function () {
 // ---- Find the chord: the difficulty ladder ----
 var FC = require('../js/findchord.js');
 var COMBOS = [['major', true], ['major', false], ['minor', true], ['minor', false]];
-check('find the chord: level 1 is C and G with I, IV, V (i, iv, v in minor)', function () {
-  var romans = function (m, pop, n) { return FC.chords(m, pop, FC.levelAt(m, pop, n).chords).map(function (c) { return c.deg + c.type; }); };
-  [true, false].forEach(function (pop) {
-    assert.deepStrictEqual(FC.levelAt('major', pop, 1), { keys: 2, chords: 3, inv: pop ? 0 : 999 });
-    assert.deepStrictEqual(FC.keys('major', pop, 2), [0, 7]);
-    assert.deepStrictEqual(romans('major', pop, 1), ['0triad', '3triad', '4triad']);
-    assert.deepStrictEqual(FC.keys('minor', pop, 2), [9, 4]);
-    assert.deepStrictEqual(romans('minor', pop, 1), ['0triad', '3triad', '4triad']);
+check('find the chord: level 1 is I, IV, V of C (i, iv, v in A minor); Pop names them by letter, level 2 by numeral', function () {
+  var key = function (c) { return c.pc + '/' + c.deg + c.type; };
+  [[true, 'major', 0], [true, 'minor', 9], [false, 'major', 0], [false, 'minor', 9]].forEach(function (x) {
+    var L = FC.ladder(x[1], x[0]);
+    assert.deepStrictEqual(L[0].cards.map(key), [x[2] + '/0triad', x[2] + '/3triad', x[2] + '/4triad']);
+    if (x[0]) assert.deepStrictEqual(L[1].cards.map(key), L[0].cards.map(key), 'level 2 does the same three again');
+    assert.strictEqual(L[0].ans === 'letters', x[0], 'only Pop starts by letters');
+    assert.ok(L[1].ans !== 'letters' && L[2].ans !== 'letters');
   });
 });
-check('find the chord: keys are all distinct; Pop and Jazz have their own key order', function () {
+check('find the chord: five keys per ladder, in the taught order', function () {
+  assert.deepStrictEqual(FC.ladder('major', true).reduce(function (a, l) { if (a.indexOf(l.keyPc) < 0) a.push(l.keyPc); return a; }, []), [0, 7, 5, 2, 10]);   // C G F D B♭
   COMBOS.forEach(function (c) {
-    var all = FC.keys(c[0], c[1], 12);
-    assert.strictEqual(all.length, 12);
-    assert.strictEqual(new Set(all).size, 12);
+    var ks = FC.ladder(c[0], c[1]).map(function (l) { return l.keyPc; });
+    assert.strictEqual(new Set(ks).size, 5);
   });
-  assert.notDeepStrictEqual(FC.keys('major', true, 12), FC.keys('major', false, 12));
-  assert.deepStrictEqual(FC.keys('major', false, 4), [0, 7, 10, 5]);        // Jazz: C G B♭ F
-  assert.deepStrictEqual(FC.keys('major', true, 4), [0, 7, 2, 9]);          // Pop: C G D A
 });
-check('find the chord: Pop never offers 11ths or 13ths, Jazz does; no chord repeats', function () {
+check('find the chord: Pop never offers 11ths or 13ths, Jazz does', function () {
   ['major', 'minor'].forEach(function (m) {
-    var pop = FC.chords(m, true, 99), jazz = FC.chords(m, false, 99);
-    assert.ok(pop.every(function (c) { return c.type !== '11' && c.type !== '13'; }));
-    assert.ok(jazz.some(function (c) { return c.type === '13'; }));
-    [pop, jazz].forEach(function (l) { assert.strictEqual(new Set(l.map(function (c) { return c.deg + c.type; })).size, l.length); });
-    assert.strictEqual(pop.length, 42);
-    assert.strictEqual(jazz.length, 56);
+    var has = function (pop, t) { return FC.ladder(m, pop).some(function (l) { return l.cards.some(function (c) { return c.type === t; }); }); };
+    assert.ok(!has(true, '11') && !has(true, '13'));
+    assert.ok(has(false, '13') && has(false, '11'));
   });
 });
-check('find the chord: pick stays inside the levels and avoids an immediate repeat', function () {
-  var avoid = null;
+check('find the chord: pick stays inside the level and avoids an immediate repeat', function () {
+  var avoid = null, lv = FC.levelAt('major', true, 10);
   for (var i = 0; i < 200; i++) {
-    var q = FC.pick('major', true, 2, 3, Math.random, avoid);
-    assert.ok([0, 7].indexOf(q.pc) >= 0);
-    assert.ok(FC.chords('major', true, 3).some(function (c) { return c.deg === q.deg && c.type === q.type; }));
+    var q = FC.pick('major', true, lv.cards, null, Math.random, avoid);
+    assert.ok(lv.cards.some(function (c) { return c.pc === q.pc && c.deg === q.deg && c.type === q.type; }));
     if (avoid) assert.ok(!(q.pc === avoid.pc && q.deg === avoid.deg && q.type === avoid.type));
     avoid = q;
   }
 });
-check('find the chord: the ladder is built of stages; every step puts a single key or chord in play', function () {
+check('find the chord: every key opens with I IV V, then vi ii iii (i iv v, III VI VII), a review, the diminished chord, a full review', function () {
+  var key = function (c) { return c.pc + '/' + c.deg + c.type; };
   COMBOS.forEach(function (c) {
     var L = FC.ladder(c[0], c[1]), tag = c[0] + (c[1] ? ' pop' : ' jazz');
-    assert.ok(L.length > 80 && L.length < 200, tag + ' ' + L.length);
-    assert.strictEqual(new Set(L.map(function (l) { return l.keys + '/' + l.chords + '/' + l.inv; })).size, L.length, tag + ': no level repeats');
-    assert.deepStrictEqual([L[0].stage, L[0].step, L[0].kind], [1, 1, 'start']);
-    assert.deepStrictEqual(L.slice(0, 3).map(function (l) { return [l.stage, l.step, l.keys, l.chords]; }), [[1, 1, 2, 3], [1, 2, 2, 4], [1, 3, 2, 5]], tag + ': stage 1 adds its next two chords one at a time');
-    if (c[1]) assert.deepStrictEqual([L[3].add.dim, L[3].inv, L[2].inv], ['I', 5, 0], tag + ': Pop turns the first chords upside down in a step of its own');
-    else assert.ok(L.every(function (l) { return l.add == null || l.add.dim !== 'I'; }), tag + ': Jazz has no inversions steps (inversions are in from the start)');
-    var last = L[L.length - 1], total = FC.chords(c[0], c[1], 99).length;
-    assert.deepStrictEqual([last.keys, last.chords], [12, total], tag + ': the top level has everything');
-    for (var st = 2; ; st++) {
-      var steps = L.filter(function (l) { return l.stage === st; });
-      if (!steps.length) break;
-      var f = steps[0], intro = FC.stageIntro(c[0], c[1], st), n = intro.kind === 'K' ? intro.keys.length : intro.chords.length;
-      steps.forEach(function (l, i) { assert.strictEqual(l.step, i + 1); });
-      if (f.kind === 'K') assert.strictEqual(f.chords, 3, tag + ' stage ' + st + ': the chords start again from I IV V');
-      else assert.strictEqual(f.keys, 2, tag + ' stage ' + st + ': the keys start again from C and G');
-      if (n > 2) {                                                 // the tail: a whole chord type in one stage, in one step
-        assert.strictEqual(intro.kind, 'C');
-        assert.strictEqual(new Set(intro.chords.map(function (x) { return x.type; })).size, 1, tag + ' stage ' + st + ' adds one type');
-        assert.strictEqual(steps[0].add.to - steps[0].add.from, n);
-      }
-      steps.forEach(function (l, i) {
-        var prev = i ? steps[i - 1] : null, dk = prev ? l.keys - prev.keys : 0, dc = prev ? l.chords - prev.chords : 0;
-        if (l.add.dim === 'I') { assert.ok(prev && dk === 0 && dc === 0 && l.inv === l.chords, tag + ' stage ' + st + ': an inversions step changes only the inversions'); return; }
-        if (prev) assert.ok((dk === 0) !== (dc === 0), tag + ' stage ' + st + ' step ' + l.step + ': one thing changes at a time');
-        var big = Math.max(dk, dc);
-        if (big > 1) assert.ok(big > 2, tag + ' stage ' + st + ' step ' + l.step + ': a jump is only ever a whole block');
-        if (!l.add.back && n <= 2) assert.strictEqual(l.add.to - l.add.from, 1);
-      });
-      if (intro.kind === 'K') assert.strictEqual(steps.filter(function (l) { return !l.add.back; }).length, n, tag + ' stage ' + st + ': one step per new key');
+    var tri = L.filter(function (l) { return l.type === 'triad'; });
+    for (var k = 0; k < 5; k++) {
+      var g = tri.filter(function (l) { return l.keyIdx === k; });
+      var want = ['first', 'review', 'second', 'second', 'second', 'review', 'dim', 'full'];
+      if (!c[1] && k === 0) want.splice(1, 1);                         // Jazz starts on numerals: no repeat of the first three
+      assert.deepStrictEqual(g.map(function (l) { return l.role; }), want, tag + ' key ' + k);
+      assert.strictEqual(g[0].fresh.length, 3);
+      assert.ok(g[g.length - 1].cards.length >= 7 * (k + 1), tag + ': the full review has every triad of every key so far');
     }
+    // a level's cards are what it introduces plus what it reviews: nothing new hides in a review
+    L.forEach(function (l, i) { assert.ok(l.cards.length >= 1 && l.fresh.every(function (f) { return l.cards.map(key).indexOf(key(f)) >= 0; }), tag + ' ' + i); });
+    // each card is introduced exactly once
+    var seen = {}; L.forEach(function (l) { l.fresh.forEach(function (f) { assert.ok(!seen[key(f)], tag + ' introduced twice ' + key(f)); seen[key(f)] = 1; }); });
+    assert.ok(L.length > 100 && L.length < 300, tag + ' ' + L.length);
   });
-  var m = FC.ladder('major', true).filter(function (l) { return l.stage === 2; });
-  assert.deepStrictEqual(m.map(function (l) { return [l.keys, l.chords, l.inv]; }), [[2, 6, 5], [2, 7, 5], [2, 7, 7]], 'Pop major stage 2: V7, then iii, then both inverted');
-  assert.deepStrictEqual(FC.stepAdds('major', true, 5).chords, [{ deg: 4, type: '7' }]);
 });
 
-check('find the chord: levelInfo / levelAt', function () {
-  var i = FC.levelInfo('major', true, 5);
-  assert.deepStrictEqual([i.stage, i.step], [2, 1]);
-  assert.strictEqual(FC.stageSteps('major', true, 5), 3);
-  assert.strictEqual(FC.mayInvert('major', true, FC.levelAt('major', true, 3), 0, 'triad'), false);
-  assert.strictEqual(FC.mayInvert('major', true, FC.levelAt('major', true, 4), 0, 'triad'), true);
-  assert.deepStrictEqual(FC.levelInfo('major', true, 0), FC.levelInfo('major', true, 1));          // clamped
+check('find the chord: levelInfo / levelAt clamp and agree', function () {
   var n = FC.levelCount('major', true);
+  assert.deepStrictEqual(FC.levelInfo('major', true, 0), FC.levelInfo('major', true, 1));
   assert.deepStrictEqual(FC.levelInfo('major', true, n + 5), FC.levelInfo('major', true, n));
-  assert.strictEqual(FC.stageSteps('major', true, 1), 4);
-  assert.deepStrictEqual(FC.levelAt('major', true, n), { keys: 12, chords: 42, inv: 42 });
+  assert.strictEqual(FC.levelAt('major', true, 3).cards.length, 1);
 });
 
 // ---- Find a chord: identifying the picked notes ----
@@ -667,11 +636,12 @@ check('find the chord: each run of five questions has at least two about the sta
     var mode = cm[0], pop = cm[1], count = FCx.levelCount(mode, pop);
     for (var n = 2; n <= count; n += 5) {
       var l = FCx.levelInfo(mode, pop, n), fresh = FCx.freshTest(mode, pop, n), tr = { asked: 0, fresh: 0 };
+      if (!l.fresh || !l.fresh.length) continue;                       // a review level introduces nothing
       assert.ok(fresh, 'fresh predicate exists at level ' + n);
       for (var run = 0; run < 40; run++) {
         var hits = 0;
         for (var k = 0; k < 5; k++) {
-          var q = FCx.pick(mode, pop, l.keys, l.chords, rnd, null, null, fresh, FCx.freshPlan(tr));
+          var q = FCx.pick(mode, pop, l.cards, null, rnd, null, null, fresh, FCx.freshPlan(tr));
           var f = fresh(q); if (f) hits++;
           FCx.freshRecord(tr, f);
         }
@@ -679,17 +649,16 @@ check('find the chord: each run of five questions has at least two about the sta
       }
     }
   });
-  assert.strictEqual(FCx.freshTest('major', true, 1), null);                       // the starting stage has nothing new
 });
 
 check('find the chord: the new challenge is asked about often at the start of a stage', function () {
   var seed = 11; function rnd() { seed = (seed * 16807) % 2147483647; return seed / 2147483647; }
   var L = FC.ladder('major', true), n = 0;
-  for (var i = 0; i < L.length; i++) if (L[i].kind === 'K' && L[i].keys >= 6 && L[i].step === 1) { n = i + 1; break; }
+  for (var i = 0; i < L.length; i++) if (L[i].role === 'first' && L[i].keyIdx === 3) { n = i + 1; break; }
   var l = L[n - 1], fresh = FC.freshTest('major', true, n), hits = 0, N = 2000;
-  for (var j = 0; j < N; j++) hits += fresh(FC.pick('major', true, l.keys, l.chords, rnd, null, null, fresh, 'boost')) ? 1 : 0;
-  // one key of six would be ~17% unboosted; boosted it is clearly more
-  assert.ok(hits / N > 0.3, 'boosted share ' + hits / N);
+  for (var j = 0; j < N; j++) hits += fresh(FC.pick('major', true, l.cards, null, rnd, null, null, fresh, 'boost')) ? 1 : 0;
+  // three new cards of a dozen would be ~25% unboosted; boosted it is clearly more
+  assert.ok(hits / N > 0.4, 'boosted share ' + hits / N);
 });
 
 check('memory model: recall decays by half-life, misses shrink it, speed grades the gain', function () {
@@ -784,9 +753,19 @@ check('pop answers: described, checked and named like a lead sheet', function ()
     var N = F.levelCount(mode, pop);
     for (var n = 1; n <= N; n++) assert.ok(F.newCards(mode, pop, n).length >= 1, mode + ' ' + pop + ' ' + n);
   }); });
-  // the biggest level introduces 84 cards (Jazz, stage 21)
-  var mx = 0; for (var n = 1; n <= F.levelCount('major', false); n++) mx = Math.max(mx, F.newCards('major', false, n).length);
-  assert.strictEqual(mx, 84);
+  // the curriculum: five keys, one new key every few levels; levels only ever add cards, each pass restates what came before
+  var L = F.ladder('major', true);
+  assert.deepStrictEqual(L[0].cards.length, 3);                                  // level 1: I, IV, V of C ...
+  assert.strictEqual(L[0].ans, 'letters');                                       // ... named by letter
+  assert.ok(L[1].ans !== 'letters');                                             // level 2 onward: numerals
+  ['major', 'minor'].forEach(function (mode) { [true, false].forEach(function (pop) {
+    var lad = F.ladder(mode, pop), seen = {};
+    lad.forEach(function (lv, i) {
+      assert.ok(lv.cards.length >= 1, 'cards ' + i);
+      F.newCards(mode, pop, i + 1).forEach(function (c) { seen[JSON.stringify(c)] = 1; });
+    });
+    assert.ok(Object.keys(seen).length > 50, mode + ' ' + pop + ' covers a lot');
+  }); });
   // durability: nothing seen = empty bar; every card at 30 minutes = ready
   var mem = F.newMem(), d0 = F.durability(mem, 'major', true, 1);
   assert.ok(d0.total >= 1 && d0.fill === 0 && !d0.ready);

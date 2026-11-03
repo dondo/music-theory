@@ -27,9 +27,10 @@
   function def(mode, pop) { return DATA[(mode === 'minor' ? 'minor' : 'major') + '|' + (pop ? 'pop' : 'jazz')]; }
   function maxKeys() { return 12; }
   // the key pitch classes in play with k keys
-  function keys(mode, pop, k) { return def(mode, pop).keys.slice(0, clamp(k, 1, 12)); }
+  function keys(mode, pop, k) { if (Array.isArray(k)) return k; return def(mode, pop).keys.slice(0, clamp(k, 1, 12)); }      // (a level's own list of keys passes straight through)
   // the chords in play with c chords
   function chords(mode, pop, c) {
+    if (Array.isArray(c)) return c;
     var d = def(mode, pop);
     return d.chords.slice(0, clamp(c, 1, d.chords.length)).map(function (x) { return { deg: x[0], type: x[1] }; });
   }
@@ -68,10 +69,15 @@
   // `weight(q)` (optional, >= 1) makes the chords you have missed more likely
   // `rng` returns [0, 1); `avoid` is { pc, deg, type } or null
   // `fresh(q)` (optional) marks the new challenge of the level; `how` is 'only' (just those) or 'boost' (those weigh FRESH_BOOST times more)
-  function pick(mode, pop, keysLevel, chordsLevel, rng, avoid, weight, fresh, how) {
-    var ks = keys(mode, pop, keysLevel), cs = chords(mode, pop, chordsLevel);
-    var all = [];
+  // the cards in play: `keysLevel` may be a level's explicit card list ([{ pc, deg, type }]), else keys x chords as before
+  function cardsOf(mode, pop, keysLevel, chordsLevel) {
+    if (Array.isArray(keysLevel) && keysLevel.length && typeof keysLevel[0] === 'object') return keysLevel;
+    var ks = keys(mode, pop, keysLevel), cs = chords(mode, pop, chordsLevel), all = [];
     ks.forEach(function (pc) { cs.forEach(function (ch) { all.push({ pc: pc, deg: ch.deg, type: ch.type }); }); });
+    return all;
+  }
+  function pick(mode, pop, keysLevel, chordsLevel, rng, avoid, weight, fresh, how) {
+    var all = cardsOf(mode, pop, keysLevel, chordsLevel);
     var pool = all.filter(function (q) {
       return !(avoid && q.pc === avoid.pc && q.deg === avoid.deg && q.type === avoid.type);
     });
@@ -153,9 +159,7 @@
   function resetMem(mem) { mem.p = {}; mem.seq = 0; mem.tm = {}; }
   // does any pair in play (other than `avoid`) satisfy pred?
   function anyPair(mode, pop, keysLevel, chordsLevel, pred) {
-    var ks = keys(mode, pop, keysLevel), cs = chords(mode, pop, chordsLevel);
-    for (var i = 0; i < ks.length; i++) for (var j = 0; j < cs.length; j++) if (pred({ pc: ks[i], deg: cs[j].deg, type: cs[j].type })) return true;
-    return false;
+    return cardsOf(mode, pop, keysLevel, chordsLevel).some(function (c) { return pred({ pc: c.pc, deg: c.deg, type: c.type }); });
   }
   // the answer log: every answer, kept for fitting the constants above to you (capped; oldest dropped first)
   var LOG_KEY = 'music-theory-ftc-log-v1', LOG_CAP = 10000;
@@ -234,74 +238,91 @@
 
 
   // ---- the ladder ----
+  // The ladder is a curriculum built from quality groups (major chords, then minor chords, then the diminished one), one chord type at a time,
+  // one key at a time (see README, "Find the chord: the ladder"). Each level is an explicit list of cards (key + chord pairs), not a product of keys x chords.
+  // For every chord type, and for each key in turn (a STAGE), the levels are:
+  //   1. the key's first-group chords (major: I IV V),  2. a review of those across the keys so far,
+  //   3-5. each second-group chord alone in the key (major: vi, ii, iii),  6. a review of those across the keys so far,
+  //   7. the diminished chord alone (vii°; types that have one),  8. a full review of every chord of the type across the keys so far.
+  // (Sus4 and sus2 have no major/minor split: all six chords in the key at once, then a review.) A review identical to the level before it is left out,
+  // except in Pop's very first stage, where level 1 answers by letter names (C, F, G) and level 2 repeats it answering by roman numerals.
+  var CURRICULUM = {
+    'major|pop':  { keys: [0, 7, 5, 2, 10], types: ['triad', '7', 'sus4', 'sus2', 'add9', '9'], letters: true },
+    'minor|pop':  { keys: [9, 4, 2, 11, 7], types: ['triad', '7', 'sus4', 'sus2', 'add9', '9'], letters: true },
+    'major|jazz': { keys: [0, 5, 10, 7, 3], types: ['triad', '7', '9', 'sus4', 'add9', 'sus2', '11', '13'], letters: false },
+    'minor|jazz': { keys: [9, 2, 7, 4, 0], types: ['triad', '7', '9', 'sus4', 'add9', 'sus2', '11', '13'], letters: false }
+  };
+  var GROUPS = { major: { first: [0, 3, 4], second: [5, 1, 2], dim: 6 }, minor: { first: [0, 3, 4], second: [2, 5, 6], dim: 1 } };   // degrees (0 = I): major mode I IV V | vi ii iii | vii°; minor mode i iv v | III VI VII | ii°
+  var HAS_DIM = { triad: true, '7': true };                          // the types that have a chord on the diminished degree (the rest skip it)
+  var NO_SPLIT = { sus4: true, sus2: true };                         // no major/minor quality: one group
   var ladders = {};
+  function sameCards(a, b) {
+    if (a.length !== b.length) return false;
+    var k = function (c) { return c.pc + '|' + c.deg + '|' + c.type; }, m = {};
+    a.forEach(function (c) { m[k(c)] = true; });
+    return b.every(function (c) { return m[k(c)]; });
+  }
   function ladder(mode, pop) {
     var id = (mode === 'minor' ? 'minor' : 'major') + (pop ? '|pop' : '|jazz');
     if (ladders[id]) return ladders[id];
-    var d = def(mode, pop), k0 = d.seed[0], c0 = d.seed[1], out = [];
-    // Every step introduces one key or one chord (a block of more than two, the rare-chord tail, goes in as one step).
-    // `add` says what the step puts in play: { dim: 'K' | 'C', from, to } (indices into the key order / chord list); `back` marks a step that
-    // only brings back something already learned. lo..hi is the stage's own new range in its dimension.
-    // Pop: a chord comes inverted only after its stage's own inversions step; `iv` counts the chords (a prefix of the list) that may be inverted.
-    // Jazz mixes inversions into everything from the start.
-    var iv = pop ? 0 : 999;
-    function push(keys, chords, stage, kind, lo, hi, add) {
-      var step = out.filter(function (l) { return l.stage === stage; }).length + 1;
-      out.push({ keys: keys, chords: chords, stage: stage, step: step, kind: kind, lo: lo, hi: hi, add: add, inv: iv });
-    }
-    function invStep(keys, stage, kind, lo, hi, from, to) {            // the stage's chords turn upside down: a step of its own
-      if (!pop) return;
-      iv = to; push(keys, to, stage, kind, lo, hi, { dim: 'I', from: from, to: to });
-    }
-    function incs(from, n) {                       // the positions a dimension passes through when n items are added: one by one, or a block at once
-      var r = [], j;
-      if (n <= 2) for (j = 1; j <= n; j++) r.push(from + j); else r.push(from + n);
+    var cfg = CURRICULUM[id], g = GROUPS[mode === 'minor' ? 'minor' : 'major'], out = [], stage = 0;
+    function cards(pcs, degs, type) {
+      var r = [];
+      pcs.forEach(function (pc) { degs.forEach(function (d) { r.push({ pc: pc, deg: d, type: type }); }); });
       return r;
     }
-    var Pk = [k0], Pc = [c0], k = k0, c = c0;
-    push(k, c, 1, 'start', c0, c0 + d.open, null);
-    for (var o = 1; o <= d.open; o++) push(k, c + o, 1, 'start', c0, c0 + d.open, { dim: 'C', from: c + o - 1, to: c + o });
-    invStep(k, 1, 'start', c0, c0 + d.open, 0, c0 + d.open);
-    incs(c, d.open).forEach(function (p) { Pc.push(p); });
-    c += d.open;
-    d.stages.forEach(function (s, i) {
-      var stage = i + 2, n = s[1], steps = incs(k, n), prev;
-      if (s[0] === 'K') {
-        prev = k;
-        steps.forEach(function (p) { push(p, c0, stage, 'K', k, k + n, { dim: 'K', from: prev, to: p }); prev = p; });
-        var kn = k + n;
-        for (var j = 1; j < Pc.length; j++) push(kn, Pc[j], stage, 'K', k, kn, { dim: 'C', from: Pc[j - 1], to: Pc[j], back: true });
-        steps.forEach(function (p) { Pk.push(p); });
-        k = kn;
-      } else {
-        steps = incs(c, n); prev = c;
-        steps.forEach(function (p) { push(k0, p, stage, 'C', c, c + n, { dim: 'C', from: prev, to: p }); prev = p; });
-        var cn = c + n;
-        invStep(k0, stage, 'C', c, cn, c, cn);
-        for (var m = 1; m < Pk.length; m++) push(Pk[m], cn, stage, 'C', c, cn, { dim: 'K', from: Pk[m - 1], to: Pk[m], back: true });
-        steps.forEach(function (p) { Pc.push(p); });
-        c = cn;
-      }
+    cfg.types.forEach(function (type, ti) {
+      cfg.keys.forEach(function (pcX, ki) {
+        stage++;
+        var seen = cfg.keys.slice(0, ki + 1), lv = [], all = g.first.concat(g.second), first = ki === 0 && ti === 0;
+        function add(role, cs, fresh, plus) { lv.push({ role: role, cards: cs, fresh: fresh, add: plus || null, ans: 'numerals' }); }
+        function newKey() { return ki > 0 || ti > 0 ? { dim: 'K', keys: [pcX], back: false } : null; }
+        if (NO_SPLIT[type]) {
+          var c6 = cards([pcX], all, type);
+          add('all', c6, c6, { dim: 'C', chords: all.map(function (d) { return { deg: d, type: type }; }), back: false });
+          add('review', cards(seen, all, type), []);
+        } else {
+          var a = cards([pcX], g.first, type);
+          add('first', a, a, ki === 0 ? { dim: 'C', chords: g.first.map(function (d) { return { deg: d, type: type }; }), back: false } : { dim: 'K', keys: [pcX], back: false });
+          add('review', cards(seen, g.first, type), []);
+          g.second.forEach(function (d) { var c1 = cards([pcX], [d], type); add('second', c1, c1, { dim: 'C', chords: [{ deg: d, type: type }], back: false }); });
+          add('review', cards(seen, g.second, type), []);
+          if (HAS_DIM[type]) { var cd = cards([pcX], [g.dim], type); add('dim', cd, cd, { dim: 'C', chords: [{ deg: g.dim, type: type }], back: false }); }
+          add('full', cards(seen, HAS_DIM[type] ? all.concat([g.dim]) : all, type), []);
+        }
+        if (first && cfg.letters) lv[0].ans = 'letters';           // Pop's very first level answers by letter names; the repeat that follows uses numerals
+        var kept = [];
+        lv.forEach(function (x, i) {                                // (a review that repeats the level before it adds nothing, except that very first repeat)
+          var prev = kept[kept.length - 1];
+          if (prev && x.role !== 'first' && x.role !== 'second' && x.role !== 'dim' && x.role !== 'all' && sameCards(prev.cards, x.cards) && !(first && kept.length === 1 && cfg.letters)) return;
+          kept.push(x);
+        });
+        kept.forEach(function (x, i) {
+          var keySet = {}, chSet = {}, ks = [], cs = [];
+          x.cards.forEach(function (c) { if (!keySet[c.pc]) { keySet[c.pc] = 1; ks.push(c.pc); } var ck = c.deg + '|' + c.type; if (!chSet[ck]) { chSet[ck] = 1; cs.push({ deg: c.deg, type: c.type }); } });
+          out.push({ keys: ks, chords: cs, cards: x.cards, fresh: x.fresh, stage: stage, step: i + 1, kind: x.add && x.add.dim === 'K' ? 'K' : 'C', role: x.role, type: type, keyPc: pcX, keyIdx: ki, seen: seen, ans: x.ans,
+                     lo: 0, hi: 0, add: x.add, inv: pop ? 0 : 999 });
+        });
+      });
     });
     return (ladders[id] = out);
   }
   function levelCount(mode, pop) { return ladder(mode, pop).length; }
   // level n (1-based, clamped): { keys, chords, stage, step, kind: 'start' | 'K' | 'C', lo, hi, add }
   function levelInfo(mode, pop, n) { var L = ladder(mode, pop); return L[clamp(n, 1, L.length) - 1]; }
-  function levelAt(mode, pop, n) { var l = levelInfo(mode, pop, n); return { keys: l.keys, chords: l.chords, inv: l.inv }; }
+  function levelAt(mode, pop, n) { var l = levelInfo(mode, pop, n); return { keys: l.keys, chords: l.chords, cards: l.cards, inv: l.inv }; }
   // how many steps the stage of level n has
   // percent of all songs (rough model) playable once the stage is complete
-  function stageCoverage(mode, pop, stage) { var c = def(mode, pop).cov; return c[clamp(stage, 1, c.length) - 1]; }
+  function stageCoverage() { return null; }                      // (the old "songs playable" estimate belonged to the old ladder)
   function stageSteps(mode, pop, n) {
     var L = ladder(mode, pop), s = levelInfo(mode, pop, n).stage;
     return L.filter(function (l) { return l.stage === s; }).length;
   }
   // a predicate for the stage's new challenge that is in play at level n (new keys or new chords), or null when none is yet
-  function freshTest(mode, pop, n) {                    // what step n puts in play (one key, or one chord): the "new challenge" of that step
-    var a = stepAdds(mode, pop, n);
-    if (!a) return null;
-    if (a.dim === 'K') return a.keys.length ? function (q) { return a.keys.indexOf(q.pc) >= 0; } : null;
-    return a.chords.length ? function (q) { return a.chords.some(function (x) { return x.deg === q.deg && x.type === q.type; }); } : null;
+  function freshTest(mode, pop, n) {                    // the cards level n introduces (none in a review): the "new challenge" of that level
+    var f = levelInfo(mode, pop, n).fresh;
+    if (!f || !f.length) return null;
+    return function (q) { return f.some(function (x) { return x.pc === q.pc && x.deg === q.deg && x.type === q.type; }); };
   }
   // may the chord (deg, type) come inverted at level `lv` ({ chords, inv })?
   function mayInvert(mode, pop, lv, deg, type) {
@@ -311,17 +332,11 @@
   }
   // what a stage introduces: { kind: 'K', keys: [pc...] } or { kind: 'C', chords: [{deg, type}...] }
   function stageIntro(mode, pop, stage) {
-    var L = ladder(mode, pop), f = L.filter(function (l) { return l.stage === stage; })[0];
-    if (!f) return null;
-    return f.kind === 'K' ? { kind: 'K', keys: keys(mode, pop, f.hi).slice(f.lo) } : { kind: 'C', chords: chords(mode, pop, f.hi).slice(f.lo) };
+    var f = ladder(mode, pop).filter(function (l) { return l.stage === stage; })[0];
+    return f ? { kind: 'K', keys: [f.keyPc], type: f.type, keyIdx: f.keyIdx } : null;
   }
   // what step n puts in play: { dim: 'K', keys: [pc...], back } or { dim: 'C', chords: [...], back }, or null (the very first step)
-  function stepAdds(mode, pop, n) {
-    var a = levelInfo(mode, pop, n).add;
-    if (!a) return null;
-    if (a.dim === 'I') return { dim: 'I', chords: chords(mode, pop, a.to).slice(a.from), back: false };
-    return a.dim === 'K' ? { dim: 'K', keys: keys(mode, pop, a.to).slice(a.from), back: !!a.back } : { dim: 'C', chords: chords(mode, pop, a.to).slice(a.from), back: !!a.back };
-  }
+  function stepAdds(mode, pop, n) { return levelInfo(mode, pop, n).add; }       // { dim: 'K', keys } for a new key, { dim: 'C', chords } for new chords; null in a review
 
   var STREAK = 20;                      // the answers (bubbles) a level looks at; the slider in Settings changes it (1-30)
   // Level-up: the last STREAK first-try answers must include at least passMark(STREAK) right ones (90%, misses rounded down: under 10 answers, all of them),
@@ -329,22 +344,9 @@
   function passMark(n) { return n - Math.floor(n / 10); }
   var H_DURABLE = 30 * 60000;
   // the key/chord pairs in play at level n
-  function pairsAt(mode, pop, n) {
-    var info = levelInfo(mode, pop, n), ks = keys(mode, pop, info.keys), cs = chords(mode, pop, info.chords), out = [];
-    ks.forEach(function (pc) { cs.forEach(function (c) { out.push({ pc: pc, deg: c.deg, type: c.type }); }); });
-    return out;
-  }
-  // the cards a level introduces: pairs in play that were not in play one level down (else the level's new key or chord, else everything in play)
-  function newCards(mode, pop, n) {
-    var all = pairsAt(mode, pop, n), out = all;
-    if (n > 1) {
-      var seen = {};
-      pairsAt(mode, pop, n - 1).forEach(function (q) { seen[q.pc + '|' + q.deg + '|' + q.type] = true; });
-      out = all.filter(function (q) { return !seen[q.pc + '|' + q.deg + '|' + q.type]; });
-    }
-    if (!out.length) { var f = freshTest(mode, pop, n); out = f ? all.filter(f) : all; }
-    return out.length ? out : all;
-  }
+  function pairsAt(mode, pop, n) { return levelInfo(mode, pop, n).cards.slice(); }
+  // the cards a level introduces (a review introduces none: then every card in play counts)
+  function newCards(mode, pop, n) { var l = levelInfo(mode, pop, n); return (l.fresh && l.fresh.length ? l.fresh : l.cards).slice(); }
   // how durable the level's new cards are: each card fills on a log scale from the starting half-life (empty) to H_DURABLE (full);
   // `fill` is the average, `ready` is true when every card is there
   function durability(mem, mode, pop, n) {
@@ -382,7 +384,7 @@
     return hits[0];
   }
 
-  return { STREAK: STREAK, passMark: passMark, H_DURABLE: H_DURABLE, pairsAt: pairsAt, newCards: newCards, durability: durability, DATA: DATA, maxKeys: maxKeys, clamp: clamp, keys: keys, chords: chords, pick: pick,
+  return { STREAK: STREAK, passMark: passMark, H_DURABLE: H_DURABLE, pairsAt: pairsAt, newCards: newCards, cardsOf: cardsOf, durability: durability, DATA: DATA, maxKeys: maxKeys, clamp: clamp, keys: keys, chords: chords, pick: pick,
            ladder: ladder, levelCount: levelCount, levelInfo: levelInfo, levelAt: levelAt, stageSteps: stageSteps, stageIntro: stageIntro, mayInvert: mayInvert, stepAdds: stepAdds, stageCoverage: stageCoverage, freshTest: freshTest,
            identify: identify, weightKey: weightKey, weightOf: weightOf, miss: miss, hit: hit, loadWeights: loadWeights, saveWeights: saveWeights, resetWeights: resetWeights,
            describe: describe, checkAnswer: checkAnswer, needsQual: needsQual, needsSev: needsSev, pcName: pcName, answerName: answerName,

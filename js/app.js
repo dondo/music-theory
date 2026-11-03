@@ -475,10 +475,11 @@
     var inPlay = quizOn() && !alt ? FindChord.chords(state.mode, ftcPop(), ftcLevels().chords) : null;
     function degInPlay(dd) { return !inPlay || inPlay.some(function (c) { return c.deg === dd; }); }
     function typeInPlay(id) { return !inPlay || inPlay.some(function (c) { return c.type === id; }); }
-    var popQuiz = quizOn() && !alt && pop;                   // Pop Find the chord: root, quality and seventh rows replace the degree row
+    var numQuiz = quizOn() && !alt && pop && !ftcLetters();  // Pop levels that answer by roman numeral: the degree row, as in Jazz (without the mode names)
+    var popQuiz = quizOn() && !alt && pop && !numQuiz;       // Pop Find the chord (letter-name levels): root, quality and seventh rows replace the degree row
     if (popQuiz || qOn) order = [];
     chordDegrees.closest('.chord-row').hidden = qOn;
-    degLabel.textContent = popQuiz ? 'Quality' : degLabel.textContent;
+    degLabel.textContent = popQuiz ? 'Quality' : numQuiz ? 'Degree' : degLabel.textContent;
     if (popQuiz) modeHeadTip.textContent = 'dim, min (minor), maj (major) or aug. For a 7th, 9th, 11th or 13th chord on a major (or augmented) triad, also choose maj (Cmaj7) or dom (C7).';
     for (var oi = 0; oi < order.length; oi++) {
       var d = order[oi];
@@ -500,8 +501,8 @@
         var hideSym = quizOn() && !state.answered;                  // Find the chord: the names would give the answer away until the guess is right (or given up)
         b.setAttribute('aria-label', c.roman + (hideSym ? '' : ', ' + c.symbol) + (pop ? '' : ', ' + c.mode));
         if (!pop) b.setAttribute('data-dark', c.darkness);           // gentle shading: brightest mode to darkest
-        if (pop) b.appendChild(el('span', 'chip-num', c.symbol));                  // Pop: chord symbols (Am), as on a lead sheet
-        if (pop && progsMode()) b.appendChild(el('span', 'chip-sym', c.roman));    // (Progressions: the roman numeral too, small, underneath)
+        if (pop && !numQuiz) b.appendChild(el('span', 'chip-num', c.symbol));      // Pop: chord symbols (Am), as on a lead sheet
+        if (pop && !numQuiz && progsMode()) b.appendChild(el('span', 'chip-sym', c.roman));    // (Progressions: the roman numeral too, small, underneath)
         else { b.appendChild(el('span', 'chip-num', c.roman)); b.appendChild(el('span', 'chip-sym', hideSym ? '\u00a0' : c.symbol)); }
         if (!pop) b.appendChild(el('span', 'chip-mode', c.mode));
       }
@@ -1795,11 +1796,12 @@
   function quizOn() { return state.flash && state.cardMode === 'chord'; }
   function ftcPop() { return level === 'pop'; }
 
+  var FTC_LADDER = 2;                                  // which ladder the saved levels belong to (1: the old keys-x-chords ladder, whose level numbers mean nothing now)
   function loadFtc() {
     try {
       var o = JSON.parse(window.localStorage.getItem(FTC_KEY));
       if (!o || typeof o !== 'object') return;
-      if (o.lvl && typeof o.lvl === 'object') Object.keys(o.lvl).forEach(function (k) { if (/^(major|minor)\|(pop|jazz)$/.test(k) && Number.isInteger(o.lvl[k]) && o.lvl[k] >= 1) ftcLv[k] = o.lvl[k]; ftcLvPrev[k] = o.lvl[k]; if (o.lvt && Number.isInteger(o.lvt[k])) ftcLvT[k] = o.lvt[k]; });
+      if (o.ladder === FTC_LADDER && o.lvl && typeof o.lvl === 'object') Object.keys(o.lvl).forEach(function (k) { if (/^(major|minor)\|(pop|jazz)$/.test(k) && Number.isInteger(o.lvl[k]) && o.lvl[k] >= 1) ftcLv[k] = o.lvl[k]; ftcLvPrev[k] = o.lvl[k]; if (o.lvt && Number.isInteger(o.lvt[k])) ftcLvT[k] = o.lvt[k]; });
       ftcAuto = true;                                  // (always automatic; older saves may say otherwise)
       if (o.fresh && Number.isInteger(o.fresh.asked) && Number.isInteger(o.fresh.fresh) && o.fresh.asked >= 0 && o.fresh.asked < 5 && o.fresh.fresh >= 0) ftcFresh = { asked: o.fresh.asked, fresh: o.fresh.fresh };
       ftcStreak = ftcTried = ftcRight = 0;               // (a reload starts a fresh session: empty bubbles, nothing carried from the one before)
@@ -1817,7 +1819,7 @@
     Object.keys(ftcLv).forEach(function (k) { if (ftcLvPrev[k] !== ftcLv[k]) { ftcLvT[k] = nowT; ftcLvPrev[k] = ftcLv[k]; } });
     ['play', 'find', 'key', 'sig'].forEach(function (m) { if (stepLvPrev[m] !== stepLv[m]) { stepLvT[m] = nowT; stepLvPrev[m] = stepLv[m]; } });
     var c = slots.chord || slotSnap();
-    try { window.localStorage.setItem(FTC_KEY, JSON.stringify({ lvl: ftcLv, lvt: ftcLvT, auto: ftcAuto, streak: c.streak, sess: c.sess || null, bub: c.bub || [], full: !!c.bubFull, trial: c.unlocked, ever: c.ever, fresh: ftcFresh })); } catch (e) { /* storage unavailable */ }
+    try { window.localStorage.setItem(FTC_KEY, JSON.stringify({ ladder: FTC_LADDER, lvl: ftcLv, lvt: ftcLvT, auto: ftcAuto, streak: c.streak, sess: c.sess || null, bub: c.bub || [], full: !!c.bubFull, trial: c.unlocked, ever: c.ever, fresh: ftcFresh })); } catch (e) { /* storage unavailable */ }
     var no = {};
     ['play', 'find', 'key', 'sig'].forEach(function (m) { var q = slots[m] || {}; no[m] = { lv: stepLv[m], lt: +stepLvT[m] || 0, streak: q.streak | 0, sess: q.sess || null, bub: q.bub || [], full: !!q.bubFull, trial: !!q.unlocked, ever: !!q.ever }; });
     try { window.localStorage.setItem(STEPS_KEY, JSON.stringify(no)); } catch (e) { /* storage unavailable */ }
@@ -1844,9 +1846,11 @@
     try { window.localStorage.removeItem(FTC_KEY); window.localStorage.removeItem(TRIALS_KEY); window.localStorage.removeItem(WELCOME_KEY); window.localStorage.removeItem(STUDY_WELCOME_KEY); } catch (e) { /* storage unavailable */ }   // (the time trial bests go too)
   }
   // the levels in force: the chord dial is capped by what this level (Pop / Jazz) offers
-  function ftcLevels() { return ftcTrial ? { keys: ftcTrial.keys, chords: ftcTrial.chords, inv: ftcTrial.inv } : FindChord.levelAt(state.mode, ftcPop(), ftcLevelNo()); }
+  function ftcLevels() { return ftcTrial ? { keys: ftcTrial.keys, chords: ftcTrial.chords, cards: ftcTrial.cards, inv: ftcTrial.inv } : FindChord.levelAt(state.mode, ftcPop(), ftcLevelNo()); }
   // true while only triads are in play: the TYPE row is hidden and a degree alone is the answer
-  function popAns() { return quizOn() && ftcPop(); }                  // Pop answers: type + root + quality (+ seventh), not roman degrees
+  // Pop's very first level answers by letter names (root + quality); every other level, in Pop too, answers by roman numeral (type + degree), as Jazz does
+  function ftcLetters() { return ftcPop() && FindChord.levelInfo(state.mode, true, ftcLevelNo()).ans === 'letters'; }
+  function popAns() { return quizOn() && ftcLetters(); }              // letter answers: type + root + quality (+ seventh), not roman degrees
   function ftcHint() {
     if (popAns()) return ftcTypesHidden() ? 'Choose the chord\u2019s root on the keyboard and its quality.' : 'Choose the chord\u2019s type, root and quality, in any order; the last one you choose is your answer.';
     return ftcTypesHidden() ? 'Choose the chord\u2019s degree.' : 'Choose a type and a degree, in either order. The second one you choose is your answer.';
@@ -1883,28 +1887,34 @@
     if (chords.length > 2 && types.length === 1 && types[0] !== 'triad') { var d = Chords.TYPES.filter(function (x) { return x.id === types[0]; })[0]; return (d ? d.label : types[0]) + ' chords on '; }
     return '';
   }
-  // between steps of a stage: what the next step puts in play (the chord numeral or key in bold)
-  function stepNote(n) {
-    var mode = state.mode, pop = ftcPop(), info = FindChord.levelInfo(mode, pop, n), add = FindChord.stepAdds(mode, pop, n);
-    var lead = 'You\u2019ve completed Level ' + (info.step - 1) + ' (of ' + FindChord.stageSteps(mode, pop, n) + '). On to level ' + info.step + ', ';
-    if (!add) return lead.replace(/, $/, '.');
-    var verb = add.back ? 'adding back ' : 'introducing ', names, one;
-    if (add.dim === 'K') {
-      names = ftcNames(add.keys, true); one = names.length === 1;
-      return lead + verb + (one ? 'a ' + (add.back ? '' : 'new ') + 'key: ' : (add.back ? '' : 'new ') + 'keys: ') + '<strong>' + ftcJoin(names) + '</strong>!';
+  // What a level of the new ladder is about, in words. `bold`: wrap the new things in <strong> (banners); plain for the menus.
+  function ftcKeyWord(pc) { return plainNames(ftcNames([pc], true))[0]; }
+  function ftcKeysWord(pcs) { return pcs.length === 1 ? ftcKeyWord(pcs[0]) : ftcJoin(pcs.map(function (pc) { return ftcKeyWord(pc).replace(/ (major|minor)$/, ''); })) + (state.mode === 'minor' ? ' minor' : ' major'); }
+  function ftcTypeWord(type) { var d = Chords.TYPES.filter(function (x) { return x.id === type; })[0]; return type === 'triad' ? 'triads' : (d ? d.label : type).toLowerCase() + ' chords'; }
+  function ftcChordsWord(chords) { return ftcJoin(plainNames(ftcNames(chords, false))); }
+  function ftcDistinctChords(cards) { var seen = {}, r = []; cards.forEach(function (c) { var k = c.deg + '|' + c.type; if (!seen[k]) { seen[k] = 1; r.push({ deg: c.deg, type: c.type }); } }); return r; }
+  function ftcLevelWords(n, bold) {
+    var mode = state.mode, pop = ftcPop(), l = FindChord.levelInfo(mode, pop, n), b = function (t) { return bold ? '<strong>' + t + '</strong>' : t; };
+    var kw = ftcKeyWord(l.keyPc), chs = ftcChordsWord(ftcDistinctChords(l.fresh.length ? l.fresh : l.cards)), seenW = ftcKeysWord(l.seen);
+    var type = l.type === 'triad' ? '' : ' ' + ftcTypeWord(l.type).replace(/ chords$/, '');
+    switch (l.role) {
+      case 'first': return (l.ans === 'letters' ? 'the chords ' : '') + b(chs) + ' in ' + kw + (l.ans === 'letters' ? ', by letter name' : '');
+      case 'all': return 'all six ' + ftcTypeWord(l.type) + ' in ' + b(kw);
+      case 'second': case 'dim': return b(chs) + ' in ' + kw;
+      case 'full': return 'a full review of ' + ftcTypeWord(l.type) + ' in ' + seenW;
+      default: return (l.ans === 'numerals' && l.stage === 1 && l.step === 2 ? 'the same chords, now by roman numeral' : 'review: ' + chs + ' in ' + seenW);
     }
-    if (add.dim === 'I') return lead + 'introducing inversions of ' + ftcJoin(ftcBold(ftcNames(add.chords, false, true))) + '!';
-    names = ftcNames(add.chords, false, true); one = names.length === 1;
-    if (one) return lead + verb + 'a ' + (add.back ? '' : 'new ') + 'chord: ' + (pop ? '' : 'Degree ') + ftcBold(names)[0] + '!';
-    return lead + verb + (add.back ? '' : 'new ') + 'chords: ' + ftcBlockLabel(add.chords) + ftcJoin(ftcBold(names)) + '!';
+  }
+  // between levels: what the next level puts in play
+  function stepNote(n) {
+    var info = FindChord.levelInfo(state.mode, ftcPop(), n);
+    var lead = 'You\u2019ve completed Level ' + (info.step - 1) + ' (of ' + FindChord.stageSteps(state.mode, ftcPop(), n) + '). On to level ' + info.step + (info.role === 'review' || info.role === 'full' ? ': ' : ', introducing: ');
+    return lead + ftcLevelWords(n, true) + '!';
   }
   // after a whole stage: what the next one introduces
   function stageNote(stage) {
-    var mode = state.mode, pop = ftcPop(), it = FindChord.stageIntro(mode, pop, stage), count = it.kind === 'K' ? it.keys.length : it.chords.length;
-    var many = count === 1 ? (it.kind === 'K' ? 'a new key' : 'a new chord') : (count === 2 ? 'two' : count) + (it.kind === 'K' ? ' new keys' : ' new chords');
-    var names = it.kind === 'K' ? ftcNames(it.keys, true) : ftcNames(it.chords, false, true);
-    var first = it.kind === 'K' ? ftcNames(it.keys.slice(0, 1), true)[0] : ftcNames(it.chords.slice(0, 1), false)[0];
-    return 'Stage ' + stage + ' introduces ' + many + (it.kind === 'K' ? ': ' : ' to find: ') + (it.kind === 'C' ? ftcBlockLabel(it.chords) : '') + ftcJoin(ftcBold(names)) + (count === 2 ? ', starting with <strong>' + first + '</strong>!' : '.');
+    var it = FindChord.stageIntro(state.mode, ftcPop(), stage);
+    return 'Stage ' + stage + ' is ' + ftcTypeWord(it.type) + ' in <strong>' + ftcKeyWord(it.keys[0]) + '</strong>.';
   }
   var bannerHold = false;                                       // a trial result stays up until the next pick
   function showBanner(title, text, withConfetti, icon) {
@@ -1922,9 +1932,8 @@
     levelBanner.removeAttribute('data-welcome');
     var pop = ftcPop(), html, title = 'Nice work!', goRow = false;
     if (newStage) {
-      var p = FindChord.stageCoverage(state.mode, pop, doneStage);
       title = 'Congratulations!';
-      html = 'You have completed Stage ' + doneStage + '. You can now play ' + (p < 1 ? 'a few' : 'about ' + p + '% of all') + ' ' + (pop ? 'pop' : 'jazz') + ' songs!<span class="levelup-line2">' + stageNote(FindChord.levelInfo(state.mode, pop, n).stage) + '</span>';
+      html = 'You have completed Stage ' + doneStage + ' (' + stageText(doneStage) + ').<span class="levelup-line2">' + stageNote(FindChord.levelInfo(state.mode, pop, n).stage) + '</span>';
       goRow = true;
     } else { html = stepNote(n); goRow = true; }
     var allTriads = function (k) { return FindChord.chords(state.mode, pop, FindChord.levelAt(state.mode, pop, k).chords).every(function (c) { return c.type === 'triad'; }); };
@@ -2066,17 +2075,14 @@
   function maybeWelcome() {
     try { if (window.localStorage.getItem(WELCOME_KEY)) return; } catch (e) { return; }
     if (ftcLevelNo() !== 1 || ftcTrial) return;
-    var mode = state.mode, pop = ftcPop(), total = FindChord.levelInfo(mode, pop, FindChord.levelCount(mode, pop)).stage, l = FindChord.levelAt(mode, pop, 1);
-    var ks = ftcNames(FindChord.keys(mode, pop, l.keys), true), cs = FindChord.chords(mode, pop, l.chords);
-    var w = function (n) { return NUM_WORDS[n] || String(n); };
-    var what = w(cs.length) + (cs.every(function (c) { return c.type === 'triad'; }) ? ' triads' : ' chords');
+    var mode = state.mode, pop = ftcPop(), total = FindChord.levelInfo(mode, pop, FindChord.levelCount(mode, pop)).stage;
     var home = document.querySelector('.stage-card');
     if (levelBanner.parentNode !== home) home.insertBefore(levelBanner, home.firstChild);
     document.getElementById('ftc-levelup-icon').textContent = '\u{1F914}';
     document.getElementById('ftc-levelup-title').textContent = 'Welcome to \u201CFind the Chord!\u201D';
     levelText.innerHTML = 'You\u2019ll be shown a chord with a key signature, and will identify it below. This is divided up into ' + total +
-      ' stages; in each stage, a new key or chord will be introduced and you\u2019ll work your way back up to identifying it along with what you\u2019ve already done.' +
-      '<span class="levelup-line2">The first stage starts with ' + what + ' in ' + w(ks.length) + ' keys, ' + ftcJoin(ks) + '. Good luck!</span>' +
+      ' stages; each takes one kind of chord in one key, starting with the major chords, then the minor ones, then the diminished one, with reviews along the way.' +
+      '<span class="levelup-line2">The first stage is ' + stageText(1) + (pop ? ': the first level asks for letter names, the rest for roman numerals' : '') + '. Good luck!</span>' +
       '<span class="levelup-go-row"><button type="button" class="btn-reset levelup-go">Go \u2192</button></span>';
     levelBanner.setAttribute('data-welcome', '1');
     levelBanner.hidden = false;
@@ -2254,22 +2260,20 @@
     var nowMs = Date.now();
     var prevFresh = isFresh && ftcLevelNo() > 1 ? FindChord.freshTest(state.mode, ftcPop(), ftcLevelNo() - 1) : null;
     var isOld = isFresh ? function (c) { return !isFresh(c) && (!prevFresh || prevFresh(c)); } : null;     // older material: what the step before introduced (else anything already in play)
-    var plan = isFresh ? FindChord.floorPlan(ftcFresh, true, FindChord.anyPair(state.mode, ftcPop(), l.keys, l.chords, function (c) { return isOld(c) && !(ftcQ && c.pc === ftcQ.pc && c.deg === ftcQ.deg && c.type === ftcQ.type); })) : null;
+    var plan = isFresh ? FindChord.floorPlan(ftcFresh, true, FindChord.anyPair(state.mode, ftcPop(), l.cards, null, function (c) { return isOld(c) && !(ftcQ && c.pc === ftcQ.pc && c.deg === ftcQ.deg && c.type === ftcQ.type); })) : null;
     ftcDraw = plan === 'fresh' ? 'f' : plan === 'old' ? 'o' : 'w';
-    var q = FindChord.pick(state.mode, ftcPop(), l.keys, l.chords, Math.random, ftcQ, function (c) { return FindChord.memWeight(ftcMem, state.mode, c, nowMs); },
+    var q = FindChord.pick(state.mode, ftcPop(), l.cards, null, Math.random, ftcQ, function (c) { return FindChord.memWeight(ftcMem, state.mode, c, nowMs); },
                            plan === 'old' ? isOld : isFresh, plan ? 'only' : null);
     q = { pc: q.pc, deg: q.deg, type: q.type };
     var forceInv = false;
     if (ftcHomeNext && !resumeQ && !ftcTrial) {
       ftcDraw = 'h';                     // the step's first question: the key it added (its home triad, I or i), or one of the chords it added
-      var add = FindChord.stepAdds(state.mode, ftcPop(), ftcLevelNo());
+      var fr = FindChord.levelInfo(state.mode, ftcPop(), ftcLevelNo()).fresh;
       if (ftcOpen) q = { pc: ftcOpen.pc, deg: ftcOpen.deg, type: ftcOpen.type };
-      else if (add && add.dim === 'K' && add.keys.length) q = { pc: add.keys[add.keys.length - 1], deg: 0, type: 'triad' };
-      else if (add && add.chords.length) {
-        forceInv = add.dim === 'I';
-        var inKeys = FindChord.keys(state.mode, ftcPop(), l.keys).filter(function (pc) { return !ftcQ || pc !== ftcQ.pc || l.keys < 2; });
-        var ch = add.chords[Math.floor(Math.random() * add.chords.length)];
-        q = { pc: inKeys[Math.floor(Math.random() * inKeys.length)], deg: ch.deg, type: ch.type };
+      else if (fr && fr.length) {                                 // (a card the level introduces; a new key opens with its home chord when that is one of them)
+        var home = fr.filter(function (c) { return c.deg === 0; }), pool = (home.length && !(ftcQ && home.length === 1 && home[0].pc === ftcQ.pc && home[0].deg === ftcQ.deg && home[0].type === ftcQ.type) ? home : fr);
+        var hc = pool[Math.floor(Math.random() * pool.length)];
+        q = { pc: hc.pc, deg: hc.deg, type: hc.type };
       }
     }
     var ftcHomeNextWas = ftcHomeNext && !resumeQ && !ftcTrial;
@@ -2455,7 +2459,7 @@
     var snap = ftcTrial ? ftcTrial.snap                                   // ("Try again": the state from before the first trial is still the one to return to)
       : { bub: ftcBub, bubFull: bubFull, streak: ftcStreak, tried: ftcTried, right: ftcRight, home: ftcHomeNext };
     clearInterval(trialTick); trialTick = null;
-    ftcTrial = { level: n, note: nq ? studySlot() : null, keys: lv && lv.keys, chords: lv && lv.chords, inv: lv && lv.inv, n: 0, wrongs: 0, t0: 0, qStart: 0, penalty: 0, times: [], snap: snap, counting: true, done: false, view: null };
+    ftcTrial = { level: n, note: nq ? studySlot() : null, keys: lv && lv.keys, chords: lv && lv.chords, cards: lv && lv.cards, inv: lv && lv.inv, n: 0, wrongs: 0, t0: 0, qStart: 0, penalty: 0, times: [], snap: snap, counting: true, done: false, view: null };
     ftcBub = null; bubFull = false; ftcStreak = 0; ftcTried = 0; ftcRight = 0; ftcHomeNext = false;
     bannerHold = false; levelBanner.hidden = true;
     syncTrialBox(); drawClock(); updateFtc(); updateScore(); updateChordPanel();
@@ -2651,9 +2655,7 @@
   function ftcRevalidate() {
     if (!quizOn() || !ftcQ || state.answered) return;
     var l = ftcLevels();
-    var okKey = FindChord.keys(state.mode, ftcPop(), l.keys).indexOf(ftcQ.pc) >= 0;
-    var okChord = FindChord.chords(state.mode, ftcPop(), l.chords).some(function (c) { return c.deg === ftcQ.deg && c.type === ftcQ.type; });
-    if (okKey && okChord) return;
+    if (l.cards.some(function (c) { return c.pc === ftcQ.pc && c.deg === ftcQ.deg && c.type === ftcQ.type; })) return;
     var anim = ftcNewQuestion(true);
     updateScore();
     draw(anim, false);
@@ -2697,23 +2699,10 @@
     return ftcJoin(plainNames(ftcNames(chords, false))) + (n === 1 ? ' chord' : ' chords');
   }
   function keyListText(pcs) { return ftcJoin(plainNames(ftcNames(pcs, true))) + (pcs.length === 1 ? ' key' : ' keys'); }
-  function startText(lv) {                                                  // the starting keys and chords
-    var mode = state.mode, pop = ftcPop(), ks = FindChord.keys(mode, pop, lv.keys).map(function (pc) { return plainNames(ftcNames([pc], true))[0]; });
-    return ftcJoin(ks) + ' with ' + ftcJoin(plainNames(ftcNames(FindChord.chords(mode, pop, lv.chords), false)));
-  }
-  function stepText(n) {                                                  // what level n of the ladder puts in play
-    var mode = state.mode, pop = ftcPop(), add = FindChord.stepAdds(mode, pop, n), lv;
-    if (!add) { lv = FindChord.levelAt(mode, pop, n); return startText(lv); }
-    if (add.dim === 'I') return 'inversions of ' + ftcJoin(plainNames(ftcNames(add.chords, false)));
-    if (add.dim === 'K') return (add.back ? 'back to ' : '') + keyListText(add.keys);
-    return (add.back ? 'back to ' : '') + chordListText(add.chords);
-  }
-  function stageText(stage) {                                             // what stage `stage` introduces
-    var mode = state.mode, pop = ftcPop(), L = FindChord.ladder(mode, pop), first = 0, it;
-    for (var i = 0; i < L.length; i++) if (L[i].stage === stage) { first = i + 1; break; }
-    if (stage === 1) { var last = first; while (last < L.length && L[last].stage === 1) last++; return startText(FindChord.levelAt(mode, pop, last)); }       // (the whole starting stage)
-    it = FindChord.stageIntro(mode, pop, stage);
-    return it.kind === 'K' ? keyListText(it.keys) : chordListText(it.chords);
+  function stepText(n) { return ftcLevelWords(n, false); }                 // what level n of the ladder is about
+  function stageText(stage) {                                             // what stage `stage` is
+    var it = FindChord.stageIntro(state.mode, ftcPop(), stage);
+    return ftcTypeWord(it.type) + ' in ' + ftcKeyWord(it.keys[0]);
   }
   var NOTE_LEVEL_TEXT = [null, 'treble clef', 'bass clef', 'grand clef', 'alto clef (optional!)', 'all three'];
   function noteLevelText(n) { return NOTE_LEVEL_TEXT[n]; }
