@@ -2057,11 +2057,11 @@
     if (!levelBanner.hasAttribute('data-welcome')) return;
     bannerHold = false; levelBanner.hidden = true; levelBanner.removeAttribute('data-welcome');
   }
-  function maybeStudyWelcome() {
+  function maybeStudyWelcome(again) {
     var m = state.cardMode, w = STUDY_WELCOMES[m], seen = [];
     if (!w || !state.flash || !state.card || bannerHold || state.answered) return;
     try { seen = JSON.parse(window.localStorage.getItem(STUDY_WELCOME_KEY)) || []; } catch (e) { return; }
-    if (seen.indexOf(m) >= 0) return;
+    if (seen.indexOf(m) >= 0 && !again) return;                      // (`again`: back at level 1 by the picker)
     var home = document.querySelector('.stage-card');
     if (levelBanner.parentNode !== home) home.insertBefore(levelBanner, home.firstChild);
     document.getElementById('ftc-levelup-icon').textContent = '\u{1F914}';
@@ -2070,12 +2070,12 @@
     levelBanner.setAttribute('data-welcome', m);
     levelBanner.hidden = false;
     bannerHold = true;
-    seen.push(m);
+    if (seen.indexOf(m) < 0) seen.push(m);
     try { window.localStorage.setItem(STUDY_WELCOME_KEY, JSON.stringify(seen)); } catch (e) { /* storage unavailable */ }
   }
   var NUM_WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
-  function maybeWelcome() {
-    try { if (window.localStorage.getItem(WELCOME_KEY)) return; } catch (e) { return; }
+  function maybeWelcome(again) {
+    try { if (window.localStorage.getItem(WELCOME_KEY) && !again) return; } catch (e) { return; }
     if (ftcLevelNo() !== 1 || ftcTrial) return;
     var mode = state.mode, pop = ftcPop(), total = FindChord.levelInfo(mode, pop, FindChord.levelCount(mode, pop)).stage;
     var home = document.querySelector('.stage-card');
@@ -2761,6 +2761,7 @@
     saveFtc(); updateFtc(); updateChordPanel();
     if (dir > 0 && quizOn() && ftcQ && !state.answered) { var anim = ftcNewQuestion(true); updateScore(); draw(anim, false); }      // (a harder step opens with a question about what it adds)
     else ftcRevalidate();
+    if (to === 1 && quizOn()) maybeWelcome(true);                      // back at the start: the introduction again
   }
   document.getElementById('ftc-harder').addEventListener('click', function () { ftcDifficulty(1); });
   document.getElementById('ftc-easier').addEventListener('click', function () { ftcDifficulty(-1); });
@@ -2899,6 +2900,7 @@
     ftcStreak = 0; ftcTried = 0; ftcRight = 0; ftcBub = null; bubFull = false;
     saveFtc();
     state.answered = false; lastResult = ''; state.selected = false; if (noteOn()) newNoteCard(); else newCard(); updateScore(); draw(false, false);
+    if (to === 1) maybeStudyWelcome(true);
   }
   // the progress row under the keyboard: step, bubbles, Time Trial, Advance automatically (as in Find the chord)
   var stepCard = el('section', 'chords step-card'), stepInfo = el('div', 'chord-info quiz step-info');
