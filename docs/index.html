@@ -450,9 +450,9 @@ body {
   position: absolute;
   top: 2px;
   right: 6px;
-  font-size: 0.62rem;
+  font-size: 0.72rem;
   font-weight: 700;
-  opacity: 0.45;
+  opacity: 0.6;
   pointer-events: none;
 }
 .chip-type[data-key]::after { top: 1px; right: 8px; }
@@ -4868,7 +4868,7 @@ var KeyboardRender = (function () {
     var numQuiz = quizOn() && !alt && pop && !ftcLetters();  // Pop levels that answer by roman numeral: the degree row, as in Jazz (without the mode names)
     var popQuiz = quizOn() && !alt && pop && !numQuiz;       // Pop Find the chord (letter-name levels): root, quality and seventh rows replace the degree row
     if (popQuiz || qOn) order = [];
-    chordDegrees.closest('.chord-row').hidden = qOn;
+    chordDegrees.closest('.chord-row').hidden = qOn || (popQuiz && !!ftcOnlyQual());       // (a level with a single quality, level 1's major chords: nothing to choose)
     degLabel.textContent = popQuiz ? 'Quality' : numQuiz ? 'Degree' : degLabel.textContent;
     if (popQuiz) modeHeadTip.textContent = 'dim, min (minor), maj (major) or aug. For a 7th, 9th, 11th or 13th chord on a major (or augmented) triad, also choose maj (Cmaj7) or dom (C7).';
     for (var oi = 0; oi < order.length; oi++) {
@@ -5593,8 +5593,8 @@ var KeyboardRender = (function () {
     shiftMode = null;
   }, true);
 
-  function syncHints() {          // the keystroke hints on the chord chips only show while Progressions is open
-    chordsPanel.classList.toggle('show-hints', !progSection.hidden && progDetails.open);
+  function syncHints() {          // the keystroke hints on the chord chips show while Progressions is open and in Find the chord
+    chordsPanel.classList.toggle('show-hints', (!progSection.hidden && progDetails.open) || quizOn());
   }
 
   function updateProgPanel() {
@@ -6241,10 +6241,10 @@ var KeyboardRender = (function () {
   function ftcLetters() { return ftcPop() && FindChord.levelInfo(state.mode, true, ftcLevelNo()).ans === 'letters'; }
   function popAns() { return quizOn() && ftcLetters(); }              // letter answers: type + root + quality (+ seventh), not roman degrees
   function ftcHint() {
-    if (popAns()) return ftcTypesHidden() ? 'Choose the chord\u2019s root on the keyboard and its quality.' : 'Choose the chord\u2019s type, root and quality, in any order; the last one you choose is your answer.';
+    if (popAns()) return ftcTypesHidden() ? (ftcOnlyQual() ? 'Choose the chord\u2019s root on the keyboard.' : 'Choose the chord\u2019s root on the keyboard and its quality.') : 'Choose the chord\u2019s type, root and quality, in any order; the last one you choose is your answer.';
     return ftcTypesHidden() ? 'Choose the chord\u2019s degree.' : 'Choose a type and a degree, in either order. The second one you choose is your answer.';
   }
-  function ftcHintTail() { return '. ' + (popAns() ? (ftcTypesHidden() ? 'Choose the root and quality in the Chords section.' : 'Choose the type, root and quality in the Chords section.') : (ftcTypesHidden() ? 'Choose the chord\u2019s degree in the Chords section.' : 'Choose a type and a degree in the Chords section; the second one you choose is your answer.')); }
+  function ftcHintTail() { return '. ' + (popAns() ? (ftcTypesHidden() ? (ftcOnlyQual() ? 'Choose the root in the Chords section.' : 'Choose the root and quality in the Chords section.') : 'Choose the type, root and quality in the Chords section.') : (ftcTypesHidden() ? 'Choose the chord\u2019s degree in the Chords section.' : 'Choose a type and a degree in the Chords section; the second one you choose is your answer.')); }
   // Pop: the maj/dom choice only comes in with the first major seventh chord (until then every seventh is a dominant one: C7)
   function ftcSevHidden() {
     var ref = Theory.specsFor(state.mode, state.mode === 'minor' ? 9 : 0)[0].name;
@@ -6253,6 +6253,16 @@ var KeyboardRender = (function () {
       var wd = FindChord.describe(Chords.chordInKey(ref, state.mode, c.deg, c.type), c.type);
       return wd.sev === 'maj';
     });
+  }
+  // Pop Find the chord: when every chord of the level has the same quality (level 1: only major triads), there is no Quality row and the root alone is the guess
+  function ftcOnlyQual() {
+    if (!(quizOn() && ftcPop() && ftcTypesHidden())) return null;
+    var ref = Theory.specsFor(state.mode, state.mode === 'minor' ? 9 : 0)[0].name, q = null, ok = true;
+    FindChord.chords(state.mode, true, ftcLevels().chords).forEach(function (c) {
+      var wd = FindChord.describe(Chords.chordInKey(ref, state.mode, c.deg, c.type), c.type);
+      if (q === null) q = wd.qual; else if (q !== wd.qual) ok = false;
+    });
+    return ok ? q : null;
   }
   function ftcTypesHidden() { return quizOn() && FindChord.chords(state.mode, ftcPop(), ftcLevels().chords).every(function (c) { return c.type === 'triad'; }); }
   function ftcSpec() { return Theory.specsFor(state.mode, ftcQ.pc)[ftcQ.spell]; }
@@ -6968,6 +6978,7 @@ var KeyboardRender = (function () {
     if (ftcWrong) ftcClearPicks();                    // after a wrong guess the next click starts a new attempt
     ftcSel[kind] = value;
     if (ftcTypesHidden()) ftcSel.type = 'triad';       // (only triads so far: the degree alone is the guess)
+    if (popAns() && ftcOnlyQual()) ftcSel.qual = ftcOnlyQual();                 // (one quality in play: the root is the whole guess)
     typePicked = ftcSel.type !== null;
     chordTypes_.full = ftcSel.type || 'triad';
     var pa = popAns(), got, ok, haveName = null;
@@ -7881,7 +7892,7 @@ var KeyboardRender = (function () {
   document.addEventListener('keydown', function (e) {
     if (e.defaultPrevented || e.ctrlKey || e.metaKey || !popAns() || !state.selected || chordsPanel.hidden || !chordsDetails.open) return;
     var t = e.target;
-    if (t && t.closest && t.closest('input, select, textarea')) return;
+    if (t && t.closest && t.closest('input:not([type=radio]):not([type=checkbox]), select, textarea')) return;      // (a focused radio, e.g. the mode menu's, must not eat the shortcuts)
     var btn = null, c = e.code;
     if (/^[1-8]$/.test(e.key) && !e.altKey && !e.shiftKey) btn = chordTypes.children[parseInt(e.key, 10) - 1];
     else if (NATURALS[c] !== undefined) btn = chordsPanel.querySelector('[data-root="' + ((NATURALS[c] + (e.shiftKey ? 1 : 0) - (flatHeld(e) ? 1 : 0) + 12) % 12) + '"]');
@@ -7929,7 +7940,7 @@ var KeyboardRender = (function () {
   document.addEventListener('keydown', function (e) {
     if (e.defaultPrevented || !plainKey(e)) return;
     var t = e.target;
-    if (t && t.closest && t.closest('input, select, textarea')) return;
+    if (t && t.closest && t.closest('input:not([type=radio]):not([type=checkbox]), select, textarea')) return;      // (a focused radio, e.g. the mode menu's, must not eat the shortcuts)
     if (quizOn() && e.key === 'Enter') {                  // Find the chord: Enter checks, then goes on
       var qchip = t && t.closest && t.closest('button[data-deg], button[data-type], button[data-root], button[data-qual], button[data-sev]');
       if (qchip || !t || t === document.body || t === document.documentElement) {
@@ -8330,7 +8341,7 @@ var KeyboardRender = (function () {
 </script>
   <script>
 /* generated by tools/build.py: do not edit */
-var APP_VERSION = '1.0 (build dcbfdc3)';
+var APP_VERSION = '1.0 (build 8fb3356)';
 (function () {
   function show() { Array.prototype.forEach.call(document.querySelectorAll('[data-version]'), function (e) { e.textContent = APP_VERSION; }); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', show); else show();

@@ -433,9 +433,9 @@ body {
   position: absolute;
   top: 2px;
   right: 6px;
-  font-size: 0.62rem;
+  font-size: 0.72rem;
   font-weight: 700;
-  opacity: 0.45;
+  opacity: 0.6;
   pointer-events: none;
 }
 .chip-type[data-key]::after { top: 1px; right: 8px; }
