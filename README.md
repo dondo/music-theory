@@ -204,6 +204,10 @@ Automatic level-ups now show a banner saying what was added (a new key, or which
 ### Levels in Find the chord
 The row shows "Stage s: Level t" (hover for "Level t of N"). Each level introduces some cards (a card is a key, a chord degree and a chord type) and every run of five questions is guaranteed at least two about what is new. Progress is remembered per mode and Pop/Jazz (`lvl` in `music-theory-ftc-v1`, together with `ladder`, the version of the level list; a save from an older ladder is ignored, and on sync the newer ladder wins whole); trial bests are in `music-theory-trials-v3`.
 
+### Clefs in Find the chord
+
+Stage 1 (the first key, I IV V then the rest of its triads) is read on the treble clef. Stage 2 repeats that same key on the bass clef, and every stage after it (all the other keys and chord types, Pop and Chord theory alike) uses only the bass clef. A card read on the bass clef is remembered separately from the same chord on the treble clef (`FindChord.pairKey` adds `|b`), so the bass stage starts fresh. Saved levels from before the extra stage are ignored (`FTC_LADDER` 4).
+
 ### The level order (Find the chord)
 Every level is an explicit list of cards (`cards` on each entry of `FindChord.ladder()` in `js/findchord.js`; the curriculum is the `CURRICULUM` and `GROUPS` tables at the top of `ladder()`). Each of the four ladders (Pop/Jazz x major/minor) works through **five keys, one at a time**, and within a key through the chord **types** in order (Pop: triads, 7ths, sus4, sus2, add9, 9ths; Jazz: triads, 7ths, 9ths, sus4, add9, sus2, 11ths, 13ths). Keys: Pop major C G F D B♭ (Pop minor: the relative minors Am Em Dm Bm Gm); Jazz major C F B♭ G E♭ (Jazz minor Am Dm Gm Em Cm).
 - **For each key and type** the levels go: (1) the three major-sounding chords (I IV V; i iv v in minor) of that key (a "first" level, new cards in that key only); (2) a review of those chords in every key introduced so far; (3-5) the other three chords one at a time (vi, ii, iii; in minor III, VI, VII), each *added to* the key's chords so far (so level 3 asks I IV V vi, only vi counting as new); (6) a review of those three across the keys so far; (7) the diminished chord (vii°; ii° in minor), again with all the key's other chords; (8) a full review of every chord of the type in every key so far (the first key has none: level 7 already covers it). In Jazz the degree buttons show the chord name (Dm) under the numeral. A type with no diminished chord (sus4, sus2, ...) just skips that level, and sus chords are not split into groups.
@@ -227,7 +231,7 @@ A digital piano (tested design: Yamaha P-225 over USB) can answer the Study ques
 
 - Find the chord: play the chord (any octave, any inversion). Pop levels judge the notes by name and quality; Jazz levels by the roman numeral they make in the key.
 - Play the note and Find the key: press the one key (any octave).
-- A right answer played on the piano moves on to the next question by itself after about four seconds (a miss, a level-up or end-of-session banner, or you moving on first cancels it). Time trials move on at once.
+- A right answer played on the piano moves on to the next question by itself after half a second (a miss, a level-up or end-of-session banner, or you moving on first cancels it). Time trials move on at once.
 - Keys that go down within 90 ms of each other count as one chord; a multi-note press is ignored by single-note questions.
 - Pop level 1 hides the quality row, so a minor triad is read as its root's major chord there.
 - Needs Chrome, Edge or Firefox on a computer (or Android Chrome) over HTTPS or localhost, with a one-time permission prompt. Safari and iOS have no Web MIDI. Windows may need the Yamaha USB-MIDI driver.

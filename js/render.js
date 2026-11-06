@@ -693,7 +693,7 @@ var KeyboardRender = (function () {
   // The stave is only as wide as its voicings need, and is placed so the chord that was on the card stays exactly where it
   // was (same height, same x) unless the voicings would run off the edge, when it slides over just as far as it must.
   function chordAnswer(card, stave, rootSpec, mode) {
-    var sp = rootSpec, clef = clefDef('treble'), adv = 1.15 * SB, dy = 150 - YB;          // (the card draws its stave at y = 150)
+    var sp = rootSpec, clef = clefDef(stave.clef || 'treble'), adv = 1.15 * SB, dy = 150 - YB;          // (the card draws its stave at y = 150)
     var sigW = Math.max(sp.n, 1) * adv;
     var header = 6 + 8 + clef.w * KB + 8 + sigW + 26;                                      // left edge of the stave to its first voicing
     var cardX = (WIDTH / 2 - 130) + 14 + 8 + clef.w * KB + 8 + sigW + 36;                  // where chordCard puts the chord
@@ -728,7 +728,7 @@ var KeyboardRender = (function () {
   function chordCard(card, mode, answered) {
     if (!card || !card.chord) return '';
     var specs = T.specsFor(mode, card.pc), sp = specs[card.spell] || specs[0];
-    var clef = clefDef('treble'), k = KB.toFixed(5);
+    var clef = clefDef(card.clef || 'treble'), k = KB.toFixed(5);
     var cx = WIDTH / 2, boxW = 260, left = cx - boxW / 2, top = 30, bot = 200;
     var dy = 150 - YB;                                  // the stave helpers draw around YB; slide them to this card
     var x0 = left + 14, x1 = left + boxW - 14;
@@ -978,6 +978,7 @@ var KeyboardRender = (function () {
       '<path id="gclef" d="' + G.gclef + '"/>' +
       (clefNow && !(state.staff && selected) ? '<path id="' + clefNow.glyph + '" d="' + G[clefNow.glyph] + '"/>' : '') +
       (state.staff && selected ? '<path id="gclef8va" d="' + G.gclef8va + '"/><path id="gclef8vb" d="' + G.gclef8vb + '"/><path id="fclef" d="' + G.fclef + '"/><path id="cclef" d="' + G.cclef + '"/>' : '') +
+      (!(state.staff && selected) && !(clefNow && clefNow.glyph === 'fclef') ? '<path id="fclef" d="' + G.fclef + '"/>' : '') +       // (Find the chord reads on the bass clef from stage 2)
       '<path id="sharp" d="' + G.sharp + '"/>' +
       '<path id="flat" d="' + G.flat + '"/>' +
       '<clipPath id="kbclip"><rect x="' + f(winL) + '" y="' + (KEY_TOP - 6) + '" width="' + f(winR - winL) +

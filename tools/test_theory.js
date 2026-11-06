@@ -498,6 +498,24 @@ check('find the chord: five keys per ladder, in the taught order', function () {
     assert.strictEqual(new Set(ks).size, 5);
   });
 });
+check('find the chord: stage 1 is the first key on the treble clef, stage 2 repeats it on the bass clef, everything after is bass', function () {
+  COMBOS.forEach(function (c) {
+    var L = FC.ladder(c[0], c[1]);
+    L.forEach(function (l) {
+      assert.strictEqual(l.clef, l.stage === 1 ? 'treble' : 'bass');
+      assert.ok(l.cards.every(function (x) { return x.clef === l.clef; }));
+    });
+    var s1 = L.filter(function (l) { return l.stage === 1; }), s2 = L.filter(function (l) { return l.stage === 2; });
+    assert.deepStrictEqual(s1.map(function (l) { return l.role; }), s2.map(function (l) { return l.role; }));
+    assert.strictEqual(s1[0].keyPc, s2[0].keyPc);
+    assert.ok(s2.every(function (l) { return l.rep; }) && !s1.some(function (l) { return l.rep; }));
+    assert.strictEqual(FC.stageIntro(c[0], c[1], 2).rep, true);
+    assert.strictEqual(L.filter(function (l) { return l.stage === 3; })[0].keyIdx, 1);
+  });
+  var mem = FC.newMem(), t = { pc: 0, deg: 0, type: 'triad' }, b = { pc: 0, deg: 0, type: 'triad', clef: 'bass' };
+  FC.memAnswer(mem, 'major', t, true, 1000, 0, 1000);
+  assert.ok(FC.pairRecall(mem, 'major', t, 1000) > 0 && FC.pairRecall(mem, 'major', b, 1000) === 0, 'a bass card is its own card');
+});
 check('find the chord: Pop never offers 11ths or 13ths, Jazz does', function () {
   ['major', 'minor'].forEach(function (m) {
     var has = function (pop, t) { return FC.ladder(m, pop).some(function (l) { return l.cards.some(function (c) { return c.type === t; }); }); };
@@ -515,19 +533,19 @@ check('find the chord: pick stays inside the level and avoids an immediate repea
   }
 });
 check('find the chord: every key opens with I IV V, then vi ii iii (i iv v, III VI VII), a review, the diminished chord, a full review', function () {
-  var key = function (c) { return c.pc + '/' + c.deg + c.type; };
+  var key = function (c) { return c.pc + '/' + c.deg + c.type + '/' + c.clef; };
   COMBOS.forEach(function (c) {
     var L = FC.ladder(c[0], c[1]), tag = c[0] + (c[1] ? ' pop' : ' jazz');
     var tri = L.filter(function (l) { return l.type === 'triad'; });
-    for (var k = 0; k < 5; k++) {
-      var g = tri.filter(function (l) { return l.keyIdx === k; });
+    [[0, 'treble'], [0, 'bass'], [1, 'bass'], [2, 'bass'], [3, 'bass'], [4, 'bass']].forEach(function (run) {
+      var k = run[0], g = tri.filter(function (l) { return l.keyIdx === k && l.clef === run[1]; });
       var want = ['first', 'review', 'second', 'second', 'second', 'review', 'dim', 'full'];
       if (k === 0) want.pop();                                         // (in the first key the diminished level already holds every chord: no separate full review)
       if (k === 0) want.splice(1, 1);                                  // nothing to review yet in the first key
       assert.deepStrictEqual(g.map(function (l) { return l.role; }), want, tag + ' key ' + k);
       assert.strictEqual(g[0].fresh.length, 3);
       assert.ok(g[g.length - 1].cards.length >= 7 * (k + 1), tag + ': the full review has every triad of every key so far');
-    }
+    });
     // a level's cards are what it introduces plus what it reviews: nothing new hides in a review
     L.forEach(function (l, i) { assert.ok(l.cards.length >= 1 && l.fresh.every(function (f) { return l.cards.map(key).indexOf(key(f)) >= 0; }), tag + ' ' + i); });
     // each card is introduced exactly once

@@ -105,7 +105,7 @@
   var RELEARN = 6, RELEARN_U = 0.8;                  // after a miss a pair counts as at least 80% forgotten for the next 6 answers
   var TREF_DEFAULT = 3000, TREF_MIN = 1200, TREF_N = 100, TREF_NEED = 8, TIME_MAX = 20000, Q_NO_TIME = 0.7, OLD_R = 0.4, OLD_MIN = 1, NOVEL = 3, NOVEL_N = 10;   // review only what has really faded (R < 0.4); pairs answered fewer than 10 times are drawn up to 4x as often
   function newMem() { return { p: {}, seq: 0, tm: {} }; }       // p: pair -> { h, t, n, l, rs }; tm: speed class -> the last correct first-try times
-  function pairKey(mode, q) { return mode + '|' + q.pc + '|' + q.deg + '|' + q.type; }
+  function pairKey(mode, q) { return mode + '|' + q.pc + '|' + q.deg + '|' + q.type + (q.clef === 'bass' ? '|b' : ''); }      // (a card read on the bass clef is its own card; treble keeps the old keys)
   function recallOf(m, now) { return m ? Math.pow(2, -Math.max(0, now - m.t) / m.h) : 0; }       // a pair never seen: 0
   function pairRecall(mem, mode, q, now) { return recallOf(mem.p[pairKey(mode, q)], now); }
   function memWeight(mem, mode, q, now) {
@@ -159,7 +159,7 @@
   function resetMem(mem) { mem.p = {}; mem.seq = 0; mem.tm = {}; }
   // does any pair in play (other than `avoid`) satisfy pred?
   function anyPair(mode, pop, keysLevel, chordsLevel, pred) {
-    return cardsOf(mode, pop, keysLevel, chordsLevel).some(function (c) { return pred({ pc: c.pc, deg: c.deg, type: c.type }); });
+    return cardsOf(mode, pop, keysLevel, chordsLevel).some(function (c) { return pred({ pc: c.pc, deg: c.deg, type: c.type, clef: c.clef }); });
   }
   // the answer log: every answer, kept for fitting the constants above to you (capped; oldest dropped first)
   var LOG_KEY = 'music-theory-ftc-log-v1', LOG_CAP = 10000;
@@ -302,13 +302,17 @@
     var id = (mode === 'minor' ? 'minor' : 'major') + (pop ? '|pop' : '|jazz');
     if (ladders[id]) return ladders[id];
     var cfg = CURRICULUM[id], g = GROUPS[mode === 'minor' ? 'minor' : 'major'], out = [], stage = 0;
+    var clef = 'treble';
     function cards(pcs, degs, type) {
       var r = [];
-      pcs.forEach(function (pc) { degs.forEach(function (d) { r.push({ pc: pc, deg: d, type: type }); }); });
+      pcs.forEach(function (pc) { degs.forEach(function (d) { r.push({ pc: pc, deg: d, type: type, clef: clef }); }); });
       return r;
     }
     cfg.types.forEach(function (type, ti) {
-      cfg.keys.forEach(function (pcX, ki) {
+      var runs = cfg.keys.map(function (pcX, ki) { return { pcX: pcX, ki: ki, clef: 'bass', rep: false }; });
+      if (ti === 0) { runs[0].rep = true; runs.unshift({ pcX: cfg.keys[0], ki: 0, clef: 'treble', rep: false }); }       // stage 1 reads the first key on the treble clef, stage 2 repeats it on the bass clef; everything after is bass only
+      runs.forEach(function (run) {
+        var pcX = run.pcX, ki = run.ki; clef = run.clef;
         stage++;
         var seen = cfg.keys.slice(0, ki + 1), lv = [], all = g.first.concat(g.second), first = ki === 0 && ti === 0;
         function add(role, cs, fresh, plus) { lv.push({ role: role, cards: cs, fresh: fresh, add: plus || null, ans: cfg.letters ? 'letters' : 'numerals' }); }
@@ -319,7 +323,7 @@
           add('review', cards(seen, all, type), []);
         } else {
           var a = cards([pcX], g.first, type);
-          add('first', a, a, ki === 0 ? { dim: 'C', chords: g.first.map(function (d) { return { deg: d, type: type }; }), back: false } : { dim: 'K', keys: [pcX], back: false });
+          add('first', a, a, ki === 0 ? { dim: 'C', chords: g.first.map(function (d) { return { deg: d, type: type }; }), back: false, clef: run.rep ? 'bass' : null } : { dim: 'K', keys: [pcX], back: false });
           add('review', cards(seen, g.first, type), []);
           g.second.forEach(function (d, si) { var c1 = cards([pcX], [d], type), cs1 = cards([pcX], g.first.concat(g.second.slice(0, si + 1)), type); add('second', cs1, c1, { dim: 'C', chords: [{ deg: d, type: type }], back: false }); });
           add('review', cards(seen, g.second, type), []);
@@ -336,7 +340,7 @@
         kept.forEach(function (x, i) {
           var keySet = {}, chSet = {}, ks = [], cs = [];
           x.cards.forEach(function (c) { if (!keySet[c.pc]) { keySet[c.pc] = 1; ks.push(c.pc); } var ck = c.deg + '|' + c.type; if (!chSet[ck]) { chSet[ck] = 1; cs.push({ deg: c.deg, type: c.type }); } });
-          out.push({ keys: ks, chords: cs, cards: x.cards, fresh: x.fresh, stage: stage, step: i + 1, kind: x.add && x.add.dim === 'K' ? 'K' : 'C', role: x.role, type: type, keyPc: pcX, keyIdx: ki, seen: seen, ans: x.ans,
+          out.push({ keys: ks, chords: cs, cards: x.cards, fresh: x.fresh, stage: stage, step: i + 1, kind: x.add && x.add.dim === 'K' ? 'K' : 'C', role: x.role, type: type, keyPc: pcX, keyIdx: ki, seen: seen, ans: x.ans, clef: run.clef, rep: run.rep,
                      lo: 0, hi: 0, add: x.add, inv: pop ? 0 : 999 });
         });
       });
@@ -369,7 +373,7 @@
   // what a stage introduces: { kind: 'K', keys: [pc...] } or { kind: 'C', chords: [{deg, type}...] }
   function stageIntro(mode, pop, stage) {
     var f = ladder(mode, pop).filter(function (l) { return l.stage === stage; })[0];
-    return f ? { kind: 'K', keys: [f.keyPc], type: f.type, keyIdx: f.keyIdx } : null;
+    return f ? { kind: 'K', keys: [f.keyPc], type: f.type, keyIdx: f.keyIdx, clef: f.clef, rep: f.rep } : null;
   }
   // what step n puts in play: { dim: 'K', keys: [pc...], back } or { dim: 'C', chords: [...], back }, or null (the very first step)
   function stepAdds(mode, pop, n) { return levelInfo(mode, pop, n).add; }       // { dim: 'K', keys } for a new key, { dim: 'C', chords } for new chords; null in a review

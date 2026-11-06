@@ -1528,7 +1528,7 @@
   // Find the chord, once answered: all the voicings, the card's own one highlighted
   function buildQuizStave() {
     var cd = ftcChord(), tonic = ChordAudio.tonicMidi(ftcQ.pc);
-    var clefCfg = KeyboardRender.CLEFS.filter(function (c) { return c.id === 'treble'; })[0] || KeyboardRender.CLEFS[0];
+    var clefCfg = KeyboardRender.CLEFS.filter(function (c) { return c.id === ftcClef(); })[0] || KeyboardRender.CLEFS[0];
     var vo = chordVoicings(cd, tonic, clefCfg, 2 * cd.notes.length), shown = state.card.chord.notes;
     var hit = -1;
     vo.chords.forEach(function (c, i) {
@@ -1539,7 +1539,7 @@
       vo.chords.push({ bass: shown[0].midi, notes: shown, top: vo.labels[iv], sub: iv === 0 ? cd.symbol : cd.symbol + '/' + cd.notes[iv], lit: true });
       vo.chords.sort(function (x, y) { return x.bass - y.bass; });
     } else vo.chords[hit].lit = true;
-    return { kind: 'chord', clef: 'treble', chords: vo.chords, slots: vo.slots, fixedClef: true, compact: vo.slots > 10 };
+    return { kind: 'chord', clef: ftcClef(), chords: vo.chords, slots: vo.slots, fixedClef: true, compact: vo.slots > 10 };
   }
 
   // fade used when nothing is "clicked" (reset)
@@ -1809,7 +1809,7 @@
   function quizOn() { return state.flash && state.cardMode === 'chord'; }
   function ftcPop() { return level === 'pop'; }
 
-  var FTC_LADDER = 3;                                  // which ladder the saved levels belong to (1: the old keys-x-chords ladder; 2: the first curriculum, which had a numeral repeat of Pop level 1)
+  var FTC_LADDER = 4;                                  // which ladder the saved levels belong to (1: the old keys-x-chords ladder; 2: the first curriculum, which had a numeral repeat of Pop level 1)
   function loadFtc() {
     try {
       var o = JSON.parse(window.localStorage.getItem(FTC_KEY));
@@ -1942,7 +1942,7 @@
   // after a whole stage: what the next one introduces
   function stageNote(stage) {
     var it = FindChord.stageIntro(state.mode, ftcPop(), stage);
-    return 'Stage ' + stage + ' is ' + ftcTypeWord(it.type) + ' in <strong>' + ftcKeyWord(it.keys[0]) + '</strong>.';
+    return 'Stage ' + stage + ' is ' + ftcTypeWord(it.type) + ' in <strong>' + ftcKeyWord(it.keys[0]) + '</strong>' + (it.rep ? ', this time on the bass clef (from here on, every stage uses the bass clef)' : '') + '.';
   }
   var bannerHold = false;                                       // a trial result stays up until the next pick
   function showBanner(title, text, withConfetti, icon) {
@@ -2240,6 +2240,7 @@
   function ftcName(ch) {                                // the chord as shown: G7, or G7/B for an inversion
     return ftcQ.inv ? ch.symbol + '/' + ch.notes[ftcQ.inv % ch.notes.length] : ch.symbol;
   }
+  function ftcClef() { return (ftcQ && ftcQ.clef) || 'treble'; }                // the clef the question is read on: stage 1 treble, stage 2 on bass
   function ftcNotes(chOver, tonicOver, invOver) {
     var ch = chOver || ftcChord(), tonic = tonicOver != null ? tonicOver : ChordAudio.tonicMidi(ftcQ.pc), items = [], prev = null, i;
     var n = ch.pcOffsets.length, k = (invOver != null ? invOver : (ftcQ.inv || 0)) % n;                      // the chord tone k sits lowest
@@ -2250,7 +2251,7 @@
       prev = m;
     }
     var avg = items.reduce(function (a, n) { return a + n.midi; }, 0) / items.length;
-    var shift = 12 * Math.round((71 - avg) / 12);
+    var shift = 12 * Math.round(((ftcClef() === 'bass' ? 50 : 71) - avg) / 12);
     return items.map(function (n) { return { midi: n.midi + shift, name: n.name }; });
   }
 
@@ -2314,6 +2315,7 @@
     else if (isFresh) { FindChord.freshRecord(ftcFresh, isFresh(q), !isFresh(q) && isOld(q)); saveFtc(); }
     var nNotes = Chords.chordInKey(Theory.specsFor(state.mode, q.pc)[q.spell].name, state.mode, q.deg, q.type).pcOffsets.length;
     var mayInv = FindChord.mayInvert(state.mode, ftcPop(), l, q.deg, q.type);
+    q.clef = FindChord.levelInfo(state.mode, ftcPop(), ftcLevelNo()).clef || 'treble';
     q.inv = resumed ? resumed.inv : FindChord.pickInversion(nNotes, mayInv, Math.random);                // Jazz: inversions mixed in at every level; Pop: from the stage's inversions step on
     if (forceInv && !resumed && mayInv && nNotes > 1) q.inv = 1 + Math.floor(Math.random() * (nNotes - 1));       // (an inversions step opens with an inverted chord)
     var oldSvg = stage.firstElementChild;
@@ -2327,7 +2329,7 @@
     chordCleared = false;
     ftcClearPicks();
     ftcMissed = resumed ? !!resumed.missed : false;
-    state.card = { pc: q.pc, spell: q.spell, chord: { notes: ftcNotes() }, symbol: ftcChord().symbol, deg: q.deg, type: q.type, inv: q.inv, title: '', status: '', noGiveUp: !!ftcTrial };   // (symbol: for the tests and screen readers' sake, not drawn)
+    state.card = { pc: q.pc, spell: q.spell, chord: { notes: ftcNotes() }, clef: q.clef, symbol: ftcChord().symbol, deg: q.deg, type: q.type, inv: q.inv, title: '', status: '', noGiveUp: !!ftcTrial };   // (symbol: for the tests and screen readers' sake, not drawn)
     ftcSay('', '');
     ftcT0 = resumed ? null : performance.now();
     return oldKey ? { oldKeyS: parseInt(oldKey.getAttribute('data-s'), 10) } : (animate ? 'fade' : false);
@@ -2731,7 +2733,7 @@
   function stepText(n) { return ftcLevelWords(n, false); }                 // what level n of the ladder is about
   function stageText(stage) {                                             // what stage `stage` is
     var it = FindChord.stageIntro(state.mode, ftcPop(), stage);
-    return ftcTypeWord(it.type) + ' in ' + ftcKeyWord(it.keys[0]);
+    return ftcTypeWord(it.type) + ' in ' + ftcKeyWord(it.keys[0]) + (it.rep ? ' (bass clef)' : '');
   }
   var NOTE_LEVEL_TEXT = [null, 'treble clef', 'bass clef', 'grand clef', 'alto clef (optional!)', 'all three'];
   function noteLevelText(n) { return NOTE_LEVEL_TEXT[n]; }
@@ -3605,7 +3607,7 @@
   }
   // After a right answer played on the piano, go on to the next question by itself once there has been time to look at the result.
   // Nothing is skipped: a banner waiting to be read, a miss, or the user moving on first (or changing card) cancels it.
-  var MIDI_NEXT_MS = 4000, midiNextTimer = null;
+  var MIDI_NEXT_MS = 500, midiNextTimer = null;
   function midiAutoNext(wasAnswered) {
     if (wasAnswered || !state.answered || !state.flash) return;
     var right = quizOn() ? !ftcMissed : /^Correct/.test(lastResult);
