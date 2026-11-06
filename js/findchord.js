@@ -275,7 +275,7 @@
       cfg.keys.forEach(function (pcX, ki) {
         stage++;
         var seen = cfg.keys.slice(0, ki + 1), lv = [], all = g.first.concat(g.second), first = ki === 0 && ti === 0;
-        function add(role, cs, fresh, plus) { lv.push({ role: role, cards: cs, fresh: fresh, add: plus || null, ans: 'numerals' }); }
+        function add(role, cs, fresh, plus) { lv.push({ role: role, cards: cs, fresh: fresh, add: plus || null, ans: cfg.letters ? 'letters' : 'numerals' }); }
         function newKey() { return ki > 0 || ti > 0 ? { dim: 'K', keys: [pcX], back: false } : null; }
         if (NO_SPLIT[type]) {
           var c6 = cards([pcX], all, type);
@@ -290,11 +290,11 @@
           if (HAS_DIM[type]) { var cd = cards([pcX], [g.dim], type), cs2 = cards([pcX], all.concat([g.dim]), type); add('dim', cs2, cd, { dim: 'C', chords: [{ deg: g.dim, type: type }], back: false }); }
           add('full', cards(seen, HAS_DIM[type] ? all.concat([g.dim]) : all, type), []);
         }
-        if (first && cfg.letters) lv[0].ans = 'letters';           // Pop's very first level answers by letter names; the repeat that follows uses numerals
+        // (Pop answers every level by letter names, Jazz by roman numerals: `ans`)
         var kept = [];
-        lv.forEach(function (x, i) {                                // (a review that repeats the level before it adds nothing, except that very first repeat)
+        lv.forEach(function (x, i) {                                // (a review that repeats the level before it adds nothing)
           var prev = kept[kept.length - 1];
-          if (prev && x.role !== 'first' && x.role !== 'second' && x.role !== 'dim' && x.role !== 'all' && sameCards(prev.cards, x.cards) && !(first && kept.length === 1 && cfg.letters)) return;
+          if (prev && x.role !== 'first' && x.role !== 'second' && x.role !== 'dim' && x.role !== 'all' && sameCards(prev.cards, x.cards)) return;
           kept.push(x);
         });
         kept.forEach(function (x, i) {

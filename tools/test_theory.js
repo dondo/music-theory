@@ -483,14 +483,12 @@ check('progtext: reports what it cannot read', function () {
 // ---- Find the chord: the difficulty ladder ----
 var FC = require('../js/findchord.js');
 var COMBOS = [['major', true], ['major', false], ['minor', true], ['minor', false]];
-check('find the chord: level 1 is I, IV, V of C (i, iv, v in A minor); Pop names them by letter, level 2 by numeral', function () {
+check('find the chord: level 1 is I, IV, V of C (i, iv, v in A minor); Pop answers by letter name, Jazz by numeral', function () {
   var key = function (c) { return c.pc + '/' + c.deg + c.type; };
   [[true, 'major', 0], [true, 'minor', 9], [false, 'major', 0], [false, 'minor', 9]].forEach(function (x) {
     var L = FC.ladder(x[1], x[0]);
     assert.deepStrictEqual(L[0].cards.map(key), [x[2] + '/0triad', x[2] + '/3triad', x[2] + '/4triad']);
-    if (x[0]) assert.deepStrictEqual(L[1].cards.map(key), L[0].cards.map(key), 'level 2 does the same three again');
-    assert.strictEqual(L[0].ans === 'letters', x[0], 'only Pop starts by letters');
-    assert.ok(L[1].ans !== 'letters' && L[2].ans !== 'letters');
+    L.forEach(function (l) { assert.strictEqual(l.ans === 'letters', x[0], 'Pop answers by letter name throughout, Jazz by numeral'); });
   });
 });
 check('find the chord: five keys per ladder, in the taught order', function () {
@@ -525,7 +523,7 @@ check('find the chord: every key opens with I IV V, then vi ii iii (i iv v, III 
       var g = tri.filter(function (l) { return l.keyIdx === k; });
       var want = ['first', 'review', 'second', 'second', 'second', 'review', 'dim', 'full'];
       if (k === 0) want.pop();                                         // (in the first key the diminished level already holds every chord: no separate full review)
-      if (!c[1] && k === 0) want.splice(1, 1);                         // Jazz starts on numerals: no repeat of the first three
+      if (k === 0) want.splice(1, 1);                                  // nothing to review yet in the first key
       assert.deepStrictEqual(g.map(function (l) { return l.role; }), want, tag + ' key ' + k);
       assert.strictEqual(g[0].fresh.length, 3);
       assert.ok(g[g.length - 1].cards.length >= 7 * (k + 1), tag + ': the full review has every triad of every key so far');
@@ -542,8 +540,8 @@ check('find the chord: levelInfo / levelAt clamp and agree', function () {
   var n = FC.levelCount('major', true);
   assert.deepStrictEqual(FC.levelInfo('major', true, 0), FC.levelInfo('major', true, 1));
   assert.deepStrictEqual(FC.levelInfo('major', true, n + 5), FC.levelInfo('major', true, n));
-  assert.strictEqual(FC.levelAt('major', true, 3).cards.length, 4);               // vi joins I IV V
-  assert.strictEqual(FC.levelInfo('major', true, 3).fresh.length, 1);
+  assert.strictEqual(FC.levelAt('major', true, 2).cards.length, 4);               // vi joins I IV V
+  assert.strictEqual(FC.levelInfo('major', true, 2).fresh.length, 1);
 });
 
 // ---- Find a chord: identifying the picked notes ----
@@ -759,7 +757,7 @@ check('pop answers: described, checked and named like a lead sheet', function ()
   var L = F.ladder('major', true);
   assert.deepStrictEqual(L[0].cards.length, 3);                                  // level 1: I, IV, V of C ...
   assert.strictEqual(L[0].ans, 'letters');                                       // ... named by letter
-  assert.ok(L[1].ans !== 'letters');                                             // level 2 onward: numerals
+  assert.ok(L.every(function (l) { return l.ans === 'letters'; }));              // Pop answers by letter name throughout
   ['major', 'minor'].forEach(function (mode) { [true, false].forEach(function (pop) {
     var lad = F.ladder(mode, pop), seen = {};
     lad.forEach(function (lv, i) {

@@ -1795,7 +1795,7 @@
   function quizOn() { return state.flash && state.cardMode === 'chord'; }
   function ftcPop() { return level === 'pop'; }
 
-  var FTC_LADDER = 2;                                  // which ladder the saved levels belong to (1: the old keys-x-chords ladder, whose level numbers mean nothing now)
+  var FTC_LADDER = 3;                                  // which ladder the saved levels belong to (1: the old keys-x-chords ladder; 2: the first curriculum, which had a numeral repeat of Pop level 1)
   function loadFtc() {
     try {
       var o = JSON.parse(window.localStorage.getItem(FTC_KEY));
@@ -1847,7 +1847,7 @@
   // the levels in force: the chord dial is capped by what this level (Pop / Jazz) offers
   function ftcLevels() { return ftcTrial ? { keys: ftcTrial.keys, chords: ftcTrial.chords, cards: ftcTrial.cards, inv: ftcTrial.inv } : FindChord.levelAt(state.mode, ftcPop(), ftcLevelNo()); }
   // true while only triads are in play: the TYPE row is hidden and a degree alone is the answer
-  // Pop's very first level answers by letter names (root + quality); every other level, in Pop too, answers by roman numeral (type + degree), as Jazz does
+  // Pop answers every level by letter names (root + quality); Jazz by roman numeral (type + degree)
   function ftcLetters() { return ftcPop() && FindChord.levelInfo(state.mode, true, ftcLevelNo()).ans === 'letters'; }
   function popAns() { return quizOn() && ftcLetters(); }              // letter answers: type + root + quality (+ seventh), not roman degrees
   function ftcHint() {
@@ -1897,11 +1897,11 @@
     var kw = ftcKeyWord(l.keyPc), chs = ftcChordsWord(ftcDistinctChords(l.fresh.length ? l.fresh : l.cards)), seenW = ftcKeysWord(l.seen);
     var type = l.type === 'triad' ? '' : ' ' + ftcTypeWord(l.type).replace(/ chords$/, '');
     switch (l.role) {
-      case 'first': return (l.ans === 'letters' ? 'the chords ' : '') + b(chs) + ' in ' + kw + (l.ans === 'letters' ? ', by letter name' : '');
+      case 'first': return b(chs) + ' in ' + kw;
       case 'all': return 'all six ' + ftcTypeWord(l.type) + ' in ' + b(kw);
       case 'second': case 'dim': return b(chs) + ' in ' + kw;
       case 'full': return 'a full review of ' + ftcTypeWord(l.type) + ' in ' + seenW;
-      default: return (l.ans === 'numerals' && l.stage === 1 && l.step === 2 ? 'the same chords, now by roman numeral' : 'review: ' + chs + ' in ' + seenW);
+      default: return 'review: ' + chs + ' in ' + seenW;
     }
   }
   // between levels: what the next level puts in play
@@ -1935,8 +1935,6 @@
       html = 'You have completed Stage ' + doneStage + ' (' + stageText(doneStage) + ').<span class="levelup-line2">' + stageNote(FindChord.levelInfo(state.mode, pop, n).stage) + '</span>';
       goRow = true;
     } else { html = stepNote(n); goRow = true; }
-    if (n === 2 && pop && !newStage)                                  // Pop's level 1 was answered by letter: why numerals?
-      html += '<span class="levelup-line2">From here on the chords are named by Roman numerals. They\u2019re a bit less intuitive to start, but they work across keys, so they make learning a lot easier in the long term.</span>';
     var allTriads = function (k) { return FindChord.chords(state.mode, pop, FindChord.levelAt(state.mode, pop, k).chords).every(function (c) { return c.type === 'triad'; }); };
     if (n > 1 && allTriads(n - 1) && !allTriads(n))                  // the TYPE chips have just appeared
       html += '<span class="levelup-line2">Since we now have both triads and seventh chords, you\u2019ll have to select the \u2018type\u2019 as well as the ' + (pop ? 'root and quality' : 'degree') + '. Ready?</span>';
@@ -2083,7 +2081,7 @@
     document.getElementById('ftc-levelup-title').textContent = 'Welcome to \u201CFind the Chord!\u201D';
     levelText.innerHTML = 'You\u2019ll be shown a chord with a key signature, and will identify it below. This is divided up into ' + total +
       ' stages; each takes one kind of chord in one key, starting with the major chords (I, IV, V \u2013 in the key of C that would be C, F, G), then the minor ones (vi, ii, iii \u2013 Am, Dm, Em), then the diminished one (vii\u00B0 \u2013 Bdim), with reviews along the way.' +
-      '<span class="levelup-line2">The first stage is ' + stageText(1) + (pop ? ': the first level asks for letter names, the rest for roman numerals' : '') + '. Good luck!</span>' +
+      '<span class="levelup-line2">The first stage is ' + stageText(1) + '' + '. Good luck!</span>' +
       '<span class="levelup-go-row"><button type="button" class="btn-reset levelup-go">Go \u2192</button></span>';
     levelBanner.setAttribute('data-welcome', '1');
     levelBanner.hidden = false;
