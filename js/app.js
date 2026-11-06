@@ -242,8 +242,8 @@
     return '<span class="card-strip' + (full ? ' cs-full' : '') + '" style="--cw:' + cw + 'px">' + d.cards.map(function (c) {
       var spec = Theory.specsFor(mode, c.q.pc)[0], ch = Chords.chordInKey(spec.name, mode, c.q.deg, c.q.type), pct = Math.round(c.fill * 100), br = '';
       if (!first[c.q.pc]) { first[c.q.pc] = true; br = '<span class="cs-br" style="width:' + (count[c.q.pc] * (cw + 2) - 4) + 'px"><i></i><em>' + ftcKeyName(c.q.pc) + '</em></span>'; }
-      var pop_ = c.fill < 1 ? '<span class="cs-pop"><span class="cs-info">' + ch.roman + ' in ' + ftcKeyName(c.q.pc) + (mode === 'minor' ? '' : ' major') + '<br>' + ch.symbol + '<br><b>' + pct + '%</b></span></span>' : '';
-      return '<span class="cs' + (pop_ ? ' cs-has' : '') + '"><i class="cs-bar"><b style="height:' + pct + '%"' + (c.done ? ' class="cs-done"' : '') + '></b></i><u>' + (full ? spec.name + ':' + ch.roman + ' (' + ch.symbol + ')' : ch.roman) + '</u>' + pop_ + br + '</span>';
+      var pop_ = c.fill < 1 ? '<span class="cs-pop"><span class="cs-info">' + (pop ? ch.symbol + ' (' + ch.roman + ' in ' : ch.roman + ' in ') + ftcKeyName(c.q.pc) + (mode === 'minor' ? '' : ' major') + (pop ? ')' : '<br>' + ch.symbol) + '<br><b>' + pct + '%</b></span></span>' : '';
+      return '<span class="cs' + (pop_ ? ' cs-has' : '') + '"><i class="cs-bar"><b style="height:' + pct + '%"' + (c.done ? ' class="cs-done"' : '') + '></b></i><u>' + (pop ? (full ? spec.name + ':' + ch.symbol + ' (' + ch.roman + ')' : ch.symbol) : (full ? spec.name + ':' + ch.roman + ' (' + ch.symbol + ')' : ch.roman)) + '</u>' + pop_ + br + '</span>';
     }).join('') + '</span>';
   }
   function cardStrip() {
@@ -1906,6 +1906,11 @@
     var mode = state.mode, pop = ftcPop(), l = FindChord.levelInfo(mode, pop, n), b = function (t) { return bold ? '<strong>' + t + '</strong>' : t; };
     var kw = ftcKeyWord(l.keyPc), chs = ftcChordsWord(ftcDistinctChords(l.fresh.length ? l.fresh : l.cards)), seenW = ftcKeysWord(l.seen);
     var type = l.type === 'triad' ? '' : ' ' + ftcTypeWord(l.type).replace(/ chords$/, '');
+    if (pop && (l.role === 'first' || l.role === 'second' || l.role === 'dim')) {      // Pop answers by chord name: "Em (iii in C major)"
+      var spec = Theory.specsFor(mode, l.keyPc)[0].name, cs = ftcDistinctChords(l.fresh.length ? l.fresh : l.cards).sort(function (x, y) { return x.deg - y.deg; })
+        .map(function (c) { return Chords.chordInKey(spec, mode, c.deg, c.type); }).filter(Boolean);
+      return b(ftcJoin(cs.map(function (c) { return c.symbol; }))) + ' (' + ftcJoin(cs.map(function (c) { return c.roman; })) + ' in ' + kw + ')';
+    }
     switch (l.role) {
       case 'first': return b(chs) + ' in ' + kw;
       case 'all': return 'all six ' + ftcTypeWord(l.type) + ' in ' + b(kw);
