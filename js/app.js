@@ -3603,14 +3603,29 @@
       ftcPick('deg', hit.deg);
     }
   }
+  // After a right answer played on the piano, go on to the next question by itself once there has been time to look at the result.
+  // Nothing is skipped: a banner waiting to be read, a miss, or the user moving on first (or changing card) cancels it.
+  var MIDI_NEXT_MS = 4000, midiNextTimer = null;
+  function midiAutoNext(wasAnswered) {
+    if (wasAnswered || !state.answered || !state.flash) return;
+    var right = quizOn() ? !ftcMissed : /^Correct/.test(lastResult);
+    if (!right || bannerHold || sessionPending || (quizOn() && ftcTrial)) return;
+    var card = state.card, q = ftcQ;
+    if (midiNextTimer) clearTimeout(midiNextTimer);
+    midiNextTimer = setTimeout(function () {
+      midiNextTimer = null;
+      if (state.answered && state.card === card && ftcQ === q && !bannerHold && !sessionPending) nextCard(false);
+    }, MIDI_NEXT_MS);
+  }
   Midi.onPlay(function (ev) {
     var btn = document.getElementById('midi-link'); if (btn) { btn.classList.remove('midi-ping'); void btn.offsetWidth; btn.classList.add('midi-ping'); }
     var notes = ev.notes;
-    if (quizOn()) { midiChord(notes); return; }
+    if (quizOn()) { var was = state.answered; midiChord(notes); midiAutoNext(was); return; }
     var keyStudy = state.flash && !noteOn() && !chordy() && !!state.card && state.cardMode === 'key';
     var play = noteCardOn() && state.cardMode === 'play';
     if (!(play || keyStudy) || state.answered || notes.length !== 1) return;          // (one key, one answer)
     if (play) noteAnswer(notes[0] % 12); else answer(notes[0] % 12, false, null, null);
+    midiAutoNext(false);
   });
   // the Connect piano button by the settings gear
   (function () {

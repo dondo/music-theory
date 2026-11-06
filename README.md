@@ -227,6 +227,7 @@ A digital piano (tested design: Yamaha P-225 over USB) can answer the Study ques
 
 - Find the chord: play the chord (any octave, any inversion). Pop levels judge the notes by name and quality; Jazz levels by the roman numeral they make in the key.
 - Play the note and Find the key: press the one key (any octave).
+- A right answer played on the piano moves on to the next question by itself after about four seconds (a miss, a level-up or end-of-session banner, or you moving on first cancels it). Time trials move on at once.
 - Keys that go down within 90 ms of each other count as one chord; a multi-note press is ignored by single-note questions.
 - Pop level 1 hides the quality row, so a minor triad is read as its root's major chord there.
 - Needs Chrome, Edge or Firefox on a computer (or Android Chrome) over HTTPS or localhost, with a one-time permission prompt. Safari and iOS have no Web MIDI. Windows may need the Yamaha USB-MIDI driver.
