@@ -652,7 +652,11 @@
       for (var rd = 0; rd < 7; rd++) {
         var rc = Chords.chordInKey(rspec, state.mode, rd, 'triad'); if (!rc) continue;
         var rpc = (ftcQ.pc + rc.pcOffsets[0]) % 12, rb = rootBox.querySelector('[data-root="' + rpc + '"]');
-        if (rb) rb.appendChild(el('i', 'rk-num', rc.roman));
+        if (rb) {
+          var rn = el('i', 'rk-num', rc.roman);
+          if (rb.classList.contains('white')) { if (rpc === 0 || rpc === 5) rn.style.right = '14px'; else if (rpc === 4 || rpc === 11) rn.style.left = '14px'; }       // (centred in the white beside the black key)
+          rb.appendChild(rn);
+        }
       }
     }
     if (HAS_KEYBOARD && !rootBox.nextElementSibling) rootBox.parentNode.appendChild(el('p', 'rootkeys-note', 'Keyboard: A\u2013G for the root; Shift for sharp, ' + ALT_NAME + ' or / for flat.'));
