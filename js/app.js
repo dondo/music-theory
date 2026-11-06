@@ -646,6 +646,15 @@
       b.setAttribute('aria-pressed', ftcSel.root === k[0] ? 'true' : 'false');
       rootBox.appendChild(b);
     });
+    rootBox.classList.toggle('has-nums', !!ftcQ);
+    if (ftcQ) {                                                                 // the numerals of the question's key, above the root keys that belong to it
+      var rspec = Theory.specsFor(state.mode, ftcQ.pc)[0].name;
+      for (var rd = 0; rd < 7; rd++) {
+        var rc = Chords.chordInKey(rspec, state.mode, rd, 'triad'); if (!rc) continue;
+        var rpc = (ftcQ.pc + rc.pcOffsets[0]) % 12, rb = rootBox.querySelector('[data-root="' + rpc + '"]');
+        if (rb) rb.appendChild(el('i', 'rk-num', rc.roman));
+      }
+    }
     if (HAS_KEYBOARD && !rootBox.nextElementSibling) rootBox.parentNode.appendChild(el('p', 'rootkeys-note', 'Keyboard: A\u2013G for the root; Shift for sharp, ' + ALT_NAME + ' or / for flat.'));
     document.getElementById('root-row').hidden = false;
     var needSev = ['7', '9', '11', '13'].indexOf(ftcSel.type) >= 0 && !ftcSevHidden();           // (shown as soon as a seventh-or-more type is chosen; only a major or augmented chord needs the answer)
@@ -1569,6 +1578,7 @@
     layoutBar.hidden = !!state.flash || noteOn() || !!(state.staff && state.selected);       // the signature boxes only show when no stave replaces them
     state.quizStave = quizOn() && state.answered && state.card && state.card.chord ? buildQuizStave() : null;
     var ghosts = pendingLayout === 'out' && oldSvg ? Array.prototype.map.call(oldSvg.querySelectorAll('.xbox'), function (g) { return g.outerHTML; }).join('') : '';
+    state.romanTop = appMode.indexOf('chords') >= 0;                      // (Chords, Pop: the keys of the key carry their numerals)
     stage.innerHTML = KeyboardRender.render(quizOn() ? Object.assign({}, state, { selected: false }) : state);
     if (ftcTrial && ftcTrial.view) ftcTrial.view();                       // (a countdown or the trial results fills the stage)
     if (levelBanner.hasAttribute('data-welcome')) {                        // a welcome belongs to its own study activity: leaving it takes the banner away
