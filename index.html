@@ -21,6 +21,7 @@
     <header class="intro">
       <h1><svg class="app-icon" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#2563eb"/><rect x="8" y="34" width="48" height="22" rx="3" fill="#fff"/><path d="M20 34v22M32 34v22M44 34v22" stroke="#94a3b8" stroke-width="1.5"/><rect x="17" y="34" width="6" height="13" rx="1" fill="#1c1c1c"/><rect x="29" y="34" width="6" height="13" rx="1" fill="#1c1c1c"/><rect x="41" y="34" width="6" height="13" rx="1" fill="#1c1c1c"/><ellipse cx="34" cy="27" rx="6.5" ry="4.5" transform="rotate(-20 34 27)" fill="#fff"/><rect x="38.6" y="8" width="2.8" height="19" fill="#fff"/><path d="M41 8C41 15 53 15 50 25C49 19 44 18 41 16Z" fill="#fff"/></svg><span>Music Theory (Piano)</span><span class="local-badge" id="local-badge" hidden title="This is your local copy (local.js is present)">LOCAL</span></h1>
       <p class="lede">This app is meant to help explore musical notation and chord structure. This is not a curriculum; it&rsquo;s a self-driven study aid. There&rsquo;s some exposition of subtle concepts, but for the most part this is intended as a companion for a structured course of study.</p>
+      <button type="button" id="midi-link" class="btn-reset midi-btn settings-btn" data-state="off" aria-label="Connect a digital piano" title="Connect a digital piano"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><rect x="2.5" y="5" width="19" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M8.8 5v14M15.2 5v14" stroke="currentColor" stroke-width="1.4"/><rect x="7" y="5" width="3.6" height="8" rx="0.8" fill="currentColor"/><rect x="13.4" y="5" width="3.6" height="8" rx="0.8" fill="currentColor"/></svg></button>
       <button type="button" id="sync-link" class="btn-reset sync-btn settings-btn" aria-label="Settings and sync" title="Settings and sync" aria-haspopup="dialog"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
     </header>
 
@@ -314,6 +315,7 @@
   <script src="js/memory.js"></script>
   <script src="js/sync.js"></script>
   <script src="js/syncui.js"></script>
+  <script src="js/midi.js"></script>
   <script src="js/findchord.js"></script>
   <script src="js/fingering.js"></script>
   <script src="js/progtext.js"></script>

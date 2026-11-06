@@ -975,6 +975,14 @@ html.is-local body { border-top: 6px solid #ea580c; }
 /* Find the chord (Pop): the numerals of the question's key, inside the root keys that belong to it */
 .rk .rk-num { position: absolute; top: 7px; left: 0; right: 0; text-align: center; font-size: 0.72rem; line-height: 1; font-weight: 700; font-style: normal; color: #475569; pointer-events: none; }
 .rk.black .rk-num { top: 6px; color: #e2e8f0; }
+
+/* the Connect piano button, beside the settings gear: grey = off, green = piano connected, amber = nothing found / blocked */
+.midi-btn { position: absolute; top: 0; right: 46px; }
+.midi-btn[data-state="on"] { color: #16a34a; background: #dcfce7; }
+.midi-btn[data-state="none"], .midi-btn[data-state="denied"], .midi-btn[data-state="connecting"] { color: #b45309; background: #fef3c7; }
+.midi-btn[data-state="unsupported"] { opacity: 0.5; }
+.midi-btn.midi-ping { animation: midi-ping 0.35s ease-out; }
+@keyframes midi-ping { from { box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.6); } to { box-shadow: 0 0 0 10px rgba(22, 163, 74, 0); } }
 </style>
 </head>
 <body>
@@ -982,6 +990,7 @@ html.is-local body { border-top: 6px solid #ea580c; }
     <header class="intro">
       <h1><svg class="app-icon" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#2563eb"/><rect x="8" y="34" width="48" height="22" rx="3" fill="#fff"/><path d="M20 34v22M32 34v22M44 34v22" stroke="#94a3b8" stroke-width="1.5"/><rect x="17" y="34" width="6" height="13" rx="1" fill="#1c1c1c"/><rect x="29" y="34" width="6" height="13" rx="1" fill="#1c1c1c"/><rect x="41" y="34" width="6" height="13" rx="1" fill="#1c1c1c"/><ellipse cx="34" cy="27" rx="6.5" ry="4.5" transform="rotate(-20 34 27)" fill="#fff"/><rect x="38.6" y="8" width="2.8" height="19" fill="#fff"/><path d="M41 8C41 15 53 15 50 25C49 19 44 18 41 16Z" fill="#fff"/></svg><span>Music Theory (Piano)</span><span class="local-badge" id="local-badge" hidden title="This is your local copy (local.js is present)">LOCAL</span></h1>
       <p class="lede">This app is meant to help explore musical notation and chord structure. This is not a curriculum; it&rsquo;s a self-driven study aid. There&rsquo;s some exposition of subtle concepts, but for the most part this is intended as a companion for a structured course of study.</p>
+      <button type="button" id="midi-link" class="btn-reset midi-btn settings-btn" data-state="off" aria-label="Connect a digital piano" title="Connect a digital piano"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><rect x="2.5" y="5" width="19" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M8.8 5v14M15.2 5v14" stroke="currentColor" stroke-width="1.4"/><rect x="7" y="5" width="3.6" height="8" rx="0.8" fill="currentColor"/><rect x="13.4" y="5" width="3.6" height="8" rx="0.8" fill="currentColor"/></svg></button>
       <button type="button" id="sync-link" class="btn-reset sync-btn settings-btn" aria-label="Settings and sync" title="Settings and sync" aria-haspopup="dialog"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
     </header>
 
@@ -2618,6 +2627,93 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = Sync; }
 })();
 </script>
   <script>
+// A digital piano as an input (Web MIDI): the keys pressed on it answer the Study questions that ask for a key or a chord.
+// Desktop Chrome / Edge / Firefox (after a permission prompt) and Android Chrome over USB; Safari and every iOS browser have no Web MIDI.
+//
+//   Midi.supported            true when this browser has navigator.requestMIDIAccess
+//   Midi.connect()            ask for access, listen on every MIDI input (new ones are picked up when plugged in); a promise
+//   Midi.disconnect()         stop listening
+//   Midi.onPlay(fn)           fn({ notes: [midi numbers, lowest first] }) after a press: the keys that went down within CHORD_MS of each other
+//   Midi.onStatus(fn)         fn({ state: 'off'|'connecting'|'on'|'none'|'denied'|'unsupported', inputs: [names] }) whenever that changes
+//   Midi.status()             the same object, now
+//   Midi.simulate(notes)      (testing) play these notes as if the piano had
+//
+// Only note-on counts (velocity 0 is a note-off, as the MIDI spec has it); the pedal, pitch bend and the rest are ignored.
+// Fingers never land at exactly the same instant, so a press is closed CHORD_MS after its first note and everything that went down by then is
+// one chord.
+(function (root) {
+  'use strict';
+  var CHORD_MS = 90;
+  var access = null, listening = false, inputs = [], playCb = [], statusCb = [], state = 'off';
+  var pending = null, timer = null;
+
+  function supported() { return !!(root.navigator && typeof root.navigator.requestMIDIAccess === 'function'); }
+  function status() { return { state: state, inputs: inputs.map(function (i) { return i.name || 'MIDI input'; }) }; }
+  function setState(s) { state = s; statusCb.forEach(function (fn) { try { fn(status()); } catch (e) { /* a listener's problem */ } }); }
+
+  function flush() {
+    timer = null;
+    var notes = pending; pending = null;
+    if (!notes || !notes.length) return;
+    notes.sort(function (a, b) { return a - b; });
+    playCb.forEach(function (fn) { try { fn({ notes: notes }); } catch (e) { if (root.console) root.console.error(e); } });
+  }
+  function noteOn(n) {
+    if (!pending) pending = [];
+    if (pending.indexOf(n) < 0) pending.push(n);
+    if (!timer) timer = root.setTimeout(flush, CHORD_MS);
+  }
+  function onMessage(ev) {
+    var d = ev.data;
+    if (!d || d.length < 3) return;
+    if ((d[0] & 0xf0) === 0x90 && d[2] > 0) noteOn(d[1]);
+  }
+
+  function refresh() {
+    if (!access) return;
+    inputs = [];
+    access.inputs.forEach(function (inp) {
+      if (inp.state === 'disconnected') return;
+      inp.onmidimessage = listening ? onMessage : null;
+      inputs.push(inp);
+    });
+    setState(!listening ? 'off' : inputs.length ? 'on' : 'none');
+  }
+
+  function connect() {
+    if (!supported()) { setState('unsupported'); return Promise.resolve(status()); }
+    listening = true;
+    setState('connecting');
+    return root.navigator.requestMIDIAccess().then(function (a) {
+      access = a;
+      a.onstatechange = refresh;                      // (plugging the piano in or out)
+      refresh();
+      return status();
+    }, function () {
+      listening = false; inputs = [];
+      setState('denied');
+      return status();
+    });
+  }
+  function disconnect() {
+    listening = false;
+    if (access) { access.inputs.forEach(function (inp) { inp.onmidimessage = null; }); }
+    inputs = [];
+    pending = null; if (timer) { root.clearTimeout(timer); timer = null; }
+    setState('off');
+  }
+
+  var api = {
+    supported: supported, connect: connect, disconnect: disconnect, status: status,
+    onPlay: function (fn) { playCb.push(fn); },
+    onStatus: function (fn) { statusCb.push(fn); },
+    simulate: function (notes) { notes.forEach(noteOn); },
+    CHORD_MS: CHORD_MS
+  };
+  if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.Midi = api;
+}(typeof window !== 'undefined' ? window : globalThis));
+</script>
+  <script>
 /* "Find the chord": the difficulty ladder and the question picker. Pure functions, no DOM.
  *
  * TERMINOLOGY: the UI now says a STAGE is made of LEVELS ("Stage 2: Level 3"). This file keeps the older names: what the UI calls a level is
@@ -2810,6 +2906,42 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = Sync; }
     if (want.qual && sel.qual !== want.qual) return false;
     if (want.sev && sel.sev !== want.sev) return false;
     return true;
+  }
+  // the chords a set of played pitch classes can be named as (a piano answer): [{ root, type, qual, sev }], those rooted on the lowest note first.
+  // Triads, sus2/sus4, add9 and the sevenths/ninths in all their qualities; any octave, any order, any doubling.
+  var TRI = { maj: [0, 4, 7], min: [0, 3, 7], dim: [0, 3, 6], aug: [0, 4, 8] };
+  var SEV = { maj: { dom: 10, maj: 11 }, min: { dom: 10 }, dim: { dom: 10 }, aug: { dom: 10, maj: 11 } };         // (the seventh above each quality; "dom" is the flat seventh)
+  var SHAPES = null;
+  function shapes() {
+    if (SHAPES) return SHAPES;
+    var out = [], key = function (a) { return a.slice().sort(function (x, y) { return x - y; }).join(','); };
+    Object.keys(TRI).forEach(function (q) {
+      out.push({ type: 'triad', qual: q, sev: null, set: key(TRI[q]) });
+      out.push({ type: 'add9', qual: q, sev: null, set: key(TRI[q].concat([2])) });
+      Object.keys(SEV[q]).forEach(function (v) {
+        var sev = q === 'maj' || q === 'aug' ? v : null;
+        if (q === 'min' || q === 'dim') { if (v !== 'dom') return; }
+        out.push({ type: '7', qual: q, sev: sev, set: key(TRI[q].concat([SEV[q][v]])) });
+        out.push({ type: '9', qual: q, sev: sev, set: key(TRI[q].concat([SEV[q][v], 2])) });
+      });
+    });
+    out.push({ type: 'sus2', qual: null, sev: null, set: key([0, 2, 7]) });
+    out.push({ type: 'sus4', qual: null, sev: null, set: key([0, 5, 7]) });
+    return (SHAPES = out);
+  }
+  function nameChord(pcs, bassPc) {
+    var have = {}, found = [];
+    pcs.forEach(function (p) { have[((p % 12) + 12) % 12] = 1; });
+    var uniq = Object.keys(have).map(Number);
+    if (uniq.length < 3) return [];
+    shapes().forEach(function (sh) {
+      for (var r = 0; r < 12; r++) {
+        var set = sh.set.split(',').map(function (o) { return (parseInt(o, 10) + r) % 12; }).sort(function (x, y) { return x - y; }).join(',');
+        if (set === uniq.slice().sort(function (x, y) { return x - y; }).join(',')) found.push({ root: r, type: sh.type, qual: sh.qual, sev: sh.sev });
+      }
+    });
+    found.sort(function (a, b) { return (a.root === bassPc ? 0 : 1) - (b.root === bassPc ? 0 : 1); });
+    return found;
   }
   var SHARP_NAMES = ['C', 'C\u266F', 'D', 'D\u266F', 'E', 'F', 'F\u266F', 'G', 'G\u266F', 'A', 'A\u266F', 'B'];
   var FLAT_NAMES = ['C', 'D\u266D', 'D', 'E\u266D', 'E', 'F', 'G\u266D', 'G', 'A\u266D', 'A', 'B\u266D', 'B'];
@@ -3007,7 +3139,7 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = Sync; }
   return { STREAK: STREAK, passMark: passMark, H_DURABLE: H_DURABLE, pairsAt: pairsAt, newCards: newCards, cardsOf: cardsOf, durability: durability, DATA: DATA, maxKeys: maxKeys, clamp: clamp, keys: keys, chords: chords, pick: pick,
            ladder: ladder, levelCount: levelCount, levelInfo: levelInfo, levelAt: levelAt, stageSteps: stageSteps, stageIntro: stageIntro, mayInvert: mayInvert, stepAdds: stepAdds, stageCoverage: stageCoverage, freshTest: freshTest,
            identify: identify, weightKey: weightKey, weightOf: weightOf, miss: miss, hit: hit, loadWeights: loadWeights, saveWeights: saveWeights, resetWeights: resetWeights,
-           describe: describe, checkAnswer: checkAnswer, needsQual: needsQual, needsSev: needsSev, pcName: pcName, answerName: answerName,
+           describe: describe, nameChord: nameChord, checkAnswer: checkAnswer, needsQual: needsQual, needsSev: needsSev, pcName: pcName, answerName: answerName,
            pickInversion: pickInversion, freshPlan: freshPlan, freshRecord: freshRecord, floorPlan: floorPlan,
            newMem: newMem, loadMem: loadMem, saveMem: saveMem, resetMem: resetMem, memWeight: memWeight, memAnswer: memAnswer, pairRecall: pairRecall, grade: grade, tRef: tRef, timeClass: timeClass, anyPair: anyPair,
            loadLog: loadLog, saveLog: saveLog, LOG_COLUMNS: LOG_COLUMNS, LOG_CAP: LOG_CAP, OLD_R: OLD_R,
@@ -7966,6 +8098,74 @@ var KeyboardRender = (function () {
     }
   });
 
+  // ---- a digital piano as input (js/midi.js): the keys pressed answer Find the key, Play the note and Find the chord ----
+  // Notes count in any octave. A chord is judged by its pitch classes (any inversion, doubling or order).
+  function midiChord(notes) {
+    if (!quizOn() || !ftcQ || state.answered) return;
+    var tonic = ftcQ.pc, want = ftcChord(), pa = popAns();
+    var norm = function (a) { var u = {}; a.forEach(function (p) { u[((p % 12) + 12) % 12] = 1; }); return Object.keys(u).map(Number).sort(function (x, y) { return x - y; }).join(','); };
+    var played = norm(notes), same = played === norm(want.pcOffsets.map(function (o) { return tonic + o; }));
+    var say = function (t) { if (state.card) state.card.status = t; ftcSay(t); draw(false, false); };
+    var sel = null, bass = notes[0] % 12;
+    if (pa) {
+      if (same) { var d = FindChord.describe(want, ftcQ.type); sel = { root: (d.root + tonic) % 12, type: d.type, qual: d.qual, sev: d.sev }; }
+      else {
+        var cs = FindChord.nameChord(notes, bass);
+        if (!cs.length) { say('I can\u2019t name those notes as a chord. Try again.'); return; }
+        sel = cs[0];
+        if ((ftcTypesHidden() && sel.type !== 'triad') || (ftcSevHidden() && sel.sev === 'maj')) { say('That has more notes than this level asks for. Try again.'); return; }
+      }
+      if (ftcWrong) ftcClearPicks();
+      ftcSel.type = sel.type; ftcSel.qual = sel.qual; ftcSel.sev = sel.sev;
+      ftcPick('root', sel.root);
+    } else {
+      var spec = ftcSpec(), hit = same ? { deg: ftcQ.deg, type: ftcQ.type } : null;
+      if (!hit) {
+        var types = {}; ftcLevels().cards.forEach(function (c) { types[c.type] = 1; }); types.triad = 1;
+        Object.keys(types).forEach(function (t) {
+          for (var dg = 0; dg < 7 && !hit; dg++) {
+            var ch = Chords.chordInKey(spec.name, state.mode, dg, t);
+            if (ch && norm(ch.pcOffsets.map(function (o) { return tonic + o; })) === played) hit = { deg: dg, type: t };
+          }
+        });
+      }
+      if (!hit) { say('Those notes aren\u2019t a chord of this key. Try again.'); return; }
+      if (ftcTypesHidden() && hit.type !== 'triad') { say('That has more notes than this level asks for. Try again.'); return; }
+      if (ftcWrong) ftcClearPicks();
+      ftcSel.type = hit.type;
+      ftcPick('deg', hit.deg);
+    }
+  }
+  Midi.onPlay(function (ev) {
+    var btn = document.getElementById('midi-link'); if (btn) { btn.classList.remove('midi-ping'); void btn.offsetWidth; btn.classList.add('midi-ping'); }
+    var notes = ev.notes;
+    if (quizOn()) { midiChord(notes); return; }
+    var keyStudy = state.flash && !noteOn() && !chordy() && !!state.card && state.cardMode === 'key';
+    var play = noteCardOn() && state.cardMode === 'play';
+    if (!(play || keyStudy) || state.answered || notes.length !== 1) return;          // (one key, one answer)
+    if (play) noteAnswer(notes[0] % 12); else answer(notes[0] % 12, false, null, null);
+  });
+  // the Connect piano button by the settings gear
+  (function () {
+    var btn = document.getElementById('midi-link'), KEY = 'music-theory-midi';
+    if (!btn) return;
+    var TEXT = { off: 'Piano input is off. Click to connect a digital piano (USB).', connecting: 'Connecting\u2026', none: 'No piano found: connect it by USB and switch it on.',
+      denied: 'The browser blocked MIDI access. Allow it in the site settings, then click again.', unsupported: 'This browser has no MIDI input (use Chrome, Edge or Firefox on a computer).' };
+    Midi.onStatus(function (st) {
+      btn.setAttribute('data-state', st.state);
+      var t = st.state === 'on' ? 'Piano connected: ' + st.inputs.join(', ') + '. Click to turn off.' : TEXT[st.state];
+      btn.title = t; btn.setAttribute('aria-label', t);
+    });
+    btn.addEventListener('click', function () {
+      var st = Midi.status().state;
+      if (st === 'on' || st === 'none' || st === 'connecting') { Midi.disconnect(); try { window.localStorage.removeItem(KEY); } catch (e) { /* private window */ } return; }
+      Midi.connect().then(function (s) { try { if (s.state === 'on' || s.state === 'none') window.localStorage.setItem(KEY, '1'); } catch (e) { /* private window */ } });
+    });
+    btn.setAttribute('data-state', 'off'); btn.title = TEXT.off;
+    var was = null; try { was = window.localStorage.getItem(KEY); } catch (e) { /* private window */ }
+    if (was && Midi.supported()) Midi.connect();                 // (it worked last time: the browser remembers the permission)
+  }());
+
   // Progressions: arrows step, Enter adds the selected chord, and the section's own buttons
   document.addEventListener('keydown', function (e) {
     if (e.defaultPrevented || !plainKey(e)) return;
@@ -8371,7 +8571,7 @@ var KeyboardRender = (function () {
 </script>
   <script>
 /* generated by tools/build.py: do not edit */
-var APP_VERSION = '1.0 (build 7f862a7)';
+var APP_VERSION = '1.0 (build 68bc4fe)';
 (function () {
   function show() { Array.prototype.forEach.call(document.querySelectorAll('[data-version]'), function (e) { e.textContent = APP_VERSION; }); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', show); else show();

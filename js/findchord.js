@@ -191,6 +191,42 @@
     if (want.sev && sel.sev !== want.sev) return false;
     return true;
   }
+  // the chords a set of played pitch classes can be named as (a piano answer): [{ root, type, qual, sev }], those rooted on the lowest note first.
+  // Triads, sus2/sus4, add9 and the sevenths/ninths in all their qualities; any octave, any order, any doubling.
+  var TRI = { maj: [0, 4, 7], min: [0, 3, 7], dim: [0, 3, 6], aug: [0, 4, 8] };
+  var SEV = { maj: { dom: 10, maj: 11 }, min: { dom: 10 }, dim: { dom: 10 }, aug: { dom: 10, maj: 11 } };         // (the seventh above each quality; "dom" is the flat seventh)
+  var SHAPES = null;
+  function shapes() {
+    if (SHAPES) return SHAPES;
+    var out = [], key = function (a) { return a.slice().sort(function (x, y) { return x - y; }).join(','); };
+    Object.keys(TRI).forEach(function (q) {
+      out.push({ type: 'triad', qual: q, sev: null, set: key(TRI[q]) });
+      out.push({ type: 'add9', qual: q, sev: null, set: key(TRI[q].concat([2])) });
+      Object.keys(SEV[q]).forEach(function (v) {
+        var sev = q === 'maj' || q === 'aug' ? v : null;
+        if (q === 'min' || q === 'dim') { if (v !== 'dom') return; }
+        out.push({ type: '7', qual: q, sev: sev, set: key(TRI[q].concat([SEV[q][v]])) });
+        out.push({ type: '9', qual: q, sev: sev, set: key(TRI[q].concat([SEV[q][v], 2])) });
+      });
+    });
+    out.push({ type: 'sus2', qual: null, sev: null, set: key([0, 2, 7]) });
+    out.push({ type: 'sus4', qual: null, sev: null, set: key([0, 5, 7]) });
+    return (SHAPES = out);
+  }
+  function nameChord(pcs, bassPc) {
+    var have = {}, found = [];
+    pcs.forEach(function (p) { have[((p % 12) + 12) % 12] = 1; });
+    var uniq = Object.keys(have).map(Number);
+    if (uniq.length < 3) return [];
+    shapes().forEach(function (sh) {
+      for (var r = 0; r < 12; r++) {
+        var set = sh.set.split(',').map(function (o) { return (parseInt(o, 10) + r) % 12; }).sort(function (x, y) { return x - y; }).join(',');
+        if (set === uniq.slice().sort(function (x, y) { return x - y; }).join(',')) found.push({ root: r, type: sh.type, qual: sh.qual, sev: sh.sev });
+      }
+    });
+    found.sort(function (a, b) { return (a.root === bassPc ? 0 : 1) - (b.root === bassPc ? 0 : 1); });
+    return found;
+  }
   var SHARP_NAMES = ['C', 'C\u266F', 'D', 'D\u266F', 'E', 'F', 'F\u266F', 'G', 'G\u266F', 'A', 'A\u266F', 'B'];
   var FLAT_NAMES = ['C', 'D\u266D', 'D', 'E\u266D', 'E', 'F', 'G\u266D', 'G', 'A\u266D', 'A', 'B\u266D', 'B'];
   function pcName(pc, flats) { return (flats ? FLAT_NAMES : SHARP_NAMES)[((pc % 12) + 12) % 12]; }
@@ -387,7 +423,7 @@
   return { STREAK: STREAK, passMark: passMark, H_DURABLE: H_DURABLE, pairsAt: pairsAt, newCards: newCards, cardsOf: cardsOf, durability: durability, DATA: DATA, maxKeys: maxKeys, clamp: clamp, keys: keys, chords: chords, pick: pick,
            ladder: ladder, levelCount: levelCount, levelInfo: levelInfo, levelAt: levelAt, stageSteps: stageSteps, stageIntro: stageIntro, mayInvert: mayInvert, stepAdds: stepAdds, stageCoverage: stageCoverage, freshTest: freshTest,
            identify: identify, weightKey: weightKey, weightOf: weightOf, miss: miss, hit: hit, loadWeights: loadWeights, saveWeights: saveWeights, resetWeights: resetWeights,
-           describe: describe, checkAnswer: checkAnswer, needsQual: needsQual, needsSev: needsSev, pcName: pcName, answerName: answerName,
+           describe: describe, nameChord: nameChord, checkAnswer: checkAnswer, needsQual: needsQual, needsSev: needsSev, pcName: pcName, answerName: answerName,
            pickInversion: pickInversion, freshPlan: freshPlan, freshRecord: freshRecord, floorPlan: floorPlan,
            newMem: newMem, loadMem: loadMem, saveMem: saveMem, resetMem: resetMem, memWeight: memWeight, memAnswer: memAnswer, pairRecall: pairRecall, grade: grade, tRef: tRef, timeClass: timeClass, anyPair: anyPair,
            loadLog: loadLog, saveLog: saveLog, LOG_COLUMNS: LOG_COLUMNS, LOG_CAP: LOG_CAP, OLD_R: OLD_R,

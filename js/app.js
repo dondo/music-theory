@@ -3565,6 +3565,74 @@
     }
   });
 
+  // ---- a digital piano as input (js/midi.js): the keys pressed answer Find the key, Play the note and Find the chord ----
+  // Notes count in any octave. A chord is judged by its pitch classes (any inversion, doubling or order).
+  function midiChord(notes) {
+    if (!quizOn() || !ftcQ || state.answered) return;
+    var tonic = ftcQ.pc, want = ftcChord(), pa = popAns();
+    var norm = function (a) { var u = {}; a.forEach(function (p) { u[((p % 12) + 12) % 12] = 1; }); return Object.keys(u).map(Number).sort(function (x, y) { return x - y; }).join(','); };
+    var played = norm(notes), same = played === norm(want.pcOffsets.map(function (o) { return tonic + o; }));
+    var say = function (t) { if (state.card) state.card.status = t; ftcSay(t); draw(false, false); };
+    var sel = null, bass = notes[0] % 12;
+    if (pa) {
+      if (same) { var d = FindChord.describe(want, ftcQ.type); sel = { root: (d.root + tonic) % 12, type: d.type, qual: d.qual, sev: d.sev }; }
+      else {
+        var cs = FindChord.nameChord(notes, bass);
+        if (!cs.length) { say('I can\u2019t name those notes as a chord. Try again.'); return; }
+        sel = cs[0];
+        if ((ftcTypesHidden() && sel.type !== 'triad') || (ftcSevHidden() && sel.sev === 'maj')) { say('That has more notes than this level asks for. Try again.'); return; }
+      }
+      if (ftcWrong) ftcClearPicks();
+      ftcSel.type = sel.type; ftcSel.qual = sel.qual; ftcSel.sev = sel.sev;
+      ftcPick('root', sel.root);
+    } else {
+      var spec = ftcSpec(), hit = same ? { deg: ftcQ.deg, type: ftcQ.type } : null;
+      if (!hit) {
+        var types = {}; ftcLevels().cards.forEach(function (c) { types[c.type] = 1; }); types.triad = 1;
+        Object.keys(types).forEach(function (t) {
+          for (var dg = 0; dg < 7 && !hit; dg++) {
+            var ch = Chords.chordInKey(spec.name, state.mode, dg, t);
+            if (ch && norm(ch.pcOffsets.map(function (o) { return tonic + o; })) === played) hit = { deg: dg, type: t };
+          }
+        });
+      }
+      if (!hit) { say('Those notes aren\u2019t a chord of this key. Try again.'); return; }
+      if (ftcTypesHidden() && hit.type !== 'triad') { say('That has more notes than this level asks for. Try again.'); return; }
+      if (ftcWrong) ftcClearPicks();
+      ftcSel.type = hit.type;
+      ftcPick('deg', hit.deg);
+    }
+  }
+  Midi.onPlay(function (ev) {
+    var btn = document.getElementById('midi-link'); if (btn) { btn.classList.remove('midi-ping'); void btn.offsetWidth; btn.classList.add('midi-ping'); }
+    var notes = ev.notes;
+    if (quizOn()) { midiChord(notes); return; }
+    var keyStudy = state.flash && !noteOn() && !chordy() && !!state.card && state.cardMode === 'key';
+    var play = noteCardOn() && state.cardMode === 'play';
+    if (!(play || keyStudy) || state.answered || notes.length !== 1) return;          // (one key, one answer)
+    if (play) noteAnswer(notes[0] % 12); else answer(notes[0] % 12, false, null, null);
+  });
+  // the Connect piano button by the settings gear
+  (function () {
+    var btn = document.getElementById('midi-link'), KEY = 'music-theory-midi';
+    if (!btn) return;
+    var TEXT = { off: 'Piano input is off. Click to connect a digital piano (USB).', connecting: 'Connecting\u2026', none: 'No piano found: connect it by USB and switch it on.',
+      denied: 'The browser blocked MIDI access. Allow it in the site settings, then click again.', unsupported: 'This browser has no MIDI input (use Chrome, Edge or Firefox on a computer).' };
+    Midi.onStatus(function (st) {
+      btn.setAttribute('data-state', st.state);
+      var t = st.state === 'on' ? 'Piano connected: ' + st.inputs.join(', ') + '. Click to turn off.' : TEXT[st.state];
+      btn.title = t; btn.setAttribute('aria-label', t);
+    });
+    btn.addEventListener('click', function () {
+      var st = Midi.status().state;
+      if (st === 'on' || st === 'none' || st === 'connecting') { Midi.disconnect(); try { window.localStorage.removeItem(KEY); } catch (e) { /* private window */ } return; }
+      Midi.connect().then(function (s) { try { if (s.state === 'on' || s.state === 'none') window.localStorage.setItem(KEY, '1'); } catch (e) { /* private window */ } });
+    });
+    btn.setAttribute('data-state', 'off'); btn.title = TEXT.off;
+    var was = null; try { was = window.localStorage.getItem(KEY); } catch (e) { /* private window */ }
+    if (was && Midi.supported()) Midi.connect();                 // (it worked last time: the browser remembers the permission)
+  }());
+
   // Progressions: arrows step, Enter adds the selected chord, and the section's own buttons
   document.addEventListener('keydown', function (e) {
     if (e.defaultPrevented || !plainKey(e)) return;
