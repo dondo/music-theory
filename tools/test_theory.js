@@ -498,7 +498,7 @@ check('find the chord: five keys per ladder, in the taught order', function () {
     assert.strictEqual(new Set(ks).size, 5);
   });
 });
-check('find the chord: stage 1 is the first key on the treble clef, stage 2 repeats it on the bass clef, everything after is bass', function () {
+check('find the chord: stage 1 is the first key\u2019s triads on the treble clef, stage 2 repeats the key on the bass clef, everything after is bass', function () {
   COMBOS.forEach(function (c) {
     var L = FC.ladder(c[0], c[1]);
     L.forEach(function (l) {
@@ -506,11 +506,13 @@ check('find the chord: stage 1 is the first key on the treble clef, stage 2 repe
       assert.ok(l.cards.every(function (x) { return x.clef === l.clef; }));
     });
     var s1 = L.filter(function (l) { return l.stage === 1; }), s2 = L.filter(function (l) { return l.stage === 2; });
-    assert.deepStrictEqual(s1.map(function (l) { return l.role; }), s2.map(function (l) { return l.role; }));
+    assert.ok(s1.every(function (l) { return l.type === 'triad'; }));
+    assert.deepStrictEqual(s1.map(function (l) { return l.role; }), s2.slice(0, s1.length).map(function (l) { return l.role; }));
     assert.strictEqual(s1[0].keyPc, s2[0].keyPc);
     assert.ok(s2.every(function (l) { return l.rep; }) && !s1.some(function (l) { return l.rep; }));
     assert.strictEqual(FC.stageIntro(c[0], c[1], 2).rep, true);
     assert.strictEqual(L.filter(function (l) { return l.stage === 3; })[0].keyIdx, 1);
+    assert.strictEqual(L[L.length - 1].stage, 6);
   });
   var mem = FC.newMem(), t = { pc: 0, deg: 0, type: 'triad' }, b = { pc: 0, deg: 0, type: 'triad', clef: 'bass' };
   FC.memAnswer(mem, 'major', t, true, 1000, 0, 1000);
@@ -532,25 +534,26 @@ check('find the chord: pick stays inside the level and avoids an immediate repea
     avoid = q;
   }
 });
-check('find the chord: every key opens with I IV V, then vi ii iii (i iv v, III VI VII), a review, the diminished chord, a full review', function () {
+check('find the chord: a stage is a key with every chord type; each type goes I IV V, then vi ii iii (i iv v, III VI VII), then the diminished chord; no reviews', function () {
   var key = function (c) { return c.pc + '/' + c.deg + c.type + '/' + c.clef; };
   COMBOS.forEach(function (c) {
     var L = FC.ladder(c[0], c[1]), tag = c[0] + (c[1] ? ' pop' : ' jazz');
-    var tri = L.filter(function (l) { return l.type === 'triad'; });
-    [[0, 'treble'], [0, 'bass'], [1, 'bass'], [2, 'bass'], [3, 'bass'], [4, 'bass']].forEach(function (run) {
-      var k = run[0], g = tri.filter(function (l) { return l.keyIdx === k && l.clef === run[1]; });
-      var want = ['first', 'review', 'second', 'second', 'second', 'review', 'dim', 'full'];
-      if (k === 0) want.pop();                                         // (in the first key the diminished level already holds every chord: no separate full review)
-      if (k === 0) want.splice(1, 1);                                  // nothing to review yet in the first key
-      assert.deepStrictEqual(g.map(function (l) { return l.role; }), want, tag + ' key ' + k);
-      assert.strictEqual(g[0].fresh.length, 3);
-      assert.ok(g[g.length - 1].cards.length >= 7 * (k + 1), tag + ': the full review has every triad of every key so far');
+    assert.ok(L.every(function (l) { return ['first', 'second', 'dim', 'all'].indexOf(l.role) >= 0; }), tag + ': no review levels');
+    for (var st = 1; st <= 6; st++) {
+      var g = L.filter(function (l) { return l.stage === st; });
+      assert.ok(g.every(function (l) { return l.keyPc === g[0].keyPc; }), tag + ' stage ' + st + ' is one key');
+      var tri = g.filter(function (l) { return l.type === 'triad'; });
+      assert.deepStrictEqual(tri.map(function (l) { return l.role; }), ['first', 'second', 'second', 'second', 'dim'], tag + ' stage ' + st);
+      assert.strictEqual(tri[0].fresh.length, 3);
+      if (st > 1) assert.ok(['7', 'sus4'].every(function (t) { return t === 'sus4' || g.some(function (l) { return l.type === t; }); }) && g.some(function (l) { return l.type === (c[1] ? '9' : '13'); }), tag + ' every type');
+    }
+    // each level = what it introduces + every card of every earlier level on the same clef
+    var played = { treble: {}, bass: {} };
+    L.forEach(function (l, i) {
+      l.fresh.forEach(function (f) { assert.ok(!played[l.clef][key(f)], tag + ' introduced twice ' + key(f)); played[l.clef][key(f)] = 1; });
+      assert.deepStrictEqual(l.cards.map(key).sort(), Object.keys(played[l.clef]).sort(), tag + ' level ' + i + ' is cumulative');
     });
-    // a level's cards are what it introduces plus what it reviews: nothing new hides in a review
-    L.forEach(function (l, i) { assert.ok(l.cards.length >= 1 && l.fresh.every(function (f) { return l.cards.map(key).indexOf(key(f)) >= 0; }), tag + ' ' + i); });
-    // each card is introduced exactly once
-    var seen = {}; L.forEach(function (l) { l.fresh.forEach(function (f) { assert.ok(!seen[key(f)], tag + ' introduced twice ' + key(f)); seen[key(f)] = 1; }); });
-    assert.ok(L.length > 100 && L.length < 300, tag + ' ' + L.length);
+    assert.ok(L.length > 90 && L.length < 200, tag + ' ' + L.length);
   });
 });
 
@@ -673,10 +676,13 @@ check('find the chord: the new challenge is asked about often at the start of a 
   var seed = 11; function rnd() { seed = (seed * 16807) % 2147483647; return seed / 2147483647; }
   var L = FC.ladder('major', true), n = 0;
   for (var i = 0; i < L.length; i++) if (L[i].role === 'first' && L[i].keyIdx === 3) { n = i + 1; break; }
-  var l = L[n - 1], fresh = FC.freshTest('major', true, n), hits = 0, N = 2000;
-  for (var j = 0; j < N; j++) hits += fresh(FC.pick('major', true, l.cards, null, rnd, null, null, fresh, 'boost')) ? 1 : 0;
-  // three new cards of a dozen would be ~25% unboosted; boosted it is clearly more
-  assert.ok(hits / N > 0.4, 'boosted share ' + hits / N);
+  var l = L[n - 1], fresh = FC.freshTest('major', true, n), hits = 0, N = 2000, tr = { asked: 0, fresh: 0, old: 0 };
+  for (var j = 0; j < N; j++) {                                      // (the whole pool of earlier cards is in play: the floors keep the new ones coming)
+    var plan = FC.floorPlan(tr, true, true), q = FC.pick('major', true, l.cards, null, rnd, null, null, plan === 'old' ? function (c) { return !fresh(c); } : fresh, plan ? 'only' : 'boost');
+    var f = fresh(q); if (f) hits++;
+    FC.freshRecord(tr, f, !f);
+  }
+  assert.ok(hits / N >= 0.6, 'fresh share ' + hits / N);
 });
 
 check('memory model: recall decays by half-life, misses shrink it, speed grades the gain', function () {

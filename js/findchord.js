@@ -274,14 +274,14 @@
 
 
   // ---- the ladder ----
-  // The ladder is a curriculum built from quality groups (major chords, then minor chords, then the diminished one), one chord type at a time,
-  // one key at a time (see README, "Find the chord: the ladder"). Each level is an explicit list of cards (key + chord pairs), not a product of keys x chords.
-  // For every chord type, and for each key in turn (a STAGE), the levels are:
-  //   1. the key's first-group chords (major: I IV V),  2. a review of those across the keys so far,
-  //   3-5. each second-group chord added in turn to the key's chords so far (major: vi, ii, iii; the new one is what's fresh),  6. a review of those across the keys so far,
-  //   7. the diminished chord alone (vii°; types that have one),  8. a full review of every chord of the type across the keys so far.
-  // (Sus4 and sus2 have no major/minor split: all six chords in the key at once, then a review.) A review identical to the level before it is left out,
-  // except in Pop's very first stage, where level 1 answers by letter names (C, F, G) and level 2 repeats it answering by roman numerals.
+  // The ladder is a curriculum built from quality groups (major chords, then minor chords, then the diminished one), one KEY at a time
+  // (see README, "Find the chord: the ladder"). A STAGE is a key; each level is an explicit list of cards (key + chord pairs), not a product of keys x chords.
+  // Within a stage, for each chord type in turn (triads, then sevenths, then the rest):
+  //   - the first group (major: I IV V) together,  - each second-group chord added in turn (major: vi, ii, iii),  - the diminished chord (types that have one).
+  // (Sus4 and sus2 have no major/minor split: all six chords of the key at once.) There are no review levels: every level is drawn from the new chords
+  // plus every chord of every earlier level read on the same clef (the "fresh" ones are asked about most, and older ones that have faded are brought back).
+  // Clefs: stage 1 is the first key's TRIADS on the treble clef; stage 2 is that key again on the bass clef, with every chord type;
+  // every later stage is a further key, on the bass clef only.
   var CURRICULUM = {
     'major|pop':  { keys: [0, 7, 5, 2, 10], types: ['triad', '7', 'sus4', 'sus2', 'add9', '9'], letters: true },
     'minor|pop':  { keys: [9, 4, 2, 11, 7], types: ['triad', '7', 'sus4', 'sus2', 'add9', '9'], letters: true },
@@ -292,57 +292,34 @@
   var HAS_DIM = { triad: true, '7': true };                          // the types that have a chord on the diminished degree (the rest skip it)
   var NO_SPLIT = { sus4: true, sus2: true };                         // no major/minor quality: one group
   var ladders = {};
-  function sameCards(a, b) {
-    if (a.length !== b.length) return false;
-    var k = function (c) { return c.pc + '|' + c.deg + '|' + c.type; }, m = {};
-    a.forEach(function (c) { m[k(c)] = true; });
-    return b.every(function (c) { return m[k(c)]; });
-  }
   function ladder(mode, pop) {
     var id = (mode === 'minor' ? 'minor' : 'major') + (pop ? '|pop' : '|jazz');
     if (ladders[id]) return ladders[id];
-    var cfg = CURRICULUM[id], g = GROUPS[mode === 'minor' ? 'minor' : 'major'], out = [], stage = 0;
-    var clef = 'treble';
-    function cards(pcs, degs, type) {
-      var r = [];
-      pcs.forEach(function (pc) { degs.forEach(function (d) { r.push({ pc: pc, deg: d, type: type, clef: clef }); }); });
-      return r;
-    }
-    cfg.types.forEach(function (type, ti) {
-      var runs = cfg.keys.map(function (pcX, ki) { return { pcX: pcX, ki: ki, clef: 'bass', rep: false }; });
-      if (ti === 0) { runs[0].rep = true; runs.unshift({ pcX: cfg.keys[0], ki: 0, clef: 'treble', rep: false }); }       // stage 1 reads the first key on the treble clef, stage 2 repeats it on the bass clef; everything after is bass only
-      runs.forEach(function (run) {
-        var pcX = run.pcX, ki = run.ki; clef = run.clef;
-        stage++;
-        var seen = cfg.keys.slice(0, ki + 1), lv = [], all = g.first.concat(g.second), first = ki === 0 && ti === 0;
-        function add(role, cs, fresh, plus) { lv.push({ role: role, cards: cs, fresh: fresh, add: plus || null, ans: cfg.letters ? 'letters' : 'numerals' }); }
-        function newKey() { return ki > 0 || ti > 0 ? { dim: 'K', keys: [pcX], back: false } : null; }
-        if (NO_SPLIT[type]) {
-          var c6 = cards([pcX], all, type);
-          add('all', c6, c6, { dim: 'C', chords: all.map(function (d) { return { deg: d, type: type }; }), back: false });
-          add('review', cards(seen, all, type), []);
-        } else {
-          var a = cards([pcX], g.first, type);
-          add('first', a, a, ki === 0 ? { dim: 'C', chords: g.first.map(function (d) { return { deg: d, type: type }; }), back: false, clef: run.rep ? 'bass' : null } : { dim: 'K', keys: [pcX], back: false });
-          add('review', cards(seen, g.first, type), []);
-          g.second.forEach(function (d, si) { var c1 = cards([pcX], [d], type), cs1 = cards([pcX], g.first.concat(g.second.slice(0, si + 1)), type); add('second', cs1, c1, { dim: 'C', chords: [{ deg: d, type: type }], back: false }); });
-          add('review', cards(seen, g.second, type), []);
-          if (HAS_DIM[type]) { var cd = cards([pcX], [g.dim], type), cs2 = cards([pcX], all.concat([g.dim]), type); add('dim', cs2, cd, { dim: 'C', chords: [{ deg: g.dim, type: type }], back: false }); }
-          add('full', cards(seen, HAS_DIM[type] ? all.concat([g.dim]) : all, type), []);
-        }
-        // (Pop answers every level by letter names, Jazz by roman numerals: `ans`)
-        var kept = [];
-        lv.forEach(function (x, i) {                                // (a review that repeats the level before it adds nothing)
-          var prev = kept[kept.length - 1];
-          if (prev && x.role !== 'first' && x.role !== 'second' && x.role !== 'dim' && x.role !== 'all' && sameCards(prev.cards, x.cards)) return;
-          kept.push(x);
-        });
-        kept.forEach(function (x, i) {
-          var keySet = {}, chSet = {}, ks = [], cs = [];
-          x.cards.forEach(function (c) { if (!keySet[c.pc]) { keySet[c.pc] = 1; ks.push(c.pc); } var ck = c.deg + '|' + c.type; if (!chSet[ck]) { chSet[ck] = 1; cs.push({ deg: c.deg, type: c.type }); } });
-          out.push({ keys: ks, chords: cs, cards: x.cards, fresh: x.fresh, stage: stage, step: i + 1, kind: x.add && x.add.dim === 'K' ? 'K' : 'C', role: x.role, type: type, keyPc: pcX, keyIdx: ki, seen: seen, ans: x.ans, clef: run.clef, rep: run.rep,
-                     lo: 0, hi: 0, add: x.add, inv: pop ? 0 : 999 });
-        });
+    var cfg = CURRICULUM[id], g = GROUPS[mode === 'minor' ? 'minor' : 'major'], out = [], stage = 0, all = g.first.concat(g.second);
+    var runs = cfg.keys.map(function (pcX, ki) { return { pcX: pcX, ki: ki, clef: 'bass', rep: false, types: cfg.types }; });
+    runs[0].rep = true;
+    runs.unshift({ pcX: cfg.keys[0], ki: 0, clef: 'treble', rep: false, types: ['triad'] });
+    var played = { treble: [], bass: [] };                           // the cards of every earlier level, per clef
+    runs.forEach(function (run) {
+      stage++;
+      var pcX = run.pcX, ki = run.ki, clef = run.clef, seen = cfg.keys.slice(0, ki + 1), lv = [];
+      function mk(degs, type) { return degs.map(function (d) { return { pc: pcX, deg: d, type: type, clef: clef }; }); }
+      function add(role, type, fresh, plus) { lv.push({ role: role, type: type, fresh: fresh, add: plus, ans: cfg.letters ? 'letters' : 'numerals' }); }
+      run.types.forEach(function (type) {
+        function chordsAdd(degs) { return { dim: 'C', chords: degs.map(function (d) { return { deg: d, type: type }; }), back: false }; }
+        if (NO_SPLIT[type]) { add('all', type, mk(all, type), chordsAdd(all)); return; }
+        add('first', type, mk(g.first, type), chordsAdd(g.first));
+        g.second.forEach(function (d) { add('second', type, mk([d], type), chordsAdd([d])); });
+        if (HAS_DIM[type]) add('dim', type, mk([g.dim], type), chordsAdd([g.dim]));
+      });
+      lv[0].add = ki === 0 && !run.rep && stage === 1 ? lv[0].add : (run.rep ? { dim: 'C', chords: lv[0].add.chords, back: false, clef: 'bass' } : { dim: 'K', keys: [pcX], back: false });
+      lv.forEach(function (x, i) {
+        var cards = played[clef].concat(x.fresh);
+        played[clef] = cards;
+        var keySet = {}, chSet = {}, ks = [], cs = [];
+        cards.forEach(function (c) { if (!keySet[c.pc]) { keySet[c.pc] = 1; ks.push(c.pc); } var ck = c.deg + '|' + c.type; if (!chSet[ck]) { chSet[ck] = 1; cs.push({ deg: c.deg, type: c.type }); } });
+        out.push({ keys: ks, chords: cs, cards: cards, fresh: x.fresh, stage: stage, step: i + 1, kind: x.add && x.add.dim === 'K' ? 'K' : 'C', role: x.role, type: x.type, keyPc: pcX, keyIdx: ki, seen: seen, ans: x.ans, clef: clef, rep: run.rep,
+                   lo: 0, hi: 0, add: x.add, inv: pop ? 0 : 999 });
       });
     });
     return (ladders[id] = out);

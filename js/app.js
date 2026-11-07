@@ -1809,7 +1809,7 @@
   function quizOn() { return state.flash && state.cardMode === 'chord'; }
   function ftcPop() { return level === 'pop'; }
 
-  var FTC_LADDER = 4;                                  // which ladder the saved levels belong to (1: the old keys-x-chords ladder; 2: the first curriculum, which had a numeral repeat of Pop level 1)
+  var FTC_LADDER = 5;                                  // which ladder the saved levels belong to (1: the old keys-x-chords ladder; 2: the first curriculum, which had a numeral repeat of Pop level 1)
   function loadFtc() {
     try {
       var o = JSON.parse(window.localStorage.getItem(FTC_KEY));
@@ -1918,7 +1918,7 @@
   function ftcDistinctChords(cards) { var seen = {}, r = []; cards.forEach(function (c) { var k = c.deg + '|' + c.type; if (!seen[k]) { seen[k] = 1; r.push({ deg: c.deg, type: c.type }); } }); return r; }
   function ftcLevelWords(n, bold) {
     var mode = state.mode, pop = ftcPop(), l = FindChord.levelInfo(mode, pop, n), b = function (t) { return bold ? '<strong>' + t + '</strong>' : t; };
-    var kw = ftcKeyWord(l.keyPc), chs = ftcChordsWord(ftcDistinctChords(l.fresh.length ? l.fresh : l.cards)), seenW = ftcKeysWord(l.seen);
+    var kw = ftcKeyWord(l.keyPc), chs = ftcChordsWord(ftcDistinctChords(l.fresh.length ? l.fresh : l.cards));
     var type = l.type === 'triad' ? '' : ' ' + ftcTypeWord(l.type).replace(/ chords$/, '');
     if (pop && (l.role === 'first' || l.role === 'second' || l.role === 'dim')) {      // Pop answers by chord name: "Em (iii in C major)"
       var spec = Theory.specsFor(mode, l.keyPc)[0].name, cs = ftcDistinctChords(l.fresh.length ? l.fresh : l.cards).sort(function (x, y) { return x.deg - y.deg; })
@@ -1929,20 +1929,19 @@
       case 'first': return b(chs) + ' in ' + kw;
       case 'all': return 'all six ' + ftcTypeWord(l.type) + ' in ' + b(kw);
       case 'second': case 'dim': return b(chs) + ' in ' + kw;
-      case 'full': return 'a full review of ' + ftcTypeWord(l.type) + ' in ' + seenW;
-      default: return 'review: ' + chs + ' in ' + seenW;
+      default: return b(chs) + ' in ' + kw;
     }
   }
   // between levels: what the next level puts in play
   function stepNote(n) {
     var info = FindChord.levelInfo(state.mode, ftcPop(), n);
-    var lead = 'You\u2019ve completed Level ' + (info.step - 1) + ' (of ' + FindChord.stageSteps(state.mode, ftcPop(), n) + '). On to level ' + info.step + (info.role === 'review' || info.role === 'full' ? ': ' : ', introducing: ');
+    var lead = 'You\u2019ve completed Level ' + (info.step - 1) + ' (of ' + FindChord.stageSteps(state.mode, ftcPop(), n) + '). On to level ' + info.step + ', introducing: ';
     return lead + ftcLevelWords(n, true) + '!';
   }
   // after a whole stage: what the next one introduces
   function stageNote(stage) {
     var it = FindChord.stageIntro(state.mode, ftcPop(), stage);
-    return 'Stage ' + stage + ' is ' + ftcTypeWord(it.type) + ' in <strong>' + ftcKeyWord(it.keys[0]) + '</strong>' + (it.rep ? ', this time on the bass clef (from here on, every stage uses the bass clef)' : '') + '.';
+    return 'Stage ' + stage + ' is <strong>' + ftcKeyWord(it.keys[0]) + '</strong>' + (it.clef === 'treble' ? ', just its triads, on the treble clef' : it.rep ? ', this time on the bass clef and with every chord type (from here on every stage is one key, on the bass clef, with every chord type)' : ', with every chord type') + '.';
   }
   var bannerHold = false;                                       // a trial result stays up until the next pick
   function showBanner(title, text, withConfetti, icon) {
@@ -2287,8 +2286,7 @@
     var l = ftcLevels();
     var isFresh = ftcTrial ? null : FindChord.freshTest(state.mode, ftcPop(), ftcLevelNo());
     var nowMs = Date.now();
-    var prevFresh = isFresh && ftcLevelNo() > 1 ? FindChord.freshTest(state.mode, ftcPop(), ftcLevelNo() - 1) : null;
-    var isOld = isFresh ? function (c) { return !isFresh(c) && (!prevFresh || prevFresh(c)); } : null;     // older material: what the step before introduced (else anything already in play)
+    var isOld = isFresh ? function (c) { return !isFresh(c); } : null;                    // older material: every card the earlier levels put in play
     var plan = isFresh ? FindChord.floorPlan(ftcFresh, true, FindChord.anyPair(state.mode, ftcPop(), l.cards, null, function (c) { return isOld(c) && !(ftcQ && c.pc === ftcQ.pc && c.deg === ftcQ.deg && c.type === ftcQ.type); })) : null;
     ftcDraw = plan === 'fresh' ? 'f' : plan === 'old' ? 'o' : 'w';
     var q = FindChord.pick(state.mode, ftcPop(), l.cards, null, Math.random, ftcQ, function (c) { return FindChord.memWeight(ftcMem, state.mode, c, nowMs); },
@@ -2733,7 +2731,7 @@
   function stepText(n) { return ftcLevelWords(n, false); }                 // what level n of the ladder is about
   function stageText(stage) {                                             // what stage `stage` is
     var it = FindChord.stageIntro(state.mode, ftcPop(), stage);
-    return ftcTypeWord(it.type) + ' in ' + ftcKeyWord(it.keys[0]) + (it.rep ? ' (bass clef)' : '');
+    return ftcKeyWord(it.keys[0]) + (it.clef === 'treble' ? ', triads on the treble clef' : it.rep ? ', bass clef' : '');
   }
   var NOTE_LEVEL_TEXT = [null, 'treble clef', 'bass clef', 'grand clef', 'alto clef (optional!)', 'all three'];
   function noteLevelText(n) { return NOTE_LEVEL_TEXT[n]; }
