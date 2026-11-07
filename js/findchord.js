@@ -282,11 +282,13 @@
   // plus every chord of every earlier level read on the same clef (the "fresh" ones are asked about most, and older ones that have faded are brought back).
   // Clefs: stage 1 is the first key's TRIADS on the treble clef; stage 2 is that key again on the bass clef, with every chord type;
   // every later stage is a further key, on the bass clef only.
+  // the twelve keys in the order taught (pitch classes): C G F D B\u266D A E\u266D E A\u266D D\u266D B F\u266F, and A E B D F\u266F C\u266F G C F G\u266F B\u266D E\u266D; the same for Pop and Jazz
+  var MAJOR_KEYS = [0, 7, 5, 2, 10, 9, 3, 4, 8, 1, 11, 6], MINOR_KEYS = [9, 4, 11, 2, 6, 1, 7, 0, 5, 8, 10, 3];
   var CURRICULUM = {
-    'major|pop':  { keys: [0, 7, 5, 2, 10], types: ['triad', '7', 'sus4', 'sus2', 'add9', '9'], letters: true },
-    'minor|pop':  { keys: [9, 4, 2, 11, 7], types: ['triad', '7', 'sus4', 'sus2', 'add9', '9'], letters: true },
-    'major|jazz': { keys: [0, 5, 10, 7, 3], types: ['triad', '7', '9', 'sus4', 'add9', 'sus2', '11', '13'], letters: false },
-    'minor|jazz': { keys: [9, 2, 7, 4, 0], types: ['triad', '7', '9', 'sus4', 'add9', 'sus2', '11', '13'], letters: false }
+    'major|pop':  { keys: MAJOR_KEYS, types: ['triad', '7', 'sus4', 'sus2', 'add9', '9'], letters: true },
+    'minor|pop':  { keys: MINOR_KEYS, types: ['triad', '7', 'sus4', 'sus2', 'add9', '9'], letters: true },
+    'major|jazz': { keys: MAJOR_KEYS, types: ['triad', '7', '9', 'sus4', 'add9', 'sus2', '11', '13'], letters: false },
+    'minor|jazz': { keys: MINOR_KEYS, types: ['triad', '7', '9', 'sus4', 'add9', 'sus2', '11', '13'], letters: false }
   };
   var GROUPS = { major: { first: [0, 3, 4], second: [5, 1, 2], dim: 6 }, minor: { first: [0, 3, 4], second: [2, 5, 6], dim: 1 } };   // degrees (0 = I): major mode I IV V | vi ii iii | vii°; minor mode i iv v | III VI VII | ii°
   var HAS_DIM = { triad: true, '7': true };                          // the types that have a chord on the diminished degree (the rest skip it)

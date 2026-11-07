@@ -491,11 +491,15 @@ check('find the chord: level 1 is I, IV, V of C (i, iv, v in A minor); Pop answe
     L.forEach(function (l) { assert.strictEqual(l.ans === 'letters', x[0], 'Pop answers by letter name throughout, Jazz by numeral'); });
   });
 });
-check('find the chord: five keys per ladder, in the taught order', function () {
-  assert.deepStrictEqual(FC.ladder('major', true).reduce(function (a, l) { if (a.indexOf(l.keyPc) < 0) a.push(l.keyPc); return a; }, []), [0, 7, 5, 2, 10]);   // C G F D B♭
+check('find the chord: twelve keys per ladder, in the taught order', function () {
+  var order = function (m, p) { return FC.ladder(m, p).reduce(function (a, l) { if (a.indexOf(l.keyPc) < 0) a.push(l.keyPc); return a; }, []); };
+  assert.deepStrictEqual(order('major', true), [0, 7, 5, 2, 10, 9, 3, 4, 8, 1, 11, 6]);   // C G F D B♭ A E♭ E A♭ D♭ B F♯
+  assert.deepStrictEqual(order('minor', false), [9, 4, 11, 2, 6, 1, 7, 0, 5, 8, 10, 3]);   // A E B D F♯ C♯ G C F G♯ B♭ E♭
+  assert.deepStrictEqual(order('major', false), order('major', true));
+  assert.deepStrictEqual(order('minor', false), order('minor', true));
   COMBOS.forEach(function (c) {
     var ks = FC.ladder(c[0], c[1]).map(function (l) { return l.keyPc; });
-    assert.strictEqual(new Set(ks).size, 5);
+    assert.strictEqual(new Set(ks).size, 12);
   });
 });
 check('find the chord: stage 1 is the first key\u2019s triads on the treble clef, stage 2 repeats the key on the bass clef, everything after is bass', function () {
@@ -512,7 +516,7 @@ check('find the chord: stage 1 is the first key\u2019s triads on the treble clef
     assert.ok(s2.every(function (l) { return l.rep; }) && !s1.some(function (l) { return l.rep; }));
     assert.strictEqual(FC.stageIntro(c[0], c[1], 2).rep, true);
     assert.strictEqual(L.filter(function (l) { return l.stage === 3; })[0].keyIdx, 1);
-    assert.strictEqual(L[L.length - 1].stage, 6);
+    assert.strictEqual(L[L.length - 1].stage, 13);
   });
   var mem = FC.newMem(), t = { pc: 0, deg: 0, type: 'triad' }, b = { pc: 0, deg: 0, type: 'triad', clef: 'bass' };
   FC.memAnswer(mem, 'major', t, true, 1000, 0, 1000);
@@ -539,7 +543,7 @@ check('find the chord: a stage is a key with every chord type; each type goes I 
   COMBOS.forEach(function (c) {
     var L = FC.ladder(c[0], c[1]), tag = c[0] + (c[1] ? ' pop' : ' jazz');
     assert.ok(L.every(function (l) { return ['first', 'second', 'dim', 'all'].indexOf(l.role) >= 0; }), tag + ': no review levels');
-    for (var st = 1; st <= 6; st++) {
+    for (var st = 1; st <= 13; st++) {
       var g = L.filter(function (l) { return l.stage === st; });
       assert.ok(g.every(function (l) { return l.keyPc === g[0].keyPc; }), tag + ' stage ' + st + ' is one key');
       var tri = g.filter(function (l) { return l.type === 'triad'; });
@@ -553,7 +557,7 @@ check('find the chord: a stage is a key with every chord type; each type goes I 
       l.fresh.forEach(function (f) { assert.ok(!played[l.clef][key(f)], tag + ' introduced twice ' + key(f)); played[l.clef][key(f)] = 1; });
       assert.deepStrictEqual(l.cards.map(key).sort(), Object.keys(played[l.clef]).sort(), tag + ' level ' + i + ' is cumulative');
     });
-    assert.ok(L.length > 90 && L.length < 200, tag + ' ' + L.length);
+    assert.ok(L.length > 200 && L.length < 400, tag + ' ' + L.length);
   });
 });
 

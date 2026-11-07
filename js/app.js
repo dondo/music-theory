@@ -240,7 +240,7 @@
     while (host && !(bw = host.getBoundingClientRect().width)) host = host.parentNode;      // (a wrapper with display: contents has no width of its own)
     var avail = bw - 61 - 340 - 28 - 32, cw = Math.max(14, Math.min(76, Math.floor(avail / Math.max(1, d.cards.length)))), full = cw >= 64;      // (room for the whole annotation, "C:ii (Dm)", or just the numeral)
     return '<span class="card-strip' + (full ? ' cs-full' : '') + '" style="--cw:' + cw + 'px">' + d.cards.map(function (c) {
-      var spec = Theory.specsFor(mode, c.q.pc)[0], ch = Chords.chordInKey(spec.name, mode, c.q.deg, c.q.type), pct = Math.round(c.fill * 100), br = '';
+      var spec = ftcKeySpec(mode, c.q.pc), ch = Chords.chordInKey(spec.name, mode, c.q.deg, c.q.type), pct = Math.round(c.fill * 100), br = '';
       if (!first[c.q.pc]) { first[c.q.pc] = true; br = '<span class="cs-br" style="width:' + (count[c.q.pc] * (cw + 2) - 4) + 'px"><i></i><em>' + ftcKeyName(c.q.pc) + '</em></span>'; }
       var pop_ = c.fill < 1 ? '<span class="cs-pop"><span class="cs-info">' + (pop ? ch.symbol + ' (' + ch.roman + ' in ' : ch.roman + ' in ') + ftcKeyName(c.q.pc) + (mode === 'minor' ? '' : ' major') + (pop ? ')' : '<br>' + ch.symbol) + '<br><b>' + pct + '%</b></span></span>' : '';
       return '<span class="cs' + (pop_ ? ' cs-has' : '') + '"><i class="cs-bar"><b style="height:' + pct + '%"' + (c.done ? ' class="cs-done"' : '') + '></b></i><u>' + (pop ? (full ? spec.name + ':' + ch.symbol + ' (' + ch.roman + ')' : ch.symbol) : (full ? spec.name + ':' + ch.roman + ' (' + ch.symbol + ')' : ch.roman)) + '</u>' + pop_ + br + '</span>';
@@ -648,7 +648,7 @@
     });
     rootBox.classList.toggle('has-nums', !!ftcQ);
     if (ftcQ) {                                                                 // the numerals of the question's key, above the root keys that belong to it
-      var rspec = Theory.specsFor(state.mode, ftcQ.pc)[0].name;
+      var rspec = ftcKeySpec(state.mode, ftcQ.pc).name;
       for (var rd = 0; rd < 7; rd++) {
         var rc = Chords.chordInKey(rspec, state.mode, rd, 'triad'); if (!rc) continue;
         var rpc = (ftcQ.pc + rc.pcOffsets[0]) % 12, rb = rootBox.querySelector('[data-root="' + rpc + '"]');
@@ -1809,7 +1809,7 @@
   function quizOn() { return state.flash && state.cardMode === 'chord'; }
   function ftcPop() { return level === 'pop'; }
 
-  var FTC_LADDER = 5;                                  // which ladder the saved levels belong to (1: the old keys-x-chords ladder; 2: the first curriculum, which had a numeral repeat of Pop level 1)
+  var FTC_LADDER = 6;                                  // which ladder the saved levels belong to (1: the old keys-x-chords ladder; 2: the first curriculum, which had a numeral repeat of Pop level 1)
   function loadFtc() {
     try {
       var o = JSON.parse(window.localStorage.getItem(FTC_KEY));
@@ -1889,6 +1889,9 @@
     return ok ? q : null;
   }
   function ftcTypesHidden() { return quizOn() && FindChord.chords(state.mode, ftcPop(), ftcLevels().chords).every(function (c) { return c.type === 'triad'; }); }
+  // The keys of the ladder have one spelling each: F\u266F major, E\u266D minor (the other spelling of those two, G\u266D and D\u266F, is not used); the rest have just one.
+  function ftcSpellOf(mode, pc) { return mode === 'minor' && pc === 3 ? 1 : 0; }
+  function ftcKeySpec(mode, pc) { var sp = Theory.specsFor(mode, pc); return sp[ftcSpellOf(mode, pc)] || sp[0]; }
   function ftcSpec() { return Theory.specsFor(state.mode, ftcQ.pc)[ftcQ.spell]; }
   function ftcChord() { return Chords.chordInKey(ftcSpec().name, state.mode, ftcQ.deg, ftcQ.type); }
   // ---- level-up: what was added, and a confetti burst ----
@@ -1898,7 +1901,7 @@
   // (withEx: in Pop, where the answer is a chord name, a numeral is followed by an example in C major / A minor: "ii (Dm in C major)")
   function ftcNames(items, isKey, withEx) {
     var mode = state.mode, ref = Theory.specsFor(mode, mode === 'minor' ? 9 : 0)[0].name;
-    if (isKey) return items.map(function (pc) { return Theory.keyTitle(Theory.specsFor(mode, pc)[0], mode); });
+    if (isKey) return items.map(function (pc) { return Theory.keyTitle(ftcKeySpec(mode, pc), mode); });
     var ex = withEx && ftcPop() && items.length <= 2;
     return items.map(function (c, i) { return { c: c, i: i }; }).sort(function (x, y) { return x.c.deg - y.c.deg || x.i - y.i; })
       .map(function (x) { var cd = Chords.chordInKey(ref, mode, x.c.deg, x.c.type); return cd ? (ex ? { r: cd.roman, e: ' (' + cd.symbol + ' in ' + ref + ' ' + mode + ')' } : cd.roman) : ''; }).filter(Boolean);
@@ -1921,7 +1924,7 @@
     var kw = ftcKeyWord(l.keyPc), chs = ftcChordsWord(ftcDistinctChords(l.fresh.length ? l.fresh : l.cards));
     var type = l.type === 'triad' ? '' : ' ' + ftcTypeWord(l.type).replace(/ chords$/, '');
     if (pop && (l.role === 'first' || l.role === 'second' || l.role === 'dim')) {      // Pop answers by chord name: "Em (iii in C major)"
-      var spec = Theory.specsFor(mode, l.keyPc)[0].name, cs = ftcDistinctChords(l.fresh.length ? l.fresh : l.cards).sort(function (x, y) { return x.deg - y.deg; })
+      var spec = ftcKeySpec(mode, l.keyPc).name, cs = ftcDistinctChords(l.fresh.length ? l.fresh : l.cards).sort(function (x, y) { return x.deg - y.deg; })
         .map(function (c) { return Chords.chordInKey(spec, mode, c.deg, c.type); }).filter(Boolean);
       return b(ftcJoin(cs.map(function (c) { return c.symbol; }))) + ' (' + ftcJoin(cs.map(function (c) { return c.roman; })) + ' in ' + kw + ')';
     }
@@ -2305,7 +2308,7 @@
     }
     var ftcHomeNextWas = ftcHomeNext && !resumeQ && !ftcTrial;
     ftcHomeNext = false;
-    q.spell = ftcOpen && ftcHomeNextWas ? ftcOpen.spell : Math.floor(Math.random() * Theory.specsFor(state.mode, q.pc).length);
+    q.spell = ftcOpen && ftcHomeNextWas ? ftcOpen.spell : ftcSpellOf(state.mode, q.pc);
     if (ftcHomeNextWas) ftcOpen = null;
     var resumed = resumeQ && resumeQ.cardMode === 'chord' ? resumeQ : null;
     resumeQ = null;
@@ -2362,7 +2365,7 @@
 
   // ---- Time trial: ten questions at a chosen level, against the clock ----
   // The normal state (bubbles, streak) is kept aside and put back afterwards. A wrong answer costs ten seconds and the trial moves on.
-  var TRIALS_KEY = 'music-theory-trials-v3';       // (v2: the levels were renumbered with the staged ladder)
+  var TRIALS_KEY = 'music-theory-trials-v4';       // (v4: the twelve-key ladder; v2: the levels were renumbered with the staged ladder)
   var trialBox = el('div', 'trial-box'), trialBtn = el('button', 'btn-reset trial-btn', 'Time Trial \u25be'), trialList = el('div', 'trial-list'),
       trialClock = el('div', 'trial-clock'), trialPen = el('span', 'trial-pen'), trialStop = el('button', 'btn-reset trial-stop', 'Stop');
   var trialListOpen = false, trialTick = null, trialCountdown = null;
