@@ -502,25 +502,22 @@ check('find the chord: twelve keys per ladder, in the taught order', function ()
     assert.strictEqual(new Set(ks).size, 12);
   });
 });
-check('find the chord: stage 1 is the first key\u2019s triads on the treble clef, stage 2 repeats the key on the bass clef, everything after is bass', function () {
+check('find the chord: one stage per key, read on whichever clef Explore has chosen (each clef keeps its own memory)', function () {
   COMBOS.forEach(function (c) {
     var L = FC.ladder(c[0], c[1]);
-    L.forEach(function (l) {
-      assert.strictEqual(l.clef, l.stage === 1 ? 'treble' : 'bass');
-      assert.ok(l.cards.every(function (x) { return x.clef === l.clef; }));
-    });
-    var s1 = L.filter(function (l) { return l.stage === 1; }), s2 = L.filter(function (l) { return l.stage === 2; });
-    assert.ok(s1.every(function (l) { return l.type === 'triad'; }));
-    assert.deepStrictEqual(s1.map(function (l) { return l.role; }), s2.slice(0, s1.length).map(function (l) { return l.role; }));
-    assert.strictEqual(s1[0].keyPc, s2[0].keyPc);
-    assert.ok(s2.every(function (l) { return l.rep; }) && !s1.some(function (l) { return l.rep; }));
-    assert.strictEqual(FC.stageIntro(c[0], c[1], 2).rep, true);
-    assert.strictEqual(L.filter(function (l) { return l.stage === 3; })[0].keyIdx, 1);
-    assert.strictEqual(L[L.length - 1].stage, 13);
+    assert.strictEqual(L[L.length - 1].stage, 12);
+    assert.ok(L.every(function (l) { return l.clef === undefined && l.cards.every(function (x) { return x.clef === undefined; }); }));
+    assert.strictEqual(L.filter(function (l) { return l.stage === 2; })[0].keyIdx, 1);
   });
-  var mem = FC.newMem(), t = { pc: 0, deg: 0, type: 'triad' }, b = { pc: 0, deg: 0, type: 'triad', clef: 'bass' };
+  var mem = FC.newMem(), t = { pc: 0, deg: 0, type: 'triad' };
+  FC.setClef('treble');
   FC.memAnswer(mem, 'major', t, true, 1000, 0, 1000);
-  assert.ok(FC.pairRecall(mem, 'major', t, 1000) > 0 && FC.pairRecall(mem, 'major', b, 1000) === 0, 'a bass card is its own card');
+  assert.ok(FC.pairRecall(mem, 'major', t, 1000) > 0);
+  assert.ok(Object.keys(mem.p)[0] === 'major|0|0|triad', 'treble keeps the old key');
+  FC.setClef('bass'); assert.strictEqual(FC.pairRecall(mem, 'major', t, 1000), 0, 'the same chord on the bass clef is a new card');
+  FC.memAnswer(mem, 'major', t, true, 1000, 0, 1000); assert.ok(mem.p['major|0|0|triad|b']);
+  FC.setClef('alto'); FC.memAnswer(mem, 'major', t, true, 1000, 0, 1000); assert.ok(mem.p['major|0|0|triad|alto']);
+  FC.setClef('treble');
 });
 check('find the chord: Pop never offers 11ths or 13ths, Jazz does', function () {
   ['major', 'minor'].forEach(function (m) {
@@ -539,11 +536,11 @@ check('find the chord: pick stays inside the level and avoids an immediate repea
   }
 });
 check('find the chord: a stage is a key with every chord type; each type goes I IV V, then vi ii iii (i iv v, III VI VII), then the diminished chord; no reviews', function () {
-  var key = function (c) { return c.pc + '/' + c.deg + c.type + '/' + c.clef; };
+  var key = function (c) { return c.pc + '/' + c.deg + c.type; };
   COMBOS.forEach(function (c) {
     var L = FC.ladder(c[0], c[1]), tag = c[0] + (c[1] ? ' pop' : ' jazz');
     assert.ok(L.every(function (l) { return ['first', 'second', 'dim', 'all'].indexOf(l.role) >= 0; }), tag + ': no review levels');
-    for (var st = 1; st <= 13; st++) {
+    for (var st = 1; st <= 12; st++) {
       var g = L.filter(function (l) { return l.stage === st; });
       assert.ok(g.every(function (l) { return l.keyPc === g[0].keyPc; }), tag + ' stage ' + st + ' is one key');
       var tri = g.filter(function (l) { return l.type === 'triad'; });
@@ -551,11 +548,11 @@ check('find the chord: a stage is a key with every chord type; each type goes I 
       assert.strictEqual(tri[0].fresh.length, 3);
       if (st > 1) assert.ok(['7', 'sus4'].every(function (t) { return t === 'sus4' || g.some(function (l) { return l.type === t; }); }) && g.some(function (l) { return l.type === (c[1] ? '9' : '13'); }), tag + ' every type');
     }
-    // each level = what it introduces + every card of every earlier level on the same clef
-    var played = { treble: {}, bass: {} };
+    // each level = what it introduces + every card of every earlier level
+    var played = { x: {} };
     L.forEach(function (l, i) {
-      l.fresh.forEach(function (f) { assert.ok(!played[l.clef][key(f)], tag + ' introduced twice ' + key(f)); played[l.clef][key(f)] = 1; });
-      assert.deepStrictEqual(l.cards.map(key).sort(), Object.keys(played[l.clef]).sort(), tag + ' level ' + i + ' is cumulative');
+      l.fresh.forEach(function (f) { assert.ok(!played.x[key(f)], tag + ' introduced twice ' + key(f)); played.x[key(f)] = 1; });
+      assert.deepStrictEqual(l.cards.map(key).sort(), Object.keys(played.x).sort(), tag + ' level ' + i + ' is cumulative');
     });
     assert.ok(L.length > 200 && L.length < 400, tag + ' ' + L.length);
   });

@@ -105,7 +105,9 @@
   var RELEARN = 6, RELEARN_U = 0.8;                  // after a miss a pair counts as at least 80% forgotten for the next 6 answers
   var TREF_DEFAULT = 3000, TREF_MIN = 1200, TREF_N = 100, TREF_NEED = 8, TIME_MAX = 20000, Q_NO_TIME = 0.7, OLD_R = 0.4, OLD_MIN = 1, NOVEL = 3, NOVEL_N = 10;   // review only what has really faded (R < 0.4); pairs answered fewer than 10 times are drawn up to 4x as often
   function newMem() { return { p: {}, seq: 0, tm: {} }; }       // p: pair -> { h, t, n, l, rs }; tm: speed class -> the last correct first-try times
-  function pairKey(mode, q) { return mode + '|' + q.pc + '|' + q.deg + '|' + q.type + (q.clef === 'bass' ? '|b' : ''); }      // (a card read on the bass clef is its own card; treble keeps the old keys)
+  var curClef = 'treble';                                                // the clef the questions are read on (Explore's choice): a card read on another clef is its own card
+  function setClef(id) { curClef = id || 'treble'; }
+  function pairKey(mode, q) { var c = q.clef || curClef; return mode + '|' + q.pc + '|' + q.deg + '|' + q.type + (c === 'treble' ? '' : c === 'bass' ? '|b' : '|' + c); }      // (treble keeps the old keys)
   function recallOf(m, now) { return m ? Math.pow(2, -Math.max(0, now - m.t) / m.h) : 0; }       // a pair never seen: 0
   function pairRecall(mem, mode, q, now) { return recallOf(mem.p[pairKey(mode, q)], now); }
   function memWeight(mem, mode, q, now) {
@@ -159,7 +161,7 @@
   function resetMem(mem) { mem.p = {}; mem.seq = 0; mem.tm = {}; }
   // does any pair in play (other than `avoid`) satisfy pred?
   function anyPair(mode, pop, keysLevel, chordsLevel, pred) {
-    return cardsOf(mode, pop, keysLevel, chordsLevel).some(function (c) { return pred({ pc: c.pc, deg: c.deg, type: c.type, clef: c.clef }); });
+    return cardsOf(mode, pop, keysLevel, chordsLevel).some(function (c) { return pred({ pc: c.pc, deg: c.deg, type: c.type }); });
   }
   // the answer log: every answer, kept for fitting the constants above to you (capped; oldest dropped first)
   var LOG_KEY = 'music-theory-ftc-log-v1', LOG_CAP = 10000;
@@ -279,9 +281,8 @@
   // Within a stage, for each chord type in turn (triads, then sevenths, then the rest):
   //   - the first group (major: I IV V) together,  - each second-group chord added in turn (major: vi, ii, iii),  - the diminished chord (types that have one).
   // (Sus4 and sus2 have no major/minor split: all six chords of the key at once.) There are no review levels: every level is drawn from the new chords
-  // plus every chord of every earlier level read on the same clef (the "fresh" ones are asked about most, and older ones that have faded are brought back).
-  // Clefs: stage 1 is the first key's TRIADS on the treble clef; stage 2 is that key again on the bass clef, with every chord type;
-  // every later stage is a further key, on the bass clef only.
+  // plus every chord of every earlier level (the "fresh" ones are asked about most, and older ones that have faded are brought back).
+  // Every stage is read on the clef chosen in Explore (setClef); a card read on another clef is remembered as its own card.
   // the twelve keys in the order taught (pitch classes): C G F D B\u266D A E\u266D E A\u266D D\u266D B F\u266F, and A E B D F\u266F C\u266F G C F G\u266F B\u266D E\u266D; the same for Pop and Jazz
   var MAJOR_KEYS = [0, 7, 5, 2, 10, 9, 3, 4, 8, 1, 11, 6], MINOR_KEYS = [9, 4, 11, 2, 6, 1, 7, 0, 5, 8, 10, 3];
   var CURRICULUM = {
@@ -298,14 +299,12 @@
     var id = (mode === 'minor' ? 'minor' : 'major') + (pop ? '|pop' : '|jazz');
     if (ladders[id]) return ladders[id];
     var cfg = CURRICULUM[id], g = GROUPS[mode === 'minor' ? 'minor' : 'major'], out = [], stage = 0, all = g.first.concat(g.second);
-    var runs = cfg.keys.map(function (pcX, ki) { return { pcX: pcX, ki: ki, clef: 'bass', rep: false, types: cfg.types }; });
-    runs[0].rep = true;
-    runs.unshift({ pcX: cfg.keys[0], ki: 0, clef: 'treble', rep: false, types: ['triad'] });
-    var played = { treble: [], bass: [] };                           // the cards of every earlier level, per clef
+    var runs = cfg.keys.map(function (pcX, ki) { return { pcX: pcX, ki: ki, types: cfg.types }; });
+    var played = [];                                                 // the cards of every earlier level
     runs.forEach(function (run) {
       stage++;
-      var pcX = run.pcX, ki = run.ki, clef = run.clef, seen = cfg.keys.slice(0, ki + 1), lv = [];
-      function mk(degs, type) { return degs.map(function (d) { return { pc: pcX, deg: d, type: type, clef: clef }; }); }
+      var pcX = run.pcX, ki = run.ki, seen = cfg.keys.slice(0, ki + 1), lv = [];
+      function mk(degs, type) { return degs.map(function (d) { return { pc: pcX, deg: d, type: type }; }); }
       function add(role, type, fresh, plus) { lv.push({ role: role, type: type, fresh: fresh, add: plus, ans: cfg.letters ? 'letters' : 'numerals' }); }
       run.types.forEach(function (type) {
         function chordsAdd(degs) { return { dim: 'C', chords: degs.map(function (d) { return { deg: d, type: type }; }), back: false }; }
@@ -314,13 +313,13 @@
         g.second.forEach(function (d) { add('second', type, mk([d], type), chordsAdd([d])); });
         if (HAS_DIM[type]) add('dim', type, mk([g.dim], type), chordsAdd([g.dim]));
       });
-      lv[0].add = ki === 0 && !run.rep && stage === 1 ? lv[0].add : (run.rep ? { dim: 'C', chords: lv[0].add.chords, back: false, clef: 'bass' } : { dim: 'K', keys: [pcX], back: false });
+      if (ki > 0) lv[0].add = { dim: 'K', keys: [pcX], back: false };      // (a new key; the first stage's first level introduces the chords)
       lv.forEach(function (x, i) {
-        var cards = played[clef].concat(x.fresh);
-        played[clef] = cards;
+        var cards = played.concat(x.fresh);
+        played = cards;
         var keySet = {}, chSet = {}, ks = [], cs = [];
         cards.forEach(function (c) { if (!keySet[c.pc]) { keySet[c.pc] = 1; ks.push(c.pc); } var ck = c.deg + '|' + c.type; if (!chSet[ck]) { chSet[ck] = 1; cs.push({ deg: c.deg, type: c.type }); } });
-        out.push({ keys: ks, chords: cs, cards: cards, fresh: x.fresh, stage: stage, step: i + 1, kind: x.add && x.add.dim === 'K' ? 'K' : 'C', role: x.role, type: x.type, keyPc: pcX, keyIdx: ki, seen: seen, ans: x.ans, clef: clef, rep: run.rep,
+        out.push({ keys: ks, chords: cs, cards: cards, fresh: x.fresh, stage: stage, step: i + 1, kind: x.add && x.add.dim === 'K' ? 'K' : 'C', role: x.role, type: x.type, keyPc: pcX, keyIdx: ki, seen: seen, ans: x.ans,
                    lo: 0, hi: 0, add: x.add, inv: pop ? 0 : 999 });
       });
     });
@@ -352,7 +351,7 @@
   // what a stage introduces: { kind: 'K', keys: [pc...] } or { kind: 'C', chords: [{deg, type}...] }
   function stageIntro(mode, pop, stage) {
     var f = ladder(mode, pop).filter(function (l) { return l.stage === stage; })[0];
-    return f ? { kind: 'K', keys: [f.keyPc], type: f.type, keyIdx: f.keyIdx, clef: f.clef, rep: f.rep } : null;
+    return f ? { kind: 'K', keys: [f.keyPc], type: f.type, keyIdx: f.keyIdx } : null;
   }
   // what step n puts in play: { dim: 'K', keys: [pc...], back } or { dim: 'C', chords: [...], back }, or null (the very first step)
   function stepAdds(mode, pop, n) { return levelInfo(mode, pop, n).add; }       // { dim: 'K', keys } for a new key, { dim: 'C', chords } for new chords; null in a review
@@ -404,7 +403,7 @@
   }
 
   return { STREAK: STREAK, passMark: passMark, H_DURABLE: H_DURABLE, pairsAt: pairsAt, newCards: newCards, cardsOf: cardsOf, durability: durability, DATA: DATA, maxKeys: maxKeys, clamp: clamp, keys: keys, chords: chords, pick: pick,
-           ladder: ladder, levelCount: levelCount, levelInfo: levelInfo, levelAt: levelAt, stageSteps: stageSteps, stageIntro: stageIntro, mayInvert: mayInvert, stepAdds: stepAdds, stageCoverage: stageCoverage, freshTest: freshTest,
+           ladder: ladder, setClef: setClef, levelCount: levelCount, levelInfo: levelInfo, levelAt: levelAt, stageSteps: stageSteps, stageIntro: stageIntro, mayInvert: mayInvert, stepAdds: stepAdds, stageCoverage: stageCoverage, freshTest: freshTest,
            identify: identify, weightKey: weightKey, weightOf: weightOf, miss: miss, hit: hit, loadWeights: loadWeights, saveWeights: saveWeights, resetWeights: resetWeights,
            describe: describe, nameChord: nameChord, checkAnswer: checkAnswer, needsQual: needsQual, needsSev: needsSev, pcName: pcName, answerName: answerName,
            pickInversion: pickInversion, freshPlan: freshPlan, freshRecord: freshRecord, floorPlan: floorPlan,

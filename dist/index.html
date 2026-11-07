@@ -2821,7 +2821,9 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = Sync; }
   var RELEARN = 6, RELEARN_U = 0.8;                  // after a miss a pair counts as at least 80% forgotten for the next 6 answers
   var TREF_DEFAULT = 3000, TREF_MIN = 1200, TREF_N = 100, TREF_NEED = 8, TIME_MAX = 20000, Q_NO_TIME = 0.7, OLD_R = 0.4, OLD_MIN = 1, NOVEL = 3, NOVEL_N = 10;   // review only what has really faded (R < 0.4); pairs answered fewer than 10 times are drawn up to 4x as often
   function newMem() { return { p: {}, seq: 0, tm: {} }; }       // p: pair -> { h, t, n, l, rs }; tm: speed class -> the last correct first-try times
-  function pairKey(mode, q) { return mode + '|' + q.pc + '|' + q.deg + '|' + q.type + (q.clef === 'bass' ? '|b' : ''); }      // (a card read on the bass clef is its own card; treble keeps the old keys)
+  var curClef = 'treble';                                                // the clef the questions are read on (Explore's choice): a card read on another clef is its own card
+  function setClef(id) { curClef = id || 'treble'; }
+  function pairKey(mode, q) { var c = q.clef || curClef; return mode + '|' + q.pc + '|' + q.deg + '|' + q.type + (c === 'treble' ? '' : c === 'bass' ? '|b' : '|' + c); }      // (treble keeps the old keys)
   function recallOf(m, now) { return m ? Math.pow(2, -Math.max(0, now - m.t) / m.h) : 0; }       // a pair never seen: 0
   function pairRecall(mem, mode, q, now) { return recallOf(mem.p[pairKey(mode, q)], now); }
   function memWeight(mem, mode, q, now) {
@@ -2875,7 +2877,7 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = Sync; }
   function resetMem(mem) { mem.p = {}; mem.seq = 0; mem.tm = {}; }
   // does any pair in play (other than `avoid`) satisfy pred?
   function anyPair(mode, pop, keysLevel, chordsLevel, pred) {
-    return cardsOf(mode, pop, keysLevel, chordsLevel).some(function (c) { return pred({ pc: c.pc, deg: c.deg, type: c.type, clef: c.clef }); });
+    return cardsOf(mode, pop, keysLevel, chordsLevel).some(function (c) { return pred({ pc: c.pc, deg: c.deg, type: c.type }); });
   }
   // the answer log: every answer, kept for fitting the constants above to you (capped; oldest dropped first)
   var LOG_KEY = 'music-theory-ftc-log-v1', LOG_CAP = 10000;
@@ -2995,9 +2997,8 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = Sync; }
   // Within a stage, for each chord type in turn (triads, then sevenths, then the rest):
   //   - the first group (major: I IV V) together,  - each second-group chord added in turn (major: vi, ii, iii),  - the diminished chord (types that have one).
   // (Sus4 and sus2 have no major/minor split: all six chords of the key at once.) There are no review levels: every level is drawn from the new chords
-  // plus every chord of every earlier level read on the same clef (the "fresh" ones are asked about most, and older ones that have faded are brought back).
-  // Clefs: stage 1 is the first key's TRIADS on the treble clef; stage 2 is that key again on the bass clef, with every chord type;
-  // every later stage is a further key, on the bass clef only.
+  // plus every chord of every earlier level (the "fresh" ones are asked about most, and older ones that have faded are brought back).
+  // Every stage is read on the clef chosen in Explore (setClef); a card read on another clef is remembered as its own card.
   // the twelve keys in the order taught (pitch classes): C G F D B\u266D A E\u266D E A\u266D D\u266D B F\u266F, and A E B D F\u266F C\u266F G C F G\u266F B\u266D E\u266D; the same for Pop and Jazz
   var MAJOR_KEYS = [0, 7, 5, 2, 10, 9, 3, 4, 8, 1, 11, 6], MINOR_KEYS = [9, 4, 11, 2, 6, 1, 7, 0, 5, 8, 10, 3];
   var CURRICULUM = {
@@ -3014,14 +3015,12 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = Sync; }
     var id = (mode === 'minor' ? 'minor' : 'major') + (pop ? '|pop' : '|jazz');
     if (ladders[id]) return ladders[id];
     var cfg = CURRICULUM[id], g = GROUPS[mode === 'minor' ? 'minor' : 'major'], out = [], stage = 0, all = g.first.concat(g.second);
-    var runs = cfg.keys.map(function (pcX, ki) { return { pcX: pcX, ki: ki, clef: 'bass', rep: false, types: cfg.types }; });
-    runs[0].rep = true;
-    runs.unshift({ pcX: cfg.keys[0], ki: 0, clef: 'treble', rep: false, types: ['triad'] });
-    var played = { treble: [], bass: [] };                           // the cards of every earlier level, per clef
+    var runs = cfg.keys.map(function (pcX, ki) { return { pcX: pcX, ki: ki, types: cfg.types }; });
+    var played = [];                                                 // the cards of every earlier level
     runs.forEach(function (run) {
       stage++;
-      var pcX = run.pcX, ki = run.ki, clef = run.clef, seen = cfg.keys.slice(0, ki + 1), lv = [];
-      function mk(degs, type) { return degs.map(function (d) { return { pc: pcX, deg: d, type: type, clef: clef }; }); }
+      var pcX = run.pcX, ki = run.ki, seen = cfg.keys.slice(0, ki + 1), lv = [];
+      function mk(degs, type) { return degs.map(function (d) { return { pc: pcX, deg: d, type: type }; }); }
       function add(role, type, fresh, plus) { lv.push({ role: role, type: type, fresh: fresh, add: plus, ans: cfg.letters ? 'letters' : 'numerals' }); }
       run.types.forEach(function (type) {
         function chordsAdd(degs) { return { dim: 'C', chords: degs.map(function (d) { return { deg: d, type: type }; }), back: false }; }
@@ -3030,13 +3029,13 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = Sync; }
         g.second.forEach(function (d) { add('second', type, mk([d], type), chordsAdd([d])); });
         if (HAS_DIM[type]) add('dim', type, mk([g.dim], type), chordsAdd([g.dim]));
       });
-      lv[0].add = ki === 0 && !run.rep && stage === 1 ? lv[0].add : (run.rep ? { dim: 'C', chords: lv[0].add.chords, back: false, clef: 'bass' } : { dim: 'K', keys: [pcX], back: false });
+      if (ki > 0) lv[0].add = { dim: 'K', keys: [pcX], back: false };      // (a new key; the first stage's first level introduces the chords)
       lv.forEach(function (x, i) {
-        var cards = played[clef].concat(x.fresh);
-        played[clef] = cards;
+        var cards = played.concat(x.fresh);
+        played = cards;
         var keySet = {}, chSet = {}, ks = [], cs = [];
         cards.forEach(function (c) { if (!keySet[c.pc]) { keySet[c.pc] = 1; ks.push(c.pc); } var ck = c.deg + '|' + c.type; if (!chSet[ck]) { chSet[ck] = 1; cs.push({ deg: c.deg, type: c.type }); } });
-        out.push({ keys: ks, chords: cs, cards: cards, fresh: x.fresh, stage: stage, step: i + 1, kind: x.add && x.add.dim === 'K' ? 'K' : 'C', role: x.role, type: x.type, keyPc: pcX, keyIdx: ki, seen: seen, ans: x.ans, clef: clef, rep: run.rep,
+        out.push({ keys: ks, chords: cs, cards: cards, fresh: x.fresh, stage: stage, step: i + 1, kind: x.add && x.add.dim === 'K' ? 'K' : 'C', role: x.role, type: x.type, keyPc: pcX, keyIdx: ki, seen: seen, ans: x.ans,
                    lo: 0, hi: 0, add: x.add, inv: pop ? 0 : 999 });
       });
     });
@@ -3068,7 +3067,7 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = Sync; }
   // what a stage introduces: { kind: 'K', keys: [pc...] } or { kind: 'C', chords: [{deg, type}...] }
   function stageIntro(mode, pop, stage) {
     var f = ladder(mode, pop).filter(function (l) { return l.stage === stage; })[0];
-    return f ? { kind: 'K', keys: [f.keyPc], type: f.type, keyIdx: f.keyIdx, clef: f.clef, rep: f.rep } : null;
+    return f ? { kind: 'K', keys: [f.keyPc], type: f.type, keyIdx: f.keyIdx } : null;
   }
   // what step n puts in play: { dim: 'K', keys: [pc...], back } or { dim: 'C', chords: [...], back }, or null (the very first step)
   function stepAdds(mode, pop, n) { return levelInfo(mode, pop, n).add; }       // { dim: 'K', keys } for a new key, { dim: 'C', chords } for new chords; null in a review
@@ -3120,7 +3119,7 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = Sync; }
   }
 
   return { STREAK: STREAK, passMark: passMark, H_DURABLE: H_DURABLE, pairsAt: pairsAt, newCards: newCards, cardsOf: cardsOf, durability: durability, DATA: DATA, maxKeys: maxKeys, clamp: clamp, keys: keys, chords: chords, pick: pick,
-           ladder: ladder, levelCount: levelCount, levelInfo: levelInfo, levelAt: levelAt, stageSteps: stageSteps, stageIntro: stageIntro, mayInvert: mayInvert, stepAdds: stepAdds, stageCoverage: stageCoverage, freshTest: freshTest,
+           ladder: ladder, setClef: setClef, levelCount: levelCount, levelInfo: levelInfo, levelAt: levelAt, stageSteps: stageSteps, stageIntro: stageIntro, mayInvert: mayInvert, stepAdds: stepAdds, stageCoverage: stageCoverage, freshTest: freshTest,
            identify: identify, weightKey: weightKey, weightOf: weightOf, miss: miss, hit: hit, loadWeights: loadWeights, saveWeights: saveWeights, resetWeights: resetWeights,
            describe: describe, nameChord: nameChord, checkAnswer: checkAnswer, needsQual: needsQual, needsSev: needsSev, pcName: pcName, answerName: answerName,
            pickInversion: pickInversion, freshPlan: freshPlan, freshRecord: freshRecord, floorPlan: floorPlan,
@@ -4402,7 +4401,7 @@ var KeyboardRender = (function () {
       '<path id="gclef" d="' + G.gclef + '"/>' +
       (clefNow && !(state.staff && selected) ? '<path id="' + clefNow.glyph + '" d="' + G[clefNow.glyph] + '"/>' : '') +
       (state.staff && selected ? '<path id="gclef8va" d="' + G.gclef8va + '"/><path id="gclef8vb" d="' + G.gclef8vb + '"/><path id="fclef" d="' + G.fclef + '"/><path id="cclef" d="' + G.cclef + '"/>' : '') +
-      (!(state.staff && selected) && !(clefNow && clefNow.glyph === 'fclef') ? '<path id="fclef" d="' + G.fclef + '"/>' : '') +       // (Find the chord reads on the bass clef from stage 2)
+      (state.flash && state.cardMode === 'chord' && state.card && !(state.staff && selected) ? (function () { var g = clefDef(state.card.clef || 'treble').glyph; return g && g !== 'gclef' && !(clefNow && clefNow.glyph === g) ? '<path id="' + g + '" d="' + G[g] + '"/>' : ''; }()) : '') +       // (Find the chord reads on Explore's clef, whichever it is)
       '<path id="sharp" d="' + G.sharp + '"/>' +
       '<path id="flat" d="' + G.flat + '"/>' +
       '<clipPath id="kbclip"><rect x="' + f(winL) + '" y="' + (KEY_TOP - 6) + '" width="' + f(winR - winL) +
@@ -6224,7 +6223,7 @@ var KeyboardRender = (function () {
     return b.every(function (r) { return !!r; }) && b.filter(function (r) { return r === 'ok'; }).length >= FindChord.passMark(b.length);
   }
   // the resilience half (Find the chord): every card the level introduces has a half-life of 30 minutes or more
-  function ftcDurability() { return FindChord.durability(ftcMem, state.mode, ftcPop(), ftcLevelNo()); }
+  function ftcDurability() { ftcClefSetting(); return FindChord.durability(ftcMem, state.mode, ftcPop(), ftcLevelNo()); }
   window.musicTheoryLocalReady = function () {                  // local.js loads after the app starts: the streak length may change
     if (bubFull || (ftcBub && ftcBub.length)) bubFull = bubblesFull();
     ftcStreak = Math.min(ftcStreak, streakNeed() - 1);
@@ -6326,7 +6325,7 @@ var KeyboardRender = (function () {
   function quizOn() { return state.flash && state.cardMode === 'chord'; }
   function ftcPop() { return level === 'pop'; }
 
-  var FTC_LADDER = 6;                                  // which ladder the saved levels belong to (1: the old keys-x-chords ladder; 2: the first curriculum, which had a numeral repeat of Pop level 1)
+  var FTC_LADDER = 7;                                  // which ladder the saved levels belong to (1: the old keys-x-chords ladder; 2: the first curriculum, which had a numeral repeat of Pop level 1)
   function loadFtc() {
     try {
       var o = JSON.parse(window.localStorage.getItem(FTC_KEY));
@@ -6461,7 +6460,7 @@ var KeyboardRender = (function () {
   // after a whole stage: what the next one introduces
   function stageNote(stage) {
     var it = FindChord.stageIntro(state.mode, ftcPop(), stage);
-    return 'Stage ' + stage + ' is <strong>' + ftcKeyWord(it.keys[0]) + '</strong>' + (it.clef === 'treble' ? ', just its triads, on the treble clef' : it.rep ? ', this time on the bass clef and with every chord type (from here on every stage is one key, on the bass clef, with every chord type)' : ', with every chord type') + '.';
+    return 'Stage ' + stage + ' is <strong>' + ftcKeyWord(it.keys[0]) + '</strong>, with every chord type.';
   }
   var bannerHold = false;                                       // a trial result stays up until the next pick
   function showBanner(title, text, withConfetti, icon) {
@@ -6628,7 +6627,7 @@ var KeyboardRender = (function () {
     document.getElementById('ftc-levelup-icon').textContent = '\u{1F914}';
     document.getElementById('ftc-levelup-title').textContent = 'Welcome to \u201CFind the Chord!\u201D';
     levelText.innerHTML = 'You\u2019ll be shown a chord with a key signature, and will identify it below. This is divided up into ' + total +
-      ' stages; each takes one kind of chord in one key, starting with the major chords (I, IV, V \u2013 in the key of C that would be C, F, G), then the minor ones (vi, ii, iii \u2013 Am, Dm, Em), then the diminished one (vii\u00B0 \u2013 Bdim), with reviews along the way.' +
+      ' stages, one for each key. In each you work through every kind of chord in that key (triads first, then sevenths, and so on), starting with the major chords (I, IV, V \u2013 in the key of C that would be C, F, G), then the minor ones (vi, ii, iii \u2013 Am, Dm, Em), then the diminished one (vii\u00B0 \u2013 Bdim); chords you have already learned keep coming back mixed in with the new ones. The chords are shown on the clef selected in Explore (treble unless you have changed it there), so pick the clef you want to practise before you start.' +
       '<span class="levelup-line2">The first stage is ' + stageText(1) + '' + '. Good luck!</span>' +
       '<span class="levelup-go-row"><button type="button" class="btn-reset levelup-go">Go \u2192</button></span>';
     levelBanner.setAttribute('data-welcome', '1');
@@ -6759,7 +6758,8 @@ var KeyboardRender = (function () {
   function ftcName(ch) {                                // the chord as shown: G7, or G7/B for an inversion
     return ftcQ.inv ? ch.symbol + '/' + ch.notes[ftcQ.inv % ch.notes.length] : ch.symbol;
   }
-  function ftcClef() { return (ftcQ && ftcQ.clef) || 'treble'; }                // the clef the question is read on: stage 1 treble, stage 2 on bass
+  function ftcClefSetting() { var id = clefAllowed(state.clef) ? state.clef : 'treble'; FindChord.setClef(id); return id; }      // Explore's clef (a Jazz-only clef falls back to treble in Pop)
+  function ftcClef() { return (ftcQ && ftcQ.clef) || ftcClefSetting(); }       // the clef the question is read on
   function ftcNotes(chOver, tonicOver, invOver) {
     var ch = chOver || ftcChord(), tonic = tonicOver != null ? tonicOver : ChordAudio.tonicMidi(ftcQ.pc), items = [], prev = null, i;
     var n = ch.pcOffsets.length, k = (invOver != null ? invOver : (ftcQ.inv || 0)) % n;                      // the chord tone k sits lowest
@@ -6770,7 +6770,7 @@ var KeyboardRender = (function () {
       prev = m;
     }
     var avg = items.reduce(function (a, n) { return a + n.midi; }, 0) / items.length;
-    var shift = 12 * Math.round(((ftcClef() === 'bass' ? 50 : 71) - avg) / 12);
+    var shift = 12 * Math.round((KeyboardRender.CLEFS.filter(function (c) { return c.id === ftcClef(); })[0].mid - avg) / 12);
     return items.map(function (n) { return { midi: n.midi + shift, name: n.name }; });
   }
 
@@ -6803,6 +6803,7 @@ var KeyboardRender = (function () {
     endSessionReset();
     if (bubFull) { ftcBub = null; bubFull = false; showStreak(); }                  // ("Next": the new level starts with empty bubbles)
     noteSessionStart();
+    ftcClefSetting();
     var l = ftcLevels();
     var isFresh = ftcTrial ? null : FindChord.freshTest(state.mode, ftcPop(), ftcLevelNo());
     var nowMs = Date.now();
@@ -6833,7 +6834,7 @@ var KeyboardRender = (function () {
     else if (isFresh) { FindChord.freshRecord(ftcFresh, isFresh(q), !isFresh(q) && isOld(q)); saveFtc(); }
     var nNotes = Chords.chordInKey(Theory.specsFor(state.mode, q.pc)[q.spell].name, state.mode, q.deg, q.type).pcOffsets.length;
     var mayInv = FindChord.mayInvert(state.mode, ftcPop(), l, q.deg, q.type);
-    q.clef = FindChord.levelInfo(state.mode, ftcPop(), ftcLevelNo()).clef || 'treble';
+    q.clef = ftcClefSetting();
     q.inv = resumed ? resumed.inv : FindChord.pickInversion(nNotes, mayInv, Math.random);                // Jazz: inversions mixed in at every level; Pop: from the stage's inversions step on
     if (forceInv && !resumed && mayInv && nNotes > 1) q.inv = 1 + Math.floor(Math.random() * (nNotes - 1));       // (an inversions step opens with an inverted chord)
     var oldSvg = stage.firstElementChild;
@@ -7251,7 +7252,7 @@ var KeyboardRender = (function () {
   function stepText(n) { return ftcLevelWords(n, false); }                 // what level n of the ladder is about
   function stageText(stage) {                                             // what stage `stage` is
     var it = FindChord.stageIntro(state.mode, ftcPop(), stage);
-    return ftcKeyWord(it.keys[0]) + (it.clef === 'treble' ? ', triads on the treble clef' : it.rep ? ', bass clef' : '');
+    return ftcKeyWord(it.keys[0]);
   }
   var NOTE_LEVEL_TEXT = [null, 'treble clef', 'bass clef', 'grand clef', 'alto clef (optional!)', 'all three'];
   function noteLevelText(n) { return NOTE_LEVEL_TEXT[n]; }
@@ -8573,7 +8574,7 @@ var KeyboardRender = (function () {
 </script>
   <script>
 /* generated by tools/build.py: do not edit */
-var APP_VERSION = '1.0 (build 7ab38c6)';
+var APP_VERSION = '1.0 (build 99c730e)';
 (function () {
   function show() { Array.prototype.forEach.call(document.querySelectorAll('[data-version]'), function (e) { e.textContent = APP_VERSION; }); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', show); else show();

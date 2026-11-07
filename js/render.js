@@ -978,7 +978,7 @@ var KeyboardRender = (function () {
       '<path id="gclef" d="' + G.gclef + '"/>' +
       (clefNow && !(state.staff && selected) ? '<path id="' + clefNow.glyph + '" d="' + G[clefNow.glyph] + '"/>' : '') +
       (state.staff && selected ? '<path id="gclef8va" d="' + G.gclef8va + '"/><path id="gclef8vb" d="' + G.gclef8vb + '"/><path id="fclef" d="' + G.fclef + '"/><path id="cclef" d="' + G.cclef + '"/>' : '') +
-      (!(state.staff && selected) && !(clefNow && clefNow.glyph === 'fclef') ? '<path id="fclef" d="' + G.fclef + '"/>' : '') +       // (Find the chord reads on the bass clef from stage 2)
+      (state.flash && state.cardMode === 'chord' && state.card && !(state.staff && selected) ? (function () { var g = clefDef(state.card.clef || 'treble').glyph; return g && g !== 'gclef' && !(clefNow && clefNow.glyph === g) ? '<path id="' + g + '" d="' + G[g] + '"/>' : ''; }()) : '') +       // (Find the chord reads on Explore's clef, whichever it is)
       '<path id="sharp" d="' + G.sharp + '"/>' +
       '<path id="flat" d="' + G.flat + '"/>' +
       '<clipPath id="kbclip"><rect x="' + f(winL) + '" y="' + (KEY_TOP - 6) + '" width="' + f(winR - winL) +

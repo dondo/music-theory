@@ -1707,7 +1707,7 @@
     return b.every(function (r) { return !!r; }) && b.filter(function (r) { return r === 'ok'; }).length >= FindChord.passMark(b.length);
   }
   // the resilience half (Find the chord): every card the level introduces has a half-life of 30 minutes or more
-  function ftcDurability() { return FindChord.durability(ftcMem, state.mode, ftcPop(), ftcLevelNo()); }
+  function ftcDurability() { ftcClefSetting(); return FindChord.durability(ftcMem, state.mode, ftcPop(), ftcLevelNo()); }
   window.musicTheoryLocalReady = function () {                  // local.js loads after the app starts: the streak length may change
     if (bubFull || (ftcBub && ftcBub.length)) bubFull = bubblesFull();
     ftcStreak = Math.min(ftcStreak, streakNeed() - 1);
@@ -1809,7 +1809,7 @@
   function quizOn() { return state.flash && state.cardMode === 'chord'; }
   function ftcPop() { return level === 'pop'; }
 
-  var FTC_LADDER = 6;                                  // which ladder the saved levels belong to (1: the old keys-x-chords ladder; 2: the first curriculum, which had a numeral repeat of Pop level 1)
+  var FTC_LADDER = 7;                                  // which ladder the saved levels belong to (1: the old keys-x-chords ladder; 2: the first curriculum, which had a numeral repeat of Pop level 1)
   function loadFtc() {
     try {
       var o = JSON.parse(window.localStorage.getItem(FTC_KEY));
@@ -1944,7 +1944,7 @@
   // after a whole stage: what the next one introduces
   function stageNote(stage) {
     var it = FindChord.stageIntro(state.mode, ftcPop(), stage);
-    return 'Stage ' + stage + ' is <strong>' + ftcKeyWord(it.keys[0]) + '</strong>' + (it.clef === 'treble' ? ', just its triads, on the treble clef' : it.rep ? ', this time on the bass clef and with every chord type (from here on every stage is one key, on the bass clef, with every chord type)' : ', with every chord type') + '.';
+    return 'Stage ' + stage + ' is <strong>' + ftcKeyWord(it.keys[0]) + '</strong>, with every chord type.';
   }
   var bannerHold = false;                                       // a trial result stays up until the next pick
   function showBanner(title, text, withConfetti, icon) {
@@ -2111,7 +2111,7 @@
     document.getElementById('ftc-levelup-icon').textContent = '\u{1F914}';
     document.getElementById('ftc-levelup-title').textContent = 'Welcome to \u201CFind the Chord!\u201D';
     levelText.innerHTML = 'You\u2019ll be shown a chord with a key signature, and will identify it below. This is divided up into ' + total +
-      ' stages; each takes one kind of chord in one key, starting with the major chords (I, IV, V \u2013 in the key of C that would be C, F, G), then the minor ones (vi, ii, iii \u2013 Am, Dm, Em), then the diminished one (vii\u00B0 \u2013 Bdim), with reviews along the way.' +
+      ' stages, one for each key. In each you work through every kind of chord in that key (triads first, then sevenths, and so on), starting with the major chords (I, IV, V \u2013 in the key of C that would be C, F, G), then the minor ones (vi, ii, iii \u2013 Am, Dm, Em), then the diminished one (vii\u00B0 \u2013 Bdim); chords you have already learned keep coming back mixed in with the new ones. The chords are shown on the clef selected in Explore (treble unless you have changed it there), so pick the clef you want to practise before you start.' +
       '<span class="levelup-line2">The first stage is ' + stageText(1) + '' + '. Good luck!</span>' +
       '<span class="levelup-go-row"><button type="button" class="btn-reset levelup-go">Go \u2192</button></span>';
     levelBanner.setAttribute('data-welcome', '1');
@@ -2242,7 +2242,8 @@
   function ftcName(ch) {                                // the chord as shown: G7, or G7/B for an inversion
     return ftcQ.inv ? ch.symbol + '/' + ch.notes[ftcQ.inv % ch.notes.length] : ch.symbol;
   }
-  function ftcClef() { return (ftcQ && ftcQ.clef) || 'treble'; }                // the clef the question is read on: stage 1 treble, stage 2 on bass
+  function ftcClefSetting() { var id = clefAllowed(state.clef) ? state.clef : 'treble'; FindChord.setClef(id); return id; }      // Explore's clef (a Jazz-only clef falls back to treble in Pop)
+  function ftcClef() { return (ftcQ && ftcQ.clef) || ftcClefSetting(); }       // the clef the question is read on
   function ftcNotes(chOver, tonicOver, invOver) {
     var ch = chOver || ftcChord(), tonic = tonicOver != null ? tonicOver : ChordAudio.tonicMidi(ftcQ.pc), items = [], prev = null, i;
     var n = ch.pcOffsets.length, k = (invOver != null ? invOver : (ftcQ.inv || 0)) % n;                      // the chord tone k sits lowest
@@ -2253,7 +2254,7 @@
       prev = m;
     }
     var avg = items.reduce(function (a, n) { return a + n.midi; }, 0) / items.length;
-    var shift = 12 * Math.round(((ftcClef() === 'bass' ? 50 : 71) - avg) / 12);
+    var shift = 12 * Math.round((KeyboardRender.CLEFS.filter(function (c) { return c.id === ftcClef(); })[0].mid - avg) / 12);
     return items.map(function (n) { return { midi: n.midi + shift, name: n.name }; });
   }
 
@@ -2286,6 +2287,7 @@
     endSessionReset();
     if (bubFull) { ftcBub = null; bubFull = false; showStreak(); }                  // ("Next": the new level starts with empty bubbles)
     noteSessionStart();
+    ftcClefSetting();
     var l = ftcLevels();
     var isFresh = ftcTrial ? null : FindChord.freshTest(state.mode, ftcPop(), ftcLevelNo());
     var nowMs = Date.now();
@@ -2316,7 +2318,7 @@
     else if (isFresh) { FindChord.freshRecord(ftcFresh, isFresh(q), !isFresh(q) && isOld(q)); saveFtc(); }
     var nNotes = Chords.chordInKey(Theory.specsFor(state.mode, q.pc)[q.spell].name, state.mode, q.deg, q.type).pcOffsets.length;
     var mayInv = FindChord.mayInvert(state.mode, ftcPop(), l, q.deg, q.type);
-    q.clef = FindChord.levelInfo(state.mode, ftcPop(), ftcLevelNo()).clef || 'treble';
+    q.clef = ftcClefSetting();
     q.inv = resumed ? resumed.inv : FindChord.pickInversion(nNotes, mayInv, Math.random);                // Jazz: inversions mixed in at every level; Pop: from the stage's inversions step on
     if (forceInv && !resumed && mayInv && nNotes > 1) q.inv = 1 + Math.floor(Math.random() * (nNotes - 1));       // (an inversions step opens with an inverted chord)
     var oldSvg = stage.firstElementChild;
@@ -2734,7 +2736,7 @@
   function stepText(n) { return ftcLevelWords(n, false); }                 // what level n of the ladder is about
   function stageText(stage) {                                             // what stage `stage` is
     var it = FindChord.stageIntro(state.mode, ftcPop(), stage);
-    return ftcKeyWord(it.keys[0]) + (it.clef === 'treble' ? ', triads on the treble clef' : it.rep ? ', bass clef' : '');
+    return ftcKeyWord(it.keys[0]);
   }
   var NOTE_LEVEL_TEXT = [null, 'treble clef', 'bass clef', 'grand clef', 'alto clef (optional!)', 'all three'];
   function noteLevelText(n) { return NOTE_LEVEL_TEXT[n]; }
