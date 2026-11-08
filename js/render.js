@@ -739,8 +739,9 @@ var KeyboardRender = (function () {
       out.push('<line x1="' + f(x0) + '" y1="' + f(YB - i * SB) + '" x2="' + f(x1) + '" y2="' + f(YB - i * SB) + '" stroke="' + INK + '" stroke-width="1"/>');
     }
     out.push('<use href="#' + clef.glyph + '" transform="translate(' + f(x0 + 8) + ',' + f(YB - clef.line * SB) + ') scale(' + k + ',-' + k + ')" fill="' + INK + '"/>');
-    if (card.pickClef) out.push('<rect class="clef-hit" data-clef="' + clef.id + '" tabindex="0" role="button" aria-haspopup="true" aria-label="Clef: ' + clef.name + '. Press to change." x="' + f(x0 - 3) +
-      '" y="' + f(YB - 4 * SB - 1.6 * SB) + '" width="' + f(clef.w * KB + 22) + '" height="' + f(4 * SB + 6.2 * SB) + '" rx="5"><title>Clef: ' + esc(clef.name) + ' (click to change)</title></rect>');       // (Find the chord: the clef can be changed between trials)
+    if (card.pickClef) out.push('<path d="M' + f(x0 - 12) + ',' + f(YB - 2 * SB - 3) + 'h10l-5,7z" fill="#5b6478" pointer-events="none"/>');      // (the same little triangle as Explore's: the clef is a button)
+    if (card.pickClef) out.push('<rect class="clef-hit" data-clef="' + clef.id + '" tabindex="0" role="button" aria-haspopup="true" aria-label="Clef: ' + clef.name + '. Press to change." x="' + f(x0 - 13) +
+      '" y="' + f(YB - 4 * SB - 1.6 * SB) + '" width="' + f(clef.w * KB + 32) + '" height="' + f(4 * SB + 6.2 * SB) + '" rx="5"><title>Clef: ' + esc(clef.name) + ' (click to change)</title></rect>');       // (Find the chord: the clef can be changed between trials)
     var steps = sp.kind === 'sharp' ? clef.sharp : clef.flat;
     var ax = x0 + 8 + clef.w * KB + 8, adv = 1.15 * SB;
     for (i = 0; i < sp.n; i++) {
