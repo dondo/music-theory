@@ -151,7 +151,7 @@
   var viewGroup = document.getElementById('view-group');
   var flashModeGroup = document.getElementById('flashmode-group');
   var flashModeInputs = document.querySelectorAll('input[name="flashmode"]');
-  var APP_MODES = ['note', 'key', 'minor', 'chords', 'minorchords', 'theory', 'minortheory', 'progs'];
+  var APP_MODES = ['note', 'key', 'chords', 'minor', 'minorchords', 'theory', 'minortheory', 'progs'];
   var appMode = 'note';                                // note | key | minor | chords | minorchords | theory | minortheory | progs
   function chordy() { return appMode.indexOf('chords') >= 0 || appMode.indexOf('theory') >= 0 || appMode === 'progs'; }
   function noteOn() { return appMode === 'note'; }
