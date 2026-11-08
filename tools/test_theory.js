@@ -535,7 +535,7 @@ check('find the chord: pick stays inside the level and avoids an immediate repea
     avoid = q;
   }
 });
-check('find the chord: a stage is a key with every chord type; each type goes I IV V, then vi ii iii (i iv v, III VI VII), then the diminished chord; no reviews', function () {
+check('find the chord: a stage is a key with every chord type; each type goes I IV V, then vi ii iii together (i iv v, III VI VII), then the diminished chord; no reviews', function () {
   var key = function (c) { return c.pc + '/' + c.deg + c.type; };
   COMBOS.forEach(function (c) {
     var L = FC.ladder(c[0], c[1]), tag = c[0] + (c[1] ? ' pop' : ' jazz');
@@ -544,8 +544,8 @@ check('find the chord: a stage is a key with every chord type; each type goes I 
       var g = L.filter(function (l) { return l.stage === st; });
       assert.ok(g.every(function (l) { return l.keyPc === g[0].keyPc; }), tag + ' stage ' + st + ' is one key');
       var tri = g.filter(function (l) { return l.type === 'triad'; }), sev = g.filter(function (l) { return l.type === '7'; });
-      assert.deepStrictEqual(tri.map(function (l) { return l.role; }), ['first', 'second', 'second', 'second', 'dim'], tag + ' stage ' + st);
-      assert.deepStrictEqual(tri.map(function (l) { return l.fresh.length; }), [3, 1, 1, 1, 1]);
+      assert.deepStrictEqual(tri.map(function (l) { return l.role; }), ['first', 'second', 'dim'], tag + ' stage ' + st);
+      assert.deepStrictEqual(tri.map(function (l) { return l.fresh.length; }), [3, 3, 1]);
       assert.deepStrictEqual(sev.map(function (l) { return l.role + l.fresh.length; }), ['first3', 'second3', 'dim1'], tag + ' sevenths: I IV V, then vi ii iii together, then the diminished one');
       if (st > 1) assert.ok(['7', 'sus4'].every(function (t) { return t === 'sus4' || g.some(function (l) { return l.type === t; }); }) && g.some(function (l) { return l.type === (c[1] ? '9' : '13'); }), tag + ' every type');
     }
@@ -563,8 +563,8 @@ check('find the chord: levelInfo / levelAt clamp and agree', function () {
   var n = FC.levelCount('major', true);
   assert.deepStrictEqual(FC.levelInfo('major', true, 0), FC.levelInfo('major', true, 1));
   assert.deepStrictEqual(FC.levelInfo('major', true, n + 5), FC.levelInfo('major', true, n));
-  assert.strictEqual(FC.levelAt('major', true, 2).cards.length, 4);               // vi joins I IV V
-  assert.strictEqual(FC.levelInfo('major', true, 2).fresh.length, 1);
+  assert.strictEqual(FC.levelAt('major', true, 2).cards.length, 6);               // vi ii iii join I IV V
+  assert.strictEqual(FC.levelInfo('major', true, 2).fresh.length, 3);
 });
 
 // ---- Find a chord: identifying the picked notes ----

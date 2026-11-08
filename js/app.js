@@ -1809,7 +1809,7 @@
   function quizOn() { return state.flash && state.cardMode === 'chord'; }
   function ftcPop() { return level === 'pop'; }
 
-  var FTC_LADDER = 8;                                  // which ladder the saved levels belong to (1: the old keys-x-chords ladder; 2: the first curriculum, which had a numeral repeat of Pop level 1)
+  var FTC_LADDER = 9;                                  // which ladder the saved levels belong to (1: the old keys-x-chords ladder; 2: the first curriculum, which had a numeral repeat of Pop level 1)
   function loadFtc() {
     try {
       var o = JSON.parse(window.localStorage.getItem(FTC_KEY));
@@ -2394,7 +2394,7 @@
 
   // ---- Time trial: ten questions at a chosen level, against the clock ----
   // The normal state (bubbles, streak) is kept aside and put back afterwards. A wrong answer costs ten seconds and the trial moves on.
-  var TRIALS_KEY = 'music-theory-trials-v5';       // (v5: sevenths and up bring vi ii iii together; v4: the twelve-key ladder; v2: the levels were renumbered with the staged ladder)
+  var TRIALS_KEY = 'music-theory-trials-v6';       // (v6: the triads bring vi ii iii together too; v5: sevenths and up bring vi ii iii together; v4: the twelve-key ladder; v2: the levels were renumbered with the staged ladder)
   var trialBox = el('div', 'trial-box'), trialBtn = el('button', 'btn-reset trial-btn', 'Time Trial \u25be'), trialList = el('div', 'trial-list'),
       trialClock = el('div', 'trial-clock'), trialPen = el('span', 'trial-pen'), trialStop = el('button', 'btn-reset trial-stop', 'Stop');
   var trialListOpen = false, trialTick = null, trialCountdown = null;
@@ -2760,7 +2760,18 @@
     return ftcJoin(plainNames(ftcNames(chords, false))) + (n === 1 ? ' chord' : ' chords');
   }
   function keyListText(pcs) { return ftcJoin(plainNames(ftcNames(pcs, true))) + (pcs.length === 1 ? ' key' : ' keys'); }
-  function stepText(n) { return ftcLevelWords(n, false); }                 // what level n of the ladder is about
+  // What level n is about, as the level menu lists it: the chord type, then the chords: "Minor Triads (Am, Dm, Em)" (Pop: letter names; Chord theory: roman numerals)
+  var LABEL_PLURAL = { triad: 'Triads', '7': 'Sevenths', '9': 'Ninths', '11': 'Elevenths', '13': 'Thirteenths', sus4: 'Sus4 Chords', sus2: 'Sus2 Chords', add9: 'Add9 Chords' };
+  var LABEL_ONE = { triad: 'Triad', '7': 'Seventh' };
+  function ftcLevelLabel(n) {
+    var mode = state.mode, pop = ftcPop(), l = FindChord.levelInfo(mode, pop, n), spec = ftcKeySpec(mode, l.keyPc).name;
+    var cs = ftcDistinctChords(l.fresh.length ? l.fresh : l.cards).map(function (c) { return Chords.chordInKey(spec, mode, c.deg, c.type); }).filter(Boolean);
+    var list = cs.map(function (c) { return pop ? c.symbol : c.roman; }).join(', ');
+    var group = l.role === 'first' ? 'Major ' : l.role === 'second' ? 'Minor ' : l.role === 'dim' ? 'Diminished ' : '';
+    var word = l.role === 'dim' ? (LABEL_ONE[l.type] || LABEL_PLURAL[l.type]) : LABEL_PLURAL[l.type] || l.type;
+    return group + word + ' (' + list + ')';
+  }
+  function stepText(n) { return ftcLevelLabel(n); }
   function stageText(stage) {                                             // what stage `stage` is
     var it = FindChord.stageIntro(state.mode, ftcPop(), stage);
     return ftcKeyWord(it.keys[0]);
