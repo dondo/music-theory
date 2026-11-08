@@ -802,6 +802,8 @@ html.is-local body { border-top: 6px solid #ea580c; }
 .sync-field small { display: block; margin-top: 4px; color: var(--muted); font-size: 0.8rem; line-height: 1.35; }
 .sync-warn { border: 1px solid #f1c98c; background: #fff7ea; border-radius: 12px; padding: 10px 14px 2px; margin-bottom: 8px; }
 .sync-warn p { margin-top: 6px; }
+.sync-note { border: 1px solid #cbd5e1; background: #f8fafc; border-radius: 12px; padding: 10px 14px 2px; margin-bottom: 8px; }
+.sync-note p { margin-top: 6px; }
 .sync-check { display: flex; gap: 9px; align-items: flex-start; margin: 14px 0 4px; font-size: 0.92rem; }
 .sync-check input { margin-top: 3px; }
 .sync-status { min-height: 1.2em; margin: 8px 0 0; color: #b91c1c; }

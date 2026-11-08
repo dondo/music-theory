@@ -219,9 +219,9 @@
     }, 'btn-reset sync-primary');
     create.disabled = true;
     ok.addEventListener('change', function () { create.disabled = !ok.checked; });
-    var warn = el('div', 'sync-warn');
-    warn.appendChild(el('strong', null, 'Write these down now.'));
-    warn.appendChild(el('p', null, 'The name and the passphrase cannot be recovered or reset. Nobody, including the app, can look them up. If you forget or lose either one, your synced data is gone for good. You need both to connect another device.'));
+    var warn = el('div', 'sync-note');
+    warn.appendChild(el('em', null, 'Easy to Use'));
+    warn.appendChild(el('p', null, 'The name and passphrase together uniquely identify your data, which makes it easy to sync across devices or recover your progress on a new device. This phrase can\u2019t be changed, and you can find it on any connected device (or where you wrote the name and passphrase down, which isn\u2019t a terrible idea).'));
     var lab = el('label', 'sync-check'); lab.appendChild(ok); lab.appendChild(el('span', null, 'I have saved both the name and the passphrase.'));
     show([el('h2', null, 'Your sync name and passphrase'), warn,
       row(el('span', 'sync-k', 'Name'), el('code', 'sync-secret', acct.name)),
