@@ -2102,6 +2102,22 @@
     try { window.localStorage.setItem(STUDY_WELCOME_KEY, JSON.stringify(seen)); } catch (e) { /* storage unavailable */ }
   }
   var NUM_WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
+  // The welcome banner's clef choice: the two clefs as buttons, the one Explore has selected highlighted (a clef other than these two counts as treble).
+  function clefButtons() {
+    if (state.clef !== 'treble' && state.clef !== 'bass') { state.clef = 'treble'; saveState(); }
+    return ['treble', 'bass'].map(function (id) {
+      return '<button type="button" class="btn-reset levelup-clef-btn" data-clef="' + id + '" aria-pressed="' + (state.clef === id) + '">' + (id === 'bass' ? 'Bass' : 'Treble') + '</button>';
+    }).join('');
+  }
+  function pickWelcomeClef(id) {
+    state.clef = id; saveState();
+    levelText.querySelectorAll('.levelup-clef-btn').forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-clef') === id)); });
+    if (ftcQ && state.card && state.cardMode === 'chord') {            // the question already on screen is redrawn on the new clef
+      ftcQ.clef = ftcClefSetting();
+      state.card.clef = ftcQ.clef; state.card.chord = { notes: ftcNotes() };
+      draw(false, false);
+    }
+  }
   function maybeWelcome(again) {
     try { if (window.localStorage.getItem(WELCOME_KEY) && !again) return; } catch (e) { return; }
     if (ftcLevelNo() !== 1 || ftcTrial) return;
@@ -2111,8 +2127,10 @@
     document.getElementById('ftc-levelup-icon').textContent = '\u{1F914}';
     document.getElementById('ftc-levelup-title').textContent = 'Welcome to \u201CFind the Chord!\u201D';
     levelText.innerHTML = 'You\u2019ll be shown a chord with a key signature, and will identify it below. This is divided up into ' + total +
-      ' stages, one for each key. In each you work through every kind of chord in that key (triads first, then sevenths, and so on), starting with the major chords (I, IV, V \u2013 in the key of C that would be C, F, G), then the minor ones (vi, ii, iii \u2013 Am, Dm, Em), then the diminished one (vii\u00B0 \u2013 Bdim); chords you have already learned keep coming back mixed in with the new ones. The chords are shown on the clef selected in Explore (treble unless you have changed it there), so pick the clef you want to practise before you start.' +
-      '<span class="levelup-line2">The first stage is ' + stageText(1) + '' + '. Good luck!</span>' +
+      ' stages, one for each key. In each you work through every kind of chord in that key (triads first, then sevenths, and so on), starting with the major chords (I, IV, V \u2013 in the key of C that would be C, F, G), then the minor ones (vi, ii, iii \u2013 Am, Dm, Em), then the diminished one (vii\u00B0 \u2013 Bdim); chords you have already learned keep coming back mixed in with the new ones.' +
+      '<span class="levelup-line2">The first stage is ' + stageText(1) + '.</span>' +
+      '<span class="levelup-clef"><strong>Choose a clef!</strong><span class="levelup-clef-row" role="group" aria-label="Clef">' + clefButtons() + '</span></span>' +
+      '<span class="levelup-line2">Good luck!</span>' +
       '<span class="levelup-go-row"><button type="button" class="btn-reset levelup-go">Go \u2192</button></span>';
     levelBanner.setAttribute('data-welcome', '1');
     levelBanner.hidden = false;
@@ -2139,6 +2157,8 @@
     draw(false, false);
   }
   levelBanner.addEventListener('click', function (e) {
+    var cb = e.target.closest && e.target.closest('.levelup-clef-btn');
+    if (cb && levelBanner.hasAttribute('data-welcome')) { pickWelcomeClef(cb.getAttribute('data-clef')); return; }
     if (levelBanner.hasAttribute('data-welcome') && e.target.closest && e.target.closest('.levelup-go')) { bannerHold = false; levelBanner.hidden = true; levelBanner.removeAttribute('data-welcome'); return; }
     var stay = e.target.closest && e.target.closest('.levelup-stay');
     var goBtn = e.target.closest && e.target.closest('.levelup-go');
