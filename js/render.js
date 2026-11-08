@@ -739,6 +739,8 @@ var KeyboardRender = (function () {
       out.push('<line x1="' + f(x0) + '" y1="' + f(YB - i * SB) + '" x2="' + f(x1) + '" y2="' + f(YB - i * SB) + '" stroke="' + INK + '" stroke-width="1"/>');
     }
     out.push('<use href="#' + clef.glyph + '" transform="translate(' + f(x0 + 8) + ',' + f(YB - clef.line * SB) + ') scale(' + k + ',-' + k + ')" fill="' + INK + '"/>');
+    if (card.pickClef) out.push('<rect class="clef-hit" data-clef="' + clef.id + '" tabindex="0" role="button" aria-haspopup="true" aria-label="Clef: ' + clef.name + '. Press to change." x="' + f(x0 - 3) +
+      '" y="' + f(YB - 4 * SB - 1.6 * SB) + '" width="' + f(clef.w * KB + 22) + '" height="' + f(4 * SB + 6.2 * SB) + '" rx="5"><title>Clef: ' + esc(clef.name) + ' (click to change)</title></rect>');       // (Find the chord: the clef can be changed between trials)
     var steps = sp.kind === 'sharp' ? clef.sharp : clef.flat;
     var ax = x0 + 8 + clef.w * KB + 8, adv = 1.15 * SB;
     for (i = 0; i < sp.n; i++) {

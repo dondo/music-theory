@@ -1539,7 +1539,7 @@
       vo.chords.push({ bass: shown[0].midi, notes: shown, top: vo.labels[iv], sub: iv === 0 ? cd.symbol : cd.symbol + '/' + cd.notes[iv], lit: true });
       vo.chords.sort(function (x, y) { return x.bass - y.bass; });
     } else vo.chords[hit].lit = true;
-    return { kind: 'chord', clef: ftcClef(), chords: vo.chords, slots: vo.slots, fixedClef: true, compact: vo.slots > 10 };
+    return { kind: 'chord', clef: ftcClef(), chords: vo.chords, slots: vo.slots, fixedClef: !!ftcTrial, compact: vo.slots > 10 };
   }
 
   // fade used when nothing is "clicked" (reset)
@@ -2106,17 +2106,14 @@
   function clefButtons() {
     if (state.clef !== 'treble' && state.clef !== 'bass') { state.clef = 'treble'; saveState(); }
     return ['treble', 'bass'].map(function (id) {
-      return '<button type="button" class="btn-reset levelup-clef-btn" data-clef="' + id + '" aria-pressed="' + (state.clef === id) + '">' + (id === 'bass' ? 'Bass' : 'Treble') + '</button>';
+      return '<button type="button" class="btn-reset levelup-clef-btn" data-clef="' + id + '" aria-label="' + (id === 'bass' ? 'Bass' : 'Treble') + ' clef" title="' + (id === 'bass' ? 'Bass' : 'Treble') + ' clef" aria-pressed="' + (state.clef === id) + '">' + KeyboardRender.clefIcon(id) + '</button>';
     }).join('');
   }
   function pickWelcomeClef(id) {
     state.clef = id; saveState();
     levelText.querySelectorAll('.levelup-clef-btn').forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-clef') === id)); });
-    if (ftcQ && state.card && state.cardMode === 'chord') {            // the question already on screen is redrawn on the new clef
-      ftcQ.clef = ftcClefSetting();
-      state.card.clef = ftcQ.clef; state.card.chord = { notes: ftcNotes() };
-      draw(false, false);
-    }
+    ftcApplyClef();
+    draw(false, false);
   }
   function maybeWelcome(again) {
     try { if (window.localStorage.getItem(WELCOME_KEY) && !again) return; } catch (e) { return; }
@@ -2262,7 +2259,15 @@
   function ftcName(ch) {                                // the chord as shown: G7, or G7/B for an inversion
     return ftcQ.inv ? ch.symbol + '/' + ch.notes[ftcQ.inv % ch.notes.length] : ch.symbol;
   }
-  function ftcClefSetting() { var id = clefAllowed(state.clef) ? state.clef : 'treble'; FindChord.setClef(id); return id; }      // Explore's clef (a Jazz-only clef falls back to treble in Pop)
+  function ftcClefSetting() {                                                       // Explore's clef (a Jazz-only clef falls back to treble in Pop); a time trial keeps the clef it began on
+    var id = ftcTrial && ftcTrial.clef ? ftcTrial.clef : clefAllowed(state.clef) ? state.clef : 'treble';
+    FindChord.setClef(id); return id;
+  }
+  function ftcApplyClef() {                                                         // the clef was changed: the question on screen is read on the new one
+    if (!ftcQ || !state.card || state.cardMode !== 'chord') return;
+    ftcQ.clef = ftcClefSetting();
+    state.card.clef = ftcQ.clef; state.card.chord = { notes: ftcNotes() }; state.card.wrong = null;
+  }
   function ftcClef() { return (ftcQ && ftcQ.clef) || ftcClefSetting(); }       // the clef the question is read on
   function ftcNotes(chOver, tonicOver, invOver) {
     var ch = chOver || ftcChord(), tonic = tonicOver != null ? tonicOver : ChordAudio.tonicMidi(ftcQ.pc), items = [], prev = null, i;
@@ -2352,7 +2357,7 @@
     chordCleared = false;
     ftcClearPicks();
     ftcMissed = resumed ? !!resumed.missed : false;
-    state.card = { pc: q.pc, spell: q.spell, chord: { notes: ftcNotes() }, clef: q.clef, symbol: ftcChord().symbol, deg: q.deg, type: q.type, inv: q.inv, title: '', status: '', noGiveUp: !!ftcTrial };   // (symbol: for the tests and screen readers' sake, not drawn)
+    state.card = { pc: q.pc, spell: q.spell, chord: { notes: ftcNotes() }, clef: q.clef, pickClef: !ftcTrial, symbol: ftcChord().symbol, deg: q.deg, type: q.type, inv: q.inv, title: '', status: '', noGiveUp: !!ftcTrial };   // (symbol: for the tests and screen readers' sake, not drawn)
     ftcSay('', '');
     ftcT0 = resumed ? null : performance.now();
     return oldKey ? { oldKeyS: parseInt(oldKey.getAttribute('data-s'), 10) } : (animate ? 'fade' : false);
@@ -2407,7 +2412,7 @@
     if (g && trialBox.previousSibling !== g) g.parentNode.insertBefore(trialBox, g.nextSibling);
     trialBox.hidden = !show;
   }
-  function trialKey(n) { return studyQuizOn() ? (noteOn() ? 'note-' : 'step-') + studySlot() + ':' + n : state.mode + ':' + (ftcPop() ? 'pop' : 'jazz') + ':' + n; }
+  function trialKey(n) { return studyQuizOn() ? (noteOn() ? 'note-' : 'step-') + studySlot() + ':' + n : state.mode + ':' + (ftcPop() ? 'pop' : 'jazz') + ':' + ftcClefSetting() + ':' + n; }      // (a trial's best is kept per clef)
   // best per level: { ms, wrong } (older saves held just the time)
   function trialBests() {
     var o; try { o = JSON.parse(window.localStorage.getItem(TRIALS_KEY)) || {}; } catch (e) { o = {}; }
@@ -2512,7 +2517,7 @@
     var snap = ftcTrial ? ftcTrial.snap                                   // ("Try again": the state from before the first trial is still the one to return to)
       : { bub: ftcBub, bubFull: bubFull, streak: ftcStreak, tried: ftcTried, right: ftcRight, home: ftcHomeNext };
     clearInterval(trialTick); trialTick = null;
-    ftcTrial = { level: n, note: nq ? studySlot() : null, keys: lv && lv.keys, chords: lv && lv.chords, cards: lv && lv.cards, inv: lv && lv.inv, n: 0, wrongs: 0, t0: 0, qStart: 0, penalty: 0, times: [], snap: snap, counting: true, done: false, view: null };
+    ftcTrial = { clef: ftcClefSetting(), level: n, note: nq ? studySlot() : null, keys: lv && lv.keys, chords: lv && lv.chords, cards: lv && lv.cards, inv: lv && lv.inv, n: 0, wrongs: 0, t0: 0, qStart: 0, penalty: 0, times: [], snap: snap, counting: true, done: false, view: null };
     ftcBub = null; bubFull = false; ftcStreak = 0; ftcTried = 0; ftcRight = 0; ftcHomeNext = false;
     bannerHold = false; levelBanner.hidden = true;
     syncTrialBox(); drawClock(); updateFtc(); updateScore(); updateChordPanel();
@@ -3414,6 +3419,7 @@
       state.clef = picked;
       closeClefPop(false);
       saveState();
+      if (quizOn()) ftcApplyClef();
       draw(false, false);
       var hit = stage.querySelector('.clef-hit');
       if (hit && e.detail === 0) hit.focus();

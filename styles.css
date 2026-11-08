@@ -972,6 +972,7 @@ html.is-local body { border-top: 6px solid #ea580c; }
 /* the clef choice in the Find the chord welcome banner */
 .levelup-clef { display: block; margin-top: 1.1em; }
 .levelup-clef-row { display: flex; gap: 10px; margin-top: 6px; }
-.levelup-clef-btn { padding: 6px 18px; border-radius: 999px; border: 2px solid #94a3b8; background: transparent; color: inherit; font-size: 0.95rem; cursor: pointer; }
+.levelup-clef-btn { padding: 4px 12px; border-radius: 14px; line-height: 0; border: 2px solid #94a3b8; background: transparent; color: inherit; font-size: 0.95rem; cursor: pointer; }
 .levelup-clef-btn:hover, .levelup-clef-btn:focus-visible { background: rgba(148, 163, 184, 0.2); }
 .levelup-clef-btn[aria-pressed="true"] { border-color: #16a34a; background: #dcfce7; color: #14532d; font-weight: 700; }
+.levelup-clef-btn svg { width: 45px; height: 57px; }
