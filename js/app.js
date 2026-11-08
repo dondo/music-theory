@@ -233,12 +233,12 @@
   function stepResilienceFor(n) { var v = stepView(n); return Memory.resilience(v.view, v.keys); }
   // TEMPORARY: a bar for every card of the current working set (shown in the session banner)
   // Find the chord: a bar for every key/chord card the level introduces, a bracket under each key's cards
-  function ftcStrip() {
-    var mode = state.mode, pop = ftcPop(), d = FindChord.durability(ftcMem, mode, pop, ftcLevelNo()), first = {}, count = {};
+  function ftcStrip(dd, cwFixed) {                                // (dd: the cards to show, default the level's new ones; cwFixed: a set bar width, for the Progress tooltip)
+    var mode = state.mode, pop = ftcPop(), d = dd || FindChord.durability(ftcMem, mode, pop, ftcLevelNo()), first = {}, count = {};
     d.cards.forEach(function (c) { count[c.q.pc] = (count[c.q.pc] || 0) + 1; });
     var host = levelBanner.parentNode, bw = 0;
-    while (host && !(bw = host.getBoundingClientRect().width)) host = host.parentNode;      // (a wrapper with display: contents has no width of its own)
-    var avail = bw - 61 - 340 - 28 - 32, cw = Math.max(14, Math.min(76, Math.floor(avail / Math.max(1, d.cards.length)))), full = cw >= 64;      // (room for the whole annotation, "C:ii (Dm)", or just the numeral)
+    while (!cwFixed && host && !(bw = host.getBoundingClientRect().width)) host = host.parentNode;      // (a wrapper with display: contents has no width of its own)
+    var avail = bw - 61 - 340 - 28 - 32, cw = cwFixed || Math.max(14, Math.min(76, Math.floor(avail / Math.max(1, d.cards.length)))), full = cw >= 64;      // (room for the whole annotation, "C:ii (Dm)", or just the numeral)
     return '<span class="card-strip' + (full ? ' cs-full' : '') + '" style="--cw:' + cw + 'px">' + d.cards.map(function (c) {
       var spec = ftcKeySpec(mode, c.q.pc), ch = Chords.chordInKey(spec.name, mode, c.q.deg, c.q.type), pct = Math.round(c.fill * 100), br = '';
       if (!first[c.q.pc]) { first[c.q.pc] = true; br = '<span class="cs-br" style="width:' + (count[c.q.pc] * (cw + 2) - 4) + 'px"><i></i><em>' + ftcKeyName(c.q.pc) + '</em></span>'; }
@@ -1754,7 +1754,16 @@
     pct = d.ready ? 100 : Math.min(99, pct);
     el.querySelector('i').style.width = pct + '%';
     el.classList.toggle('ready', d.ready);
-    el.setAttribute('title', 'Progress: how firmly the ' + (studyOn ? 'cards at this level' : 'new cards') + ' have stuck. It fills as you get them right again after gaps; the level is done when every one has stuck.');
+    var tip = el.querySelector('.dur-tip');
+    if (chordOn) {                                                // Find the chord: hovering shows a bar for every chord of this type in play in this key
+      el.removeAttribute('title');
+      if (!tip) { tip = el.appendChild(document.createElement('span')); tip.className = 'dur-tip'; }
+      var tc = FindChord.typeCards(ftcMem, state.mode, ftcPop(), ftcLevelNo());
+      tip.innerHTML = '<b class="dur-tip-h">' + (LABEL_PLURAL[tc.type] || tc.type) + ' in ' + ftcKeyName(tc.keyPc) + (state.mode === 'minor' ? '' : ' major') + '</b>' + ftcStrip(tc, 44);
+    } else {
+      if (tip) tip.remove();
+      el.setAttribute('title', 'Progress: how firmly the ' + (studyOn ? 'cards at this level' : 'new cards') + ' have stuck. It fills as you get them right again after gaps; the level is done when every one has stuck.');
+    }
     var bar = el.querySelector('.dur-bar');
     bar.setAttribute('aria-valuenow', String(pct));
   }

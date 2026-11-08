@@ -376,6 +376,20 @@
     return { cards: cards, total: cards.length, done: done, fill: cards.length ? sum / cards.length : 1, ready: done === cards.length };
   }
 
+  // the histogram behind the Progress bar's tooltip: every card of the current type in the current key that is in play
+  // (the first level's chords, then those and the second level's, then all three), whichever level introduced them
+  function typeCards(mem, mode, pop, n) {
+    var L = ladder(mode, pop), cur = L[clamp(n, 1, L.length) - 1], cards = [];
+    L.forEach(function (l, i) {
+      if (i + 1 > n || l.stage !== cur.stage || l.type !== cur.type) return;
+      l.fresh.forEach(function (q) {
+        var m = mem.p[pairKey(mode, q)], h = m ? m.h : 0;
+        cards.push({ q: q, h: h, done: h >= H_DURABLE, fill: h ? clamp(Math.log(h / H0) / Math.log(H_DURABLE / H0), 0, 1) : 0 });
+      });
+    });
+    return { cards: cards, type: cur.type, keyPc: cur.keyPc };
+  }
+
   // "Find a chord": which of the key's chords is exactly the notes picked on the keyboard?
   // `cands`: [{ deg, type, pcs: [absolute pitch classes], rootPc, rank }] (lower rank = more common);
   // `picked`: absolute key numbers (semitones), any octave. The picked pitch classes must equal a chord's;
@@ -402,7 +416,7 @@
     return hits[0];
   }
 
-  return { STREAK: STREAK, passMark: passMark, H_DURABLE: H_DURABLE, pairsAt: pairsAt, newCards: newCards, cardsOf: cardsOf, durability: durability, DATA: DATA, maxKeys: maxKeys, clamp: clamp, keys: keys, chords: chords, pick: pick,
+  return { STREAK: STREAK, passMark: passMark, H_DURABLE: H_DURABLE, pairsAt: pairsAt, newCards: newCards, cardsOf: cardsOf, durability: durability, typeCards: typeCards, DATA: DATA, maxKeys: maxKeys, clamp: clamp, keys: keys, chords: chords, pick: pick,
            ladder: ladder, setClef: setClef, levelCount: levelCount, levelInfo: levelInfo, levelAt: levelAt, stageSteps: stageSteps, stageIntro: stageIntro, mayInvert: mayInvert, stepAdds: stepAdds, stageCoverage: stageCoverage, freshTest: freshTest,
            identify: identify, weightKey: weightKey, weightOf: weightOf, miss: miss, hit: hit, loadWeights: loadWeights, saveWeights: saveWeights, resetWeights: resetWeights,
            describe: describe, nameChord: nameChord, checkAnswer: checkAnswer, needsQual: needsQual, needsSev: needsSev, pcName: pcName, answerName: answerName,

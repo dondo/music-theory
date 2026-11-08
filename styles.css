@@ -980,3 +980,10 @@ html.is-local body { border-top: 6px solid #ea580c; }
 .levelup-foot .levelup-clef { margin-top: 0; }
 .levelup-foot .levelup-go-row { margin-top: 0; flex: none; }
 .levelup-luck { display: block; margin-top: 14px; }
+
+/* Find the chord: hovering the Progress bar shows a histogram of the chords of the current type in play */
+.score-dur { position: relative; }
+.dur-tip { display: none; position: absolute; top: calc(100% + 8px); right: 0; z-index: 30; background: #fff; color: #1e293b; border: 1px solid #cbd5e1; border-radius: 8px; box-shadow: 0 4px 14px rgba(0,0,0,.2); padding: 8px 12px 0; text-align: center; white-space: nowrap; }
+.score-dur:hover .dur-tip { display: block; }
+.dur-tip-h { display: block; font-size: 13px; font-weight: 600; }
+.dur-tip .card-strip { margin: 22px 0 4px; justify-content: flex-start; }
