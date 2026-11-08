@@ -543,9 +543,10 @@ check('find the chord: a stage is a key with every chord type; each type goes I 
     for (var st = 1; st <= 12; st++) {
       var g = L.filter(function (l) { return l.stage === st; });
       assert.ok(g.every(function (l) { return l.keyPc === g[0].keyPc; }), tag + ' stage ' + st + ' is one key');
-      var tri = g.filter(function (l) { return l.type === 'triad'; });
+      var tri = g.filter(function (l) { return l.type === 'triad'; }), sev = g.filter(function (l) { return l.type === '7'; });
       assert.deepStrictEqual(tri.map(function (l) { return l.role; }), ['first', 'second', 'second', 'second', 'dim'], tag + ' stage ' + st);
-      assert.strictEqual(tri[0].fresh.length, 3);
+      assert.deepStrictEqual(tri.map(function (l) { return l.fresh.length; }), [3, 1, 1, 1, 1]);
+      assert.deepStrictEqual(sev.map(function (l) { return l.role + l.fresh.length; }), ['first3', 'second3', 'dim1'], tag + ' sevenths: I IV V, then vi ii iii together, then the diminished one');
       if (st > 1) assert.ok(['7', 'sus4'].every(function (t) { return t === 'sus4' || g.some(function (l) { return l.type === t; }); }) && g.some(function (l) { return l.type === (c[1] ? '9' : '13'); }), tag + ' every type');
     }
     // each level = what it introduces + every card of every earlier level
@@ -554,7 +555,7 @@ check('find the chord: a stage is a key with every chord type; each type goes I 
       l.fresh.forEach(function (f) { assert.ok(!played.x[key(f)], tag + ' introduced twice ' + key(f)); played.x[key(f)] = 1; });
       assert.deepStrictEqual(l.cards.map(key).sort(), Object.keys(played.x).sort(), tag + ' level ' + i + ' is cumulative');
     });
-    assert.ok(L.length > 200 && L.length < 400, tag + ' ' + L.length);
+    assert.ok(L.length > 120 && L.length < 300, tag + ' ' + L.length);
   });
 });
 

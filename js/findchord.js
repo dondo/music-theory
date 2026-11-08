@@ -279,7 +279,7 @@
   // The ladder is a curriculum built from quality groups (major chords, then minor chords, then the diminished one), one KEY at a time
   // (see README, "Find the chord: the ladder"). A STAGE is a key; each level is an explicit list of cards (key + chord pairs), not a product of keys x chords.
   // Within a stage, for each chord type in turn (triads, then sevenths, then the rest):
-  //   - the first group (major: I IV V) together,  - each second-group chord added in turn (major: vi, ii, iii),  - the diminished chord (types that have one).
+  //   - the first group (major: I IV V) together,  - the second group (major: vi, ii, iii: the chords built on the minor triads) together, one at a time for triads only,  - the diminished chord (types that have one).
   // (Sus4 and sus2 have no major/minor split: all six chords of the key at once.) There are no review levels: every level is drawn from the new chords
   // plus every chord of every earlier level (the "fresh" ones are asked about most, and older ones that have faded are brought back).
   // Every stage is read on the clef chosen in Explore (setClef); a card read on another clef is remembered as its own card.
@@ -310,7 +310,8 @@
         function chordsAdd(degs) { return { dim: 'C', chords: degs.map(function (d) { return { deg: d, type: type }; }), back: false }; }
         if (NO_SPLIT[type]) { add('all', type, mk(all, type), chordsAdd(all)); return; }
         add('first', type, mk(g.first, type), chordsAdd(g.first));
-        g.second.forEach(function (d) { add('second', type, mk([d], type), chordsAdd([d])); });
+        if (type === 'triad') g.second.forEach(function (d) { add('second', type, mk([d], type), chordsAdd([d])); });      // (the triads one at a time; every later type brings its minor-triad chords together)
+        else add('second', type, mk(g.second, type), chordsAdd(g.second));
         if (HAS_DIM[type]) add('dim', type, mk([g.dim], type), chordsAdd([g.dim]));
       });
       if (ki > 0) lv[0].add = { dim: 'K', keys: [pcX], back: false };      // (a new key; the first stage's first level introduces the chords)
