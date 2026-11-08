@@ -2125,7 +2125,8 @@
     document.getElementById('ftc-levelup-title').textContent = 'Welcome to \u201CFind the Chord!\u201D';
     levelText.innerHTML = 'You\u2019ll be shown a chord with a key signature, and will identify it below. This is divided up into ' + total +
       ' stages, one for each key. In each you work through every kind of chord in that key (triads first, then sevenths, and so on), starting with the major chords (I, IV, V \u2013 in the key of C that would be C, F, G), then the minor ones (vi, ii, iii \u2013 Am, Dm, Em), then the diminished one (vii\u00B0 \u2013 Bdim); chords you have already learned keep coming back mixed in with the new ones.' +
-      '<span class="levelup-line2">The first stage is ' + stageText(1) + '. Good luck!</span>' +
+      '<span class="levelup-line2">The first stage is ' + stageText(1) + '.</span>' +
+      '<span class="levelup-line2">Good luck!</span>' +
       '<span class="levelup-foot">' +
         '<span class="levelup-clef"><strong>Choose a clef!</strong><span class="levelup-clef-row" role="group" aria-label="Clef">' + clefButtons() + '</span></span>' +
         '<span class="levelup-go-row"><button type="button" class="btn-reset levelup-go">Go \u2192</button></span>' +
