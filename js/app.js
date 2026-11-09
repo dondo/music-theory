@@ -2330,7 +2330,7 @@
     var l = ftcLevels();
     var isFresh = ftcTrial ? null : FindChord.freshTest(state.mode, ftcPop(), ftcLevelNo());
     var nowMs = Date.now();
-    var isNewChord = isFresh || (ftcTrial ? FindChord.freshTest(state.mode, ftcPop(), ftcTrial.level) : null);      // (this level's new chords stay in root position; only graduated chords are inverted)
+    var isNewChord = isFresh;                                    // (this level's new chords stay in root position until the level is done; only graduated chords are inverted)
     var isOld = isFresh ? function (c) { return !isFresh(c); } : null;                    // older material: every card the earlier levels put in play
     var plan = isFresh ? FindChord.floorPlan(ftcFresh, true, FindChord.anyPair(state.mode, ftcPop(), l.cards, null, function (c) { return isOld(c) && !(ftcQ && c.pc === ftcQ.pc && c.deg === ftcQ.deg && c.type === ftcQ.type); })) : null;
     ftcDraw = plan === 'fresh' ? 'f' : plan === 'old' ? 'o' : 'w';
@@ -2358,7 +2358,8 @@
     else if (isFresh) { FindChord.freshRecord(ftcFresh, isFresh(q), !isFresh(q) && isOld(q)); saveFtc(); }
     var nNotes = Chords.chordInKey(Theory.specsFor(state.mode, q.pc)[q.spell].name, state.mode, q.deg, q.type).pcOffsets.length;
     q.clef = ftcClefSetting();
-    q.inv = resumed ? resumed.inv : FindChord.chooseInv(ftcMem, state.mode, q, Math.random, nowMs, isNewChord);       // root position until the chord is mastered, then every position, each its own card
+    q.inv = resumed ? resumed.inv : ftcTrial ? Math.floor(Math.random() * FindChord.notesOf(q.type))                 // a time trial uses every position of every chord, the level's new ones too
+      : FindChord.chooseInv(ftcMem, state.mode, q, Math.random, nowMs, isNewChord);       // root position until the chord is mastered, then every position, each its own card
     var oldSvg = stage.firstElementChild;
     var oldKey = animate && oldSvg ? oldSvg.querySelector('.key[data-pc="' + q.pc + '"]') : null;
     ftcQ = q;
