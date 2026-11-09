@@ -242,7 +242,7 @@
     return '<span class="card-strip' + (full ? ' cs-full' : '') + '" style="--cw:' + cw + 'px">' + d.cards.map(function (c) {
       var spec = ftcKeySpec(mode, c.q.pc), ch = Chords.chordInKey(spec.name, mode, c.q.deg, c.q.type), pct = Math.round(c.fill * 100), br = '';
       if (!first[c.q.pc]) { first[c.q.pc] = true; br = '<span class="cs-br" style="width:' + (count[c.q.pc] * (cw + 2) - 4) + 'px"><i></i><em>' + ftcKeyName(c.q.pc) + '</em></span>'; }
-      var pop_ = c.fill < 1 ? '<span class="cs-pop"><span class="cs-info">' + (pop ? ch.symbol + ' (' + ch.roman + ' in ' : ch.roman + ' in ') + ftcKeyName(c.q.pc) + (mode === 'minor' ? '' : ' major') + (pop ? ')' : '<br>' + ch.symbol) + '<br><b>' + pct + '%</b></span></span>' : '';
+      var pop_ = c.fill < 1 ? '<span class="cs-pop"><span class="cs-info">' + (pop ? ch.symbol + ' (' + ch.roman + ' in ' : ch.roman + ' in ') + ftcKeyName(c.q.pc) + (mode === 'minor' ? '' : ' major') + (pop ? ')' : '<br>' + ch.symbol) + '<br><b>' + pct + '%</b>' + (c.invOf > 1 ? ' \u00b7 ' + c.invDone + ' of ' + c.invOf + ' positions' : '') + '</span></span>' : '';
       return '<span class="cs' + (pop_ ? ' cs-has' : '') + '"><i class="cs-bar"><b style="height:' + pct + '%"' + (c.done ? ' class="cs-done"' : '') + '></b></i><u>' + (pop ? (full ? spec.name + ':' + ch.symbol + ' (' + ch.roman + ')' : ch.symbol) : (full ? spec.name + ':' + ch.roman + ' (' + ch.symbol + ')' : ch.roman)) + '</u>' + pop_ + br + '</span>';
     }).join('') + '</span>';
   }
@@ -2330,7 +2330,7 @@
     var isOld = isFresh ? function (c) { return !isFresh(c); } : null;                    // older material: every card the earlier levels put in play
     var plan = isFresh ? FindChord.floorPlan(ftcFresh, true, FindChord.anyPair(state.mode, ftcPop(), l.cards, null, function (c) { return isOld(c) && !(ftcQ && c.pc === ftcQ.pc && c.deg === ftcQ.deg && c.type === ftcQ.type); })) : null;
     ftcDraw = plan === 'fresh' ? 'f' : plan === 'old' ? 'o' : 'w';
-    var q = FindChord.pick(state.mode, ftcPop(), l.cards, null, Math.random, ftcQ, function (c) { return FindChord.memWeight(ftcMem, state.mode, c, nowMs); },
+    var q = FindChord.pick(state.mode, ftcPop(), l.cards, null, Math.random, ftcQ, function (c) { return FindChord.chordWeight(ftcMem, state.mode, c, nowMs); },
                            plan === 'old' ? isOld : isFresh, plan ? 'only' : null);
     q = { pc: q.pc, deg: q.deg, type: q.type };
     var forceInv = false;
@@ -2353,10 +2353,8 @@
     if (resumed) q = { pc: resumed.pc, deg: resumed.deg, type: resumed.type, spell: resumed.spell };
     else if (isFresh) { FindChord.freshRecord(ftcFresh, isFresh(q), !isFresh(q) && isOld(q)); saveFtc(); }
     var nNotes = Chords.chordInKey(Theory.specsFor(state.mode, q.pc)[q.spell].name, state.mode, q.deg, q.type).pcOffsets.length;
-    var mayInv = FindChord.mayInvert(state.mode, ftcPop(), l, q.deg, q.type);
     q.clef = ftcClefSetting();
-    q.inv = resumed ? resumed.inv : FindChord.pickInversion(nNotes, mayInv, Math.random);                // Jazz: inversions mixed in at every level; Pop: from the stage's inversions step on
-    if (forceInv && !resumed && mayInv && nNotes > 1) q.inv = 1 + Math.floor(Math.random() * (nNotes - 1));       // (an inversions step opens with an inverted chord)
+    q.inv = resumed ? resumed.inv : FindChord.chooseInv(ftcMem, state.mode, q, Math.random, nowMs);       // root position until the chord is mastered, then every position, each its own card
     var oldSvg = stage.firstElementChild;
     var oldKey = animate && oldSvg ? oldSvg.querySelector('.key[data-pc="' + q.pc + '"]') : null;
     ftcQ = q;

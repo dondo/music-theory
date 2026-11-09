@@ -649,6 +649,22 @@ check('find the chord inversions: Pop is always root position; Jazz mixes every 
   assert.ok(seen[1] > 50 && seen[2] > 50 && seen[3] > 50, JSON.stringify(seen));
   for (i = 0; i < 100; i++) { var t = FC.pickInversion(3, true, rng); assert.ok(t >= 0 && t <= 2); }
   assert.strictEqual(FC.pickInversion(7, true, function () { return 0.999999; }), 6);
+  // inversions: each is its own card, in play once the root position is mastered; progress is the average across the positions
+  (function () {
+    var mem = FC.newMem(), q = { pc: 0, deg: 0, type: 'triad' }, now = Date.now(), H = FC.H_DURABLE;
+    assert.strictEqual(FC.pairKey('major', q), 'major|0|0|triad');
+    assert.strictEqual(FC.pairKey('major', { pc: 0, deg: 0, type: 'triad', inv: 2 }), 'major|0|0|triad|i2');
+    assert.strictEqual(FC.notesOf('triad'), 3); assert.strictEqual(FC.notesOf('7'), 4); assert.strictEqual(FC.notesOf('13'), 7);
+    for (var j = 0; j < 100; j++) assert.strictEqual(FC.chooseInv(mem, 'major', q, Math.random, now), 0);          // root not mastered: root position only
+    mem.p['major|0|0|triad'] = { h: H, t: now, n: 5, l: 0, rs: -99, ls: -99 };
+    var seenInv = {};
+    for (j = 0; j < 400; j++) seenInv[FC.chooseInv(mem, 'major', q, Math.random, now)] = 1;
+    assert.deepStrictEqual(Object.keys(seenInv).sort(), ['0', '1', '2']);
+    mem.p['major|0|0|triad|i1'] = { h: H, t: now, n: 5, l: 0, rs: -99, ls: -99 };
+    var pr = FC.chordProgress(mem, 'major', q);
+    assert.strictEqual(pr.done, 2); assert.strictEqual(pr.of, 3); assert.ok(Math.abs(pr.fill - 2 / 3) < 1e-9);
+    assert.ok(FC.chordWeight(mem, 'major', q, now) > FC.memWeight(mem, 'major', q, now));                             // the untouched 2nd inversion keeps the chord coming up
+  })();
 });
 
 

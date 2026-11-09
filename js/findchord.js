@@ -107,7 +107,13 @@
   function newMem() { return { p: {}, seq: 0, tm: {} }; }       // p: pair -> { h, t, n, l, rs }; tm: speed class -> the last correct first-try times
   var curClef = 'treble';                                                // the clef the questions are read on (Explore's choice): a card read on another clef is its own card
   function setClef(id) { curClef = id || 'treble'; }
-  function pairKey(mode, q) { var c = q.clef || curClef; return mode + '|' + q.pc + '|' + q.deg + '|' + q.type + (c === 'treble' ? '' : c === 'bass' ? '|b' : '|' + c); }      // (treble keeps the old keys)
+  function pairKey(mode, q) { var c = q.clef || curClef; return mode + '|' + q.pc + '|' + q.deg + '|' + q.type + (c === 'treble' ? '' : c === 'bass' ? '|b' : '|' + c) + (q.inv > 0 ? '|i' + q.inv : ''); }      // (treble keeps the old keys; root position keeps them too, and each inversion is a card of its own: '|i1', '|i2' ...)
+  // how many notes each chord type has: a chord has that many positions (the root position and one inversion per other note)
+  var NOTES = { triad: 3, sus4: 3, sus2: 3, add9: 4, '7': 4, '9': 5, '11': 6, '13': 7 };
+  function notesOf(type) { return NOTES[type] || 3; }
+  function withInv(q, i) { return { pc: q.pc, deg: q.deg, type: q.type, clef: q.clef, inv: i }; }
+  // a chord's inversions come into play once its root position is mastered (its half-life has reached H_DURABLE)
+  function rootMastered(mem, mode, q) { var m = mem.p[pairKey(mode, withInv(q, 0))]; return !!(m && m.n > 0 && m.h >= H_DURABLE); }
   function recallOf(m, now) { return m ? Math.pow(2, -Math.max(0, now - m.t) / m.h) : 0; }       // a pair never seen: 0
   function pairRecall(mem, mode, q, now) { return recallOf(mem.p[pairKey(mode, q)], now); }
   function memWeight(mem, mode, q, now) {
@@ -115,6 +121,31 @@
     if (m && mem.seq - m.rs <= RELEARN) u = Math.max(u, RELEARN_U);
     else if (m && m.n < LEARN_N && mem.seq - m.ls > LEARN_GAP) u = Math.max(u, LEARN_U);
     return (EPS + Math.pow(u, GAMMA)) * (1 + NOVEL * Math.max(0, 1 - (m ? m.n : 0) / NOVEL_N));
+  }
+  // the weight of a chord when drawing: its most-forgotten card (root position, and every inversion once the root is mastered)
+  function chordWeight(mem, mode, q, now) {
+    var w = memWeight(mem, mode, withInv(q, 0), now);
+    if (rootMastered(mem, mode, q)) for (var i = 1; i < notesOf(q.type); i++) w = Math.max(w, memWeight(mem, mode, withInv(q, i), now));
+    return w;
+  }
+  // which inversion to show for a chord: root position until it is mastered, then any of its positions, the ones you know least coming up most
+  function chooseInv(mem, mode, q, rng, now) {
+    var n = notesOf(q.type);
+    if (n < 2 || !rootMastered(mem, mode, q)) return 0;
+    var ws = [], tot = 0, i, x;
+    for (i = 0; i < n; i++) { x = memWeight(mem, mode, withInv(q, i), now); ws.push(x); tot += x; }
+    x = rng() * tot;
+    for (i = 0; i < n; i++) { x -= ws[i]; if (x < 0) return i; }
+    return n - 1;
+  }
+  // how settled a chord is across all its positions: the average of the cards' fills (an inversion never asked counts 0), so a triad whose root
+  // position and first inversion are mastered and second inversion untouched is 2/3
+  function fillOf(m) { return m && m.h ? clamp2(Math.log(m.h / H0) / Math.log(H_DURABLE / H0), 0, 1) : 0; }
+  function clamp2(x, lo, hi) { return Math.max(lo, Math.min(hi, x)); }
+  function chordProgress(mem, mode, q) {
+    var n = notesOf(q.type), sum = 0, done = 0, i, m;
+    for (i = 0; i < n; i++) { m = mem.p[pairKey(mode, withInv(q, i))]; sum += fillOf(m); if (m && m.n > 0 && m.h >= H_DURABLE) done++; }
+    return { fill: sum / n, done: done, of: n };
   }
   function timeClass(type, inv) { return (type === 'triad' ? 'triad' : type === '7' ? '7th' : 'ext') + (inv > 0 ? '/inv' : ''); }
   function tRef(mem, cls) {                                      // the bar for "fast": your 20th-percentile correct time in this class
@@ -380,11 +411,11 @@
   // (the first level's chords, then those and the second level's, then all three), whichever level introduced them
   function typeCards(mem, mode, pop, n) {
     var L = ladder(mode, pop), cur = L[clamp(n, 1, L.length) - 1], cards = [];
+    function fresh(q) { var p = chordProgress(mem, mode, q); return { q: q, h: 0, done: p.done === p.of, fill: p.fill, invDone: p.done, invOf: p.of }; }
     L.forEach(function (l, i) {
       if (i + 1 > n || l.stage !== cur.stage || l.type !== cur.type) return;
       l.fresh.forEach(function (q) {
-        var m = mem.p[pairKey(mode, q)], h = m ? m.h : 0;
-        cards.push({ q: q, h: h, done: h >= H_DURABLE, fill: h ? clamp(Math.log(h / H0) / Math.log(H_DURABLE / H0), 0, 1) : 0 });
+        cards.push(fresh(q));
       });
     });
     return { cards: cards, type: cur.type, keyPc: cur.keyPc };
@@ -416,12 +447,12 @@
     return hits[0];
   }
 
-  return { STREAK: STREAK, passMark: passMark, H_DURABLE: H_DURABLE, pairsAt: pairsAt, newCards: newCards, cardsOf: cardsOf, durability: durability, typeCards: typeCards, DATA: DATA, maxKeys: maxKeys, clamp: clamp, keys: keys, chords: chords, pick: pick,
+  return { STREAK: STREAK, passMark: passMark, H_DURABLE: H_DURABLE, pairsAt: pairsAt, newCards: newCards, cardsOf: cardsOf, durability: durability, typeCards: typeCards, chordWeight: chordWeight, chooseInv: chooseInv, chordProgress: chordProgress, rootMastered: rootMastered, notesOf: notesOf, DATA: DATA, maxKeys: maxKeys, clamp: clamp, keys: keys, chords: chords, pick: pick,
            ladder: ladder, setClef: setClef, levelCount: levelCount, levelInfo: levelInfo, levelAt: levelAt, stageSteps: stageSteps, stageIntro: stageIntro, mayInvert: mayInvert, stepAdds: stepAdds, stageCoverage: stageCoverage, freshTest: freshTest,
            identify: identify, weightKey: weightKey, weightOf: weightOf, miss: miss, hit: hit, loadWeights: loadWeights, saveWeights: saveWeights, resetWeights: resetWeights,
            describe: describe, nameChord: nameChord, checkAnswer: checkAnswer, needsQual: needsQual, needsSev: needsSev, pcName: pcName, answerName: answerName,
            pickInversion: pickInversion, freshPlan: freshPlan, freshRecord: freshRecord, floorPlan: floorPlan,
-           newMem: newMem, loadMem: loadMem, saveMem: saveMem, resetMem: resetMem, memWeight: memWeight, memAnswer: memAnswer, pairRecall: pairRecall, grade: grade, tRef: tRef, timeClass: timeClass, anyPair: anyPair,
+           newMem: newMem, loadMem: loadMem, saveMem: saveMem, resetMem: resetMem, pairKey: pairKey, memWeight: memWeight, memAnswer: memAnswer, pairRecall: pairRecall, grade: grade, tRef: tRef, timeClass: timeClass, anyPair: anyPair,
            loadLog: loadLog, saveLog: saveLog, LOG_COLUMNS: LOG_COLUMNS, LOG_CAP: LOG_CAP, OLD_R: OLD_R,
            FRESH_WINDOW: FRESH_WINDOW, FRESH_MIN: FRESH_MIN };
 });
