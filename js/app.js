@@ -243,7 +243,7 @@
       var spec = ftcKeySpec(mode, c.q.pc), ch = Chords.chordInKey(spec.name, mode, c.q.deg, c.q.type), pct = Math.round(c.fill * 100), br = '';
       if (!first[c.q.pc]) { first[c.q.pc] = true; br = '<span class="cs-br" style="width:' + (count[c.q.pc] * (cw + 2) - 4) + 'px"><i></i><em>' + ftcKeyName(c.q.pc) + '</em></span>'; }
       var pop_ = c.fill < 1 ? '<span class="cs-pop"><span class="cs-info">' + (pop ? ch.symbol + ' (' + ch.roman + ' in ' : ch.roman + ' in ') + ftcKeyName(c.q.pc) + (mode === 'minor' ? '' : ' major') + (pop ? ')' : '<br>' + ch.symbol) + '<br><b>' + pct + '%</b>' + (c.invOf > 1 ? ' \u00b7 ' + c.invDone + ' of ' + c.invOf + ' positions' : '') + '</span></span>' : '';
-      return '<span class="cs' + (pop_ ? ' cs-has' : '') + '"><i class="cs-bar"><b style="height:' + pct + '%"' + (c.done ? ' class="cs-done"' : '') + '></b></i><u>' + (pop ? (full ? spec.name + ':' + ch.symbol + ' (' + ch.roman + ')' : ch.symbol) : (full ? spec.name + ':' + ch.roman + ' (' + ch.symbol + ')' : ch.roman)) + '</u>' + pop_ + br + '</span>';
+      return '<span class="cs' + (pop_ ? ' cs-has' : '') + '"><i class="cs-bar' + (c.invOf > 1 ? ' cs-stack' : '') + '">' + (c.invOf > 1 ? '<b class="cs-root' + (c.rootDone ? ' cs-done' : '') + '" style="height:' + Math.round(c.rootFill / c.invOf * 100) + '%"></b><b class="cs-inv" style="height:' + Math.round(c.invFill / c.invOf * 100) + '%"></b>' : '<b style="height:' + pct + '%"' + (c.done ? ' class="cs-done"' : '') + '></b>') + '</i><u>' + (pop ? (full ? spec.name + ':' + ch.symbol + ' (' + ch.roman + ')' : ch.symbol) : (full ? spec.name + ':' + ch.roman + ' (' + ch.symbol + ')' : ch.roman)) + '</u>' + pop_ + br + '</span>';
     }).join('') + '</span>';
   }
   function cardStrip() {
@@ -1974,7 +1974,10 @@
       title = 'Congratulations!';
       html = 'You have completed Stage ' + doneStage + ' (' + stageText(doneStage) + ').<span class="levelup-line2">' + stageNote(FindChord.levelInfo(state.mode, pop, n).stage) + '</span>';
       goRow = true;
-    } else { html = stepNote(n); goRow = true; }
+    } else {
+      html = stepNote(n); goRow = true;
+      if (n === 2) html += '<span class="levelup-line2">Note that we\u2019ll start showing inversions of the chords you\u2019ve already mastered as well.</span>';       // (the first graduation: inversions begin)
+    }
     var allTriads = function (k) { return FindChord.chords(state.mode, pop, FindChord.levelAt(state.mode, pop, k).chords).every(function (c) { return c.type === 'triad'; }); };
     if (n > 1 && allTriads(n - 1) && !allTriads(n))                  // the TYPE chips have just appeared
       html += '<span class="levelup-line2">Since we now have both triads and seventh chords, you\u2019ll have to select the \u2018type\u2019 as well as the ' + (pop ? 'root and quality' : 'degree') + '. Ready?</span>';

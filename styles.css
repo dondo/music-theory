@@ -987,3 +987,9 @@ html.is-local body { border-top: 6px solid #ea580c; }
 .score-dur:hover .dur-tip { display: block; }
 .dur-tip-h { display: block; font-size: 13px; font-weight: 600; }
 .dur-tip .card-strip { margin: 22px 0 4px; justify-content: flex-start; }
+
+/* a chord's bar in the Progress tooltip: the root position along the bottom (green once mastered), all the inversions together above it in orange */
+.cs-bar.cs-stack { flex-direction: column-reverse; justify-content: flex-start; }
+.cs-bar.cs-stack b.cs-root { background: #f59e0b; }
+.cs-bar.cs-stack b.cs-root.cs-done { background: #16a34a; }
+.cs-bar.cs-stack b.cs-inv { background: #f59e0b; }

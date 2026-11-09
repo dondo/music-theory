@@ -1004,6 +1004,12 @@ html.is-local body { border-top: 6px solid #ea580c; }
 .score-dur:hover .dur-tip { display: block; }
 .dur-tip-h { display: block; font-size: 13px; font-weight: 600; }
 .dur-tip .card-strip { margin: 22px 0 4px; justify-content: flex-start; }
+
+/* a chord's bar in the Progress tooltip: the root position along the bottom (green once mastered), all the inversions together above it in orange */
+.cs-bar.cs-stack { flex-direction: column-reverse; justify-content: flex-start; }
+.cs-bar.cs-stack b.cs-root { background: #f59e0b; }
+.cs-bar.cs-stack b.cs-root.cs-done { background: #16a34a; }
+.cs-bar.cs-stack b.cs-inv { background: #f59e0b; }
 </style>
 </head>
 <body>
@@ -2876,9 +2882,12 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = Sync; }
   function fillOf(m) { return m && m.h ? clamp2(Math.log(m.h / H0) / Math.log(H_DURABLE / H0), 0, 1) : 0; }
   function clamp2(x, lo, hi) { return Math.max(lo, Math.min(hi, x)); }
   function chordProgress(mem, mode, q) {
-    var n = notesOf(q.type), sum = 0, done = 0, i, m;
-    for (i = 0; i < n; i++) { m = mem.p[pairKey(mode, withInv(q, i))]; sum += fillOf(m); if (m && m.n > 0 && m.h >= H_DURABLE) done++; }
-    return { fill: sum / n, done: done, of: n };
+    var n = notesOf(q.type), sum = 0, done = 0, i, m, rootFill = 0, rootDone = false;
+    for (i = 0; i < n; i++) {
+      m = mem.p[pairKey(mode, withInv(q, i))]; sum += fillOf(m); if (m && m.n > 0 && m.h >= H_DURABLE) done++;
+      if (i === 0) { rootFill = fillOf(m); rootDone = !!(m && m.n > 0 && m.h >= H_DURABLE); }
+    }
+    return { fill: sum / n, done: done, of: n, rootFill: rootFill, rootDone: rootDone, invFill: sum - rootFill };      // (invFill: the inversions' fills added up; with the root's, over n, that is the chord's fill)
   }
   function timeClass(type, inv) { return (type === 'triad' ? 'triad' : type === '7' ? '7th' : 'ext') + (inv > 0 ? '/inv' : ''); }
   function tRef(mem, cls) {                                      // the bar for "fast": your 20th-percentile correct time in this class
@@ -3144,7 +3153,7 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = Sync; }
   // (the first level's chords, then those and the second level's, then all three), whichever level introduced them
   function typeCards(mem, mode, pop, n) {
     var L = ladder(mode, pop), cur = L[clamp(n, 1, L.length) - 1], cards = [];
-    function fresh(q) { var p = chordProgress(mem, mode, q); return { q: q, h: 0, done: p.done === p.of, fill: p.fill, invDone: p.done, invOf: p.of }; }
+    function fresh(q) { var p = chordProgress(mem, mode, q); return { q: q, h: 0, done: p.done === p.of, fill: p.fill, invDone: p.done, invOf: p.of, rootFill: p.rootFill, rootDone: p.rootDone, invFill: p.invFill }; }
     L.forEach(function (l, i) {
       if (i + 1 > n || l.stage !== cur.stage || l.type !== cur.type) return;
       l.fresh.forEach(function (q) {
@@ -4824,7 +4833,7 @@ var KeyboardRender = (function () {
       var spec = ftcKeySpec(mode, c.q.pc), ch = Chords.chordInKey(spec.name, mode, c.q.deg, c.q.type), pct = Math.round(c.fill * 100), br = '';
       if (!first[c.q.pc]) { first[c.q.pc] = true; br = '<span class="cs-br" style="width:' + (count[c.q.pc] * (cw + 2) - 4) + 'px"><i></i><em>' + ftcKeyName(c.q.pc) + '</em></span>'; }
       var pop_ = c.fill < 1 ? '<span class="cs-pop"><span class="cs-info">' + (pop ? ch.symbol + ' (' + ch.roman + ' in ' : ch.roman + ' in ') + ftcKeyName(c.q.pc) + (mode === 'minor' ? '' : ' major') + (pop ? ')' : '<br>' + ch.symbol) + '<br><b>' + pct + '%</b>' + (c.invOf > 1 ? ' \u00b7 ' + c.invDone + ' of ' + c.invOf + ' positions' : '') + '</span></span>' : '';
-      return '<span class="cs' + (pop_ ? ' cs-has' : '') + '"><i class="cs-bar"><b style="height:' + pct + '%"' + (c.done ? ' class="cs-done"' : '') + '></b></i><u>' + (pop ? (full ? spec.name + ':' + ch.symbol + ' (' + ch.roman + ')' : ch.symbol) : (full ? spec.name + ':' + ch.roman + ' (' + ch.symbol + ')' : ch.roman)) + '</u>' + pop_ + br + '</span>';
+      return '<span class="cs' + (pop_ ? ' cs-has' : '') + '"><i class="cs-bar' + (c.invOf > 1 ? ' cs-stack' : '') + '">' + (c.invOf > 1 ? '<b class="cs-root' + (c.rootDone ? ' cs-done' : '') + '" style="height:' + Math.round(c.rootFill / c.invOf * 100) + '%"></b><b class="cs-inv" style="height:' + Math.round(c.invFill / c.invOf * 100) + '%"></b>' : '<b style="height:' + pct + '%"' + (c.done ? ' class="cs-done"' : '') + '></b>') + '</i><u>' + (pop ? (full ? spec.name + ':' + ch.symbol + ' (' + ch.roman + ')' : ch.symbol) : (full ? spec.name + ':' + ch.roman + ' (' + ch.symbol + ')' : ch.roman)) + '</u>' + pop_ + br + '</span>';
     }).join('') + '</span>';
   }
   function cardStrip() {
@@ -6555,7 +6564,10 @@ var KeyboardRender = (function () {
       title = 'Congratulations!';
       html = 'You have completed Stage ' + doneStage + ' (' + stageText(doneStage) + ').<span class="levelup-line2">' + stageNote(FindChord.levelInfo(state.mode, pop, n).stage) + '</span>';
       goRow = true;
-    } else { html = stepNote(n); goRow = true; }
+    } else {
+      html = stepNote(n); goRow = true;
+      if (n === 2) html += '<span class="levelup-line2">Note that we\u2019ll start showing inversions of the chords you\u2019ve already mastered as well.</span>';       // (the first graduation: inversions begin)
+    }
     var allTriads = function (k) { return FindChord.chords(state.mode, pop, FindChord.levelAt(state.mode, pop, k).chords).every(function (c) { return c.type === 'triad'; }); };
     if (n > 1 && allTriads(n - 1) && !allTriads(n))                  // the TYPE chips have just appeared
       html += '<span class="levelup-line2">Since we now have both triads and seventh chords, you\u2019ll have to select the \u2018type\u2019 as well as the ' + (pop ? 'root and quality' : 'degree') + '. Ready?</span>';
@@ -8685,7 +8697,7 @@ var KeyboardRender = (function () {
 </script>
   <script>
 /* generated by tools/build.py: do not edit */
-var APP_VERSION = '1.0 (build 7ce4c70)';
+var APP_VERSION = '1.0 (build f494166)';
 (function () {
   function show() { Array.prototype.forEach.call(document.querySelectorAll('[data-version]'), function (e) { e.textContent = APP_VERSION; }); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', show); else show();

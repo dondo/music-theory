@@ -143,9 +143,12 @@
   function fillOf(m) { return m && m.h ? clamp2(Math.log(m.h / H0) / Math.log(H_DURABLE / H0), 0, 1) : 0; }
   function clamp2(x, lo, hi) { return Math.max(lo, Math.min(hi, x)); }
   function chordProgress(mem, mode, q) {
-    var n = notesOf(q.type), sum = 0, done = 0, i, m;
-    for (i = 0; i < n; i++) { m = mem.p[pairKey(mode, withInv(q, i))]; sum += fillOf(m); if (m && m.n > 0 && m.h >= H_DURABLE) done++; }
-    return { fill: sum / n, done: done, of: n };
+    var n = notesOf(q.type), sum = 0, done = 0, i, m, rootFill = 0, rootDone = false;
+    for (i = 0; i < n; i++) {
+      m = mem.p[pairKey(mode, withInv(q, i))]; sum += fillOf(m); if (m && m.n > 0 && m.h >= H_DURABLE) done++;
+      if (i === 0) { rootFill = fillOf(m); rootDone = !!(m && m.n > 0 && m.h >= H_DURABLE); }
+    }
+    return { fill: sum / n, done: done, of: n, rootFill: rootFill, rootDone: rootDone, invFill: sum - rootFill };      // (invFill: the inversions' fills added up; with the root's, over n, that is the chord's fill)
   }
   function timeClass(type, inv) { return (type === 'triad' ? 'triad' : type === '7' ? '7th' : 'ext') + (inv > 0 ? '/inv' : ''); }
   function tRef(mem, cls) {                                      // the bar for "fast": your 20th-percentile correct time in this class
@@ -411,7 +414,7 @@
   // (the first level's chords, then those and the second level's, then all three), whichever level introduced them
   function typeCards(mem, mode, pop, n) {
     var L = ladder(mode, pop), cur = L[clamp(n, 1, L.length) - 1], cards = [];
-    function fresh(q) { var p = chordProgress(mem, mode, q); return { q: q, h: 0, done: p.done === p.of, fill: p.fill, invDone: p.done, invOf: p.of }; }
+    function fresh(q) { var p = chordProgress(mem, mode, q); return { q: q, h: 0, done: p.done === p.of, fill: p.fill, invDone: p.done, invOf: p.of, rootFill: p.rootFill, rootDone: p.rootDone, invFill: p.invFill }; }
     L.forEach(function (l, i) {
       if (i + 1 > n || l.stage !== cur.stage || l.type !== cur.type) return;
       l.fresh.forEach(function (q) {
