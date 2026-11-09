@@ -711,8 +711,6 @@ html.is-local body { border-top: 6px solid #ea580c; }
 .tr-menu .trial-list { z-index: 30; }
 .tr-menu .trial-list { top: auto; bottom: calc(100% + 6px); max-height: 13rem; }   /* (opens upward: the card below the results button is clipped) */
 
-.log-note { margin: 0 0 .75rem; padding: .6rem .9rem; border-radius: .6rem; background: var(--card, #f3efe6); border: 1px solid currentColor; font-size: .95rem; display: flex; flex-wrap: wrap; gap: .5rem .9rem; align-items: center; }
-.log-note[hidden] { display: none; }
 .quiet-link[hidden] { display: none; }
 
 /* Pop "Find the chord": a one-octave keyboard for the root note */
@@ -993,3 +991,8 @@ html.is-local body { border-top: 6px solid #ea580c; }
 .cs-bar.cs-stack b.cs-root { background: #f59e0b; }
 .cs-bar.cs-stack b.cs-root.cs-done { background: #16a34a; }
 .cs-bar.cs-stack b.cs-inv { background: #f59e0b; }
+
+/* the chords asked in this session are outlined in the progress bars; the old practice-log notice is gone */
+.cs.cs-focus .cs-bar { box-shadow: 0 0 0 2px #2563eb; }
+.dur-tip-note, .session-legend { display: block; font-size: 12px; color: #475569; margin: 2px 0 6px; }
+.session-legend { display: inline; color: inherit; margin: 0; }

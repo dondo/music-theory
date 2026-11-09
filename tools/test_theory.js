@@ -539,26 +539,35 @@ check('find the chord: a stage is a key with every chord type; each type goes I 
   var key = function (c) { return c.pc + '/' + c.deg + c.type; };
   COMBOS.forEach(function (c) {
     var L = FC.ladder(c[0], c[1]), tag = c[0] + (c[1] ? ' pop' : ' jazz');
-    assert.ok(L.every(function (l) { return ['first', 'second', 'dim', 'all'].indexOf(l.role) >= 0; }), tag + ': no review levels');
+    assert.ok(L.every(function (l) { return ['first', 'second', 'dim', 'all', 'review'].indexOf(l.role) >= 0; }), tag + ': roles');
     for (var st = 1; st <= 12; st++) {
       var g = L.filter(function (l) { return l.stage === st; });
       assert.ok(g.every(function (l) { return l.keyPc === g[0].keyPc; }), tag + ' stage ' + st + ' is one key');
       var tri = g.filter(function (l) { return l.type === 'triad'; }), sev = g.filter(function (l) { return l.type === '7'; });
-      assert.deepStrictEqual(tri.map(function (l) { return l.role; }), ['first', 'second', 'dim'], tag + ' stage ' + st);
-      assert.deepStrictEqual(tri.map(function (l) { return l.fresh.length; }), [3, 3, 1]);
-      assert.deepStrictEqual(sev.map(function (l) { return l.role + l.fresh.length; }), ['first3', 'second3', 'dim1'], tag + ' sevenths: I IV V, then vi ii iii together, then the diminished one');
+      assert.deepStrictEqual(tri.map(function (l) { return l.role; }), ['first', 'second', 'dim', 'review'], tag + ' stage ' + st + ': a review of the type ends it');
+      assert.deepStrictEqual(tri.map(function (l) { return l.fresh.length; }), [3, 3, 1, 7]);
+      assert.deepStrictEqual(sev.map(function (l) { return l.role + l.fresh.length; }), ['first3', 'second3', 'dim1', 'review7'], tag + ' sevenths: I IV V, then vi ii iii together, then the diminished one');
       if (st > 1) assert.ok(['7', 'sus4'].every(function (t) { return t === 'sus4' || g.some(function (l) { return l.type === t; }); }) && g.some(function (l) { return l.type === (c[1] ? '9' : '13'); }), tag + ' every type');
     }
     // each level = what it introduces + every card of every earlier level
     var played = { x: {} };
     L.forEach(function (l, i) {
-      l.fresh.forEach(function (f) { assert.ok(!played.x[key(f)], tag + ' introduced twice ' + key(f)); played.x[key(f)] = 1; });
+      if (l.role !== 'review') l.fresh.forEach(function (f) { assert.ok(!played.x[key(f)], tag + ' introduced twice ' + key(f)); played.x[key(f)] = 1; });
       assert.deepStrictEqual(l.cards.map(key).sort(), Object.keys(played.x).sort(), tag + ' level ' + i + ' is cumulative');
     });
-    assert.ok(L.length > 120 && L.length < 300, tag + ' ' + L.length);
+    assert.ok(L.length > 120 && L.length < 400, tag + ' ' + L.length);
   });
 });
 
+check('find the chord: a review level adds no cards, is about the type\'s chords, and counts every position', function () {
+  var L = FC.ladder('major', true), i = L.findIndex(function (l) { return l.role === 'review'; }), r = L[i], prev = L[i - 1];
+  assert.strictEqual(r.type, 'triad'); assert.strictEqual(r.cards.length, prev.cards.length);
+  var mem = FC.newMem(), d = FC.durability(mem, 'major', true, i + 1);
+  assert.strictEqual(d.total, 7); assert.strictEqual(d.fill, 0); assert.ok(!d.ready);
+  var H = FC.H_DURABLE, now = Date.now();
+  r.fresh.forEach(function (q) { for (var p = 0; p < 3; p++) mem.p[FC.pairKey('major', { pc: q.pc, deg: q.deg, type: q.type, inv: p })] = { h: H, t: now, n: 5, l: 0, rs: -99, ls: -99 }; });
+  d = FC.durability(mem, 'major', true, i + 1); assert.ok(d.ready && d.fill === 1);
+});
 check('find the chord: levelInfo / levelAt clamp and agree', function () {
   var n = FC.levelCount('major', true);
   assert.deepStrictEqual(FC.levelInfo('major', true, 0), FC.levelInfo('major', true, 1));

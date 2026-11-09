@@ -342,14 +342,18 @@
       function add(role, type, fresh, plus) { lv.push({ role: role, type: type, fresh: fresh, add: plus, ans: cfg.letters ? 'letters' : 'numerals' }); }
       run.types.forEach(function (type) {
         function chordsAdd(degs) { return { dim: 'C', chords: degs.map(function (d) { return { deg: d, type: type }; }), back: false }; }
-        if (NO_SPLIT[type]) { add('all', type, mk(all, type), chordsAdd(all)); return; }
-        add('first', type, mk(g.first, type), chordsAdd(g.first));
-        add('second', type, mk(g.second, type), chordsAdd(g.second));
-        if (HAS_DIM[type]) add('dim', type, mk([g.dim], type), chordsAdd([g.dim]));
+        if (NO_SPLIT[type]) add('all', type, mk(all, type), chordsAdd(all));
+        else {
+          add('first', type, mk(g.first, type), chordsAdd(g.first));
+          add('second', type, mk(g.second, type), chordsAdd(g.second));
+          if (HAS_DIM[type]) add('dim', type, mk([g.dim], type), chordsAdd([g.dim]));
+        }
+        // the type's last level: a review of all its chords in the key, in every inversion (it adds no cards; its `fresh` are the chords it is about)
+        add('review', type, mk(NO_SPLIT[type] ? all : g.first.concat(g.second, HAS_DIM[type] ? [g.dim] : []), type), null);
       });
       if (ki > 0) lv[0].add = { dim: 'K', keys: [pcX], back: false };      // (a new key; the first stage's first level introduces the chords)
       lv.forEach(function (x, i) {
-        var cards = played.concat(x.fresh);
+        var cards = x.role === 'review' ? played : played.concat(x.fresh);
         played = cards;
         var keySet = {}, chSet = {}, ks = [], cs = [];
         cards.forEach(function (c) { if (!keySet[c.pc]) { keySet[c.pc] = 1; ks.push(c.pc); } var ck = c.deg + '|' + c.type; if (!chSet[ck]) { chSet[ck] = 1; cs.push({ deg: c.deg, type: c.type }); } });
@@ -402,6 +406,11 @@
   // how durable the level's new cards are: each card fills on a log scale from the starting half-life (empty) to H_DURABLE (full);
   // `fill` is the average, `ready` is true when every card is there
   function durability(mem, mode, pop, n) {
+    if (levelInfo(mode, pop, n).role === 'review') {                  // a review: the type's chords, each across all its positions
+      var rc = levelInfo(mode, pop, n).fresh.map(function (q) { var p = chordProgress(mem, mode, q); return { q: q, h: 0, done: p.done === p.of, fill: p.fill, invDone: p.done, invOf: p.of, rootFill: p.rootFill, rootDone: p.rootDone, invFill: p.invFill }; });
+      var rd = rc.filter(function (c) { return c.done; }).length, rs = rc.reduce(function (a, c) { return a + c.fill; }, 0);
+      return { cards: rc, total: rc.length, done: rd, fill: rc.length ? rs / rc.length : 1, ready: rd === rc.length };
+    }
     var cards = newCards(mode, pop, n).map(function (q) {
       var m = mem.p[pairKey(mode, q)], h = m ? m.h : 0;
       return { q: q, h: h, done: h >= H_DURABLE, fill: h ? clamp(Math.log(h / H0) / Math.log(H_DURABLE / H0), 0, 1) : 0 };
@@ -416,7 +425,7 @@
     var L = ladder(mode, pop), cur = L[clamp(n, 1, L.length) - 1], cards = [];
     function fresh(q) { var p = chordProgress(mem, mode, q); return { q: q, h: 0, done: p.done === p.of, fill: p.fill, invDone: p.done, invOf: p.of, rootFill: p.rootFill, rootDone: p.rootDone, invFill: p.invFill }; }
     L.forEach(function (l, i) {
-      if (i + 1 > n || l.stage !== cur.stage || l.type !== cur.type) return;
+      if (i + 1 > n || l.stage !== cur.stage || l.type !== cur.type || l.role === 'review') return;
       l.fresh.forEach(function (q) {
         cards.push(fresh(q));
       });

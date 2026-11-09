@@ -233,7 +233,7 @@
   function stepResilienceFor(n) { var v = stepView(n); return Memory.resilience(v.view, v.keys); }
   // TEMPORARY: a bar for every card of the current working set (shown in the session banner)
   // Find the chord: a bar for every key/chord card the level introduces, a bracket under each key's cards
-  function ftcStrip(dd, cwFixed) {                                // (dd: the cards to show, default the level's new ones; cwFixed: a set bar width, for the Progress tooltip)
+  function ftcStrip(dd, cwFixed, focus) {                                // (dd: the cards to show, default the level's new ones; cwFixed: a set bar width, for the Progress tooltip)
     var mode = state.mode, pop = ftcPop(), d = dd || FindChord.durability(ftcMem, mode, pop, ftcLevelNo()), first = {}, count = {};
     d.cards.forEach(function (c) { count[c.q.pc] = (count[c.q.pc] || 0) + 1; });
     var host = levelBanner.parentNode, bw = 0;
@@ -243,11 +243,12 @@
       var spec = ftcKeySpec(mode, c.q.pc), ch = Chords.chordInKey(spec.name, mode, c.q.deg, c.q.type), pct = Math.round(c.fill * 100), br = '';
       if (!first[c.q.pc]) { first[c.q.pc] = true; br = '<span class="cs-br" style="width:' + (count[c.q.pc] * (cw + 2) - 4) + 'px"><i></i><em>' + ftcKeyName(c.q.pc) + '</em></span>'; }
       var pop_ = c.fill < 1 ? '<span class="cs-pop"><span class="cs-info">' + (pop ? ch.symbol + ' (' + ch.roman + ' in ' : ch.roman + ' in ') + ftcKeyName(c.q.pc) + (mode === 'minor' ? '' : ' major') + (pop ? ')' : '<br>' + ch.symbol) + '<br><b>' + pct + '%</b>' + (c.invOf > 1 ? ' \u00b7 ' + c.invDone + ' of ' + c.invOf + ' positions' : '') + '</span></span>' : '';
-      return '<span class="cs' + (pop_ ? ' cs-has' : '') + '"><i class="cs-bar' + (c.invOf > 1 ? ' cs-stack' : '') + '">' + (c.invOf > 1 ? '<b class="cs-root' + (c.rootDone ? ' cs-done' : '') + '" style="height:' + Math.round(c.rootFill / c.invOf * 100) + '%"></b><b class="cs-inv" style="height:' + Math.round(c.invFill / c.invOf * 100) + '%"></b>' : '<b style="height:' + pct + '%"' + (c.done ? ' class="cs-done"' : '') + '></b>') + '</i><u>' + (pop ? (full ? spec.name + ':' + ch.symbol + ' (' + ch.roman + ')' : ch.symbol) : (full ? spec.name + ':' + ch.roman + ' (' + ch.symbol + ')' : ch.roman)) + '</u>' + pop_ + br + '</span>';
+      return '<span class="cs' + (pop_ ? ' cs-has' : '') + (focus && focus[c.q.pc + '|' + c.q.deg + '|' + c.q.type] ? ' cs-focus' : '') + '"><i class="cs-bar' + (c.invOf > 1 ? ' cs-stack' : '') + '">' + (c.invOf > 1 ? '<b class="cs-root' + (c.rootDone ? ' cs-done' : '') + '" style="height:' + Math.round(c.rootFill / c.invOf * 100) + '%"></b><b class="cs-inv" style="height:' + Math.round(c.invFill / c.invOf * 100) + '%"></b>' : '<b style="height:' + pct + '%"' + (c.done ? ' class="cs-done"' : '') + '></b>') + '</i><u>' + (pop ? (full ? spec.name + ':' + ch.symbol + ' (' + ch.roman + ')' : ch.symbol) : (full ? spec.name + ':' + ch.roman + ' (' + ch.symbol + ')' : ch.roman)) + '</u>' + pop_ + br + '</span>';
     }).join('') + '</span>';
   }
+  function ftcFocusCount(tc) { return tc.cards.filter(function (c) { return sessFocus[c.q.pc + '|' + c.q.deg + '|' + c.q.type]; }).length; }
   function cardStrip() {
-    if (quizOn()) return ftcStrip();
+    if (quizOn()) return ftcStrip(FindChord.typeCards(ftcMem, state.mode, ftcPop(), ftcLevelNo()), null, sessFocus);      // (all the chords of the level's type in play, the ones asked this session outlined)
     if (!noteOn()) return '';
     var v = stepView(stepNo()), multi = !/^[a-z]+\|[a-z]+\|/.test('') && v.keys.some(function (k) { return k.split('|')[1].replace(/^m\d-/, '') !== v.keys[0].split('|')[1].replace(/^m\d-/, ''); });
     var groups = {}, order = [];                                    // octave brackets under the bars: idx 0-11 is one octave, 12-24 the next (the top C joins it), per clef
@@ -1759,7 +1760,7 @@
       el.removeAttribute('title');
       if (!tip) { tip = el.appendChild(document.createElement('span')); tip.className = 'dur-tip'; }
       var tc = FindChord.typeCards(ftcMem, state.mode, ftcPop(), ftcLevelNo());
-      tip.innerHTML = '<b class="dur-tip-h">' + (LABEL_PLURAL[tc.type] || tc.type) + ' in ' + ftcKeyName(tc.keyPc) + (state.mode === 'minor' ? '' : ' major') + '</b>' + ftcStrip(tc, 44);
+      tip.innerHTML = '<b class="dur-tip-h">' + (LABEL_PLURAL[tc.type] || tc.type) + ' in ' + ftcKeyName(tc.keyPc) + (state.mode === 'minor' ? '' : ' major') + '</b>' + ftcStrip(tc, 44, sessFocus) + (ftcFocusCount(tc) ? '<span class="dur-tip-note">Outlined: asked this session</span>' : '');
     } else {
       if (tip) tip.remove();
       el.setAttribute('title', 'Progress: how firmly the ' + (studyOn ? 'cards at this level' : 'new cards') + ' have stuck. It fills as you get them right again after gaps; the level is done when every one has stuck.');
@@ -1809,7 +1810,7 @@
   var ftcMem = FindChord.loadMem();                    // the memory model: when each key/chord pair was last answered and how fast it fades (persisted)
   var ftcLog = FindChord.loadLog(), ftcLogTimer = null;   // every first-try answer, for tuning the model to you (persisted, capped)
   var ftcT0 = null, ftcDraw = 'w';                    // when the question appeared; how it was drawn (w weighted, f new-challenge floor, o older-material floor, h step opener)
-  var LOG_NOTE_KEY = 'music-theory-ftc-log-notice', LOG_LINK_AT = 1000, LOG_NOTE_AT = 2000, LOG_NOTE_SNOOZE = 1000;
+  var LOG_LINK_AT = 1000;
   var ftcMissed = false;                              // a wrong Check on this question: no streak credit
   var ftcPrevChordsOpen = null;                       // the chord selector's state before the quiz opened it
   var ftcSection = document.getElementById('ftc');
@@ -1818,7 +1819,7 @@
   function quizOn() { return state.flash && state.cardMode === 'chord'; }
   function ftcPop() { return level === 'pop'; }
 
-  var FTC_LADDER = 9;                                  // which ladder the saved levels belong to (1: the old keys-x-chords ladder; 2: the first curriculum, which had a numeral repeat of Pop level 1)
+  var FTC_LADDER = 10;                                  // which ladder the saved levels belong to (1: the old keys-x-chords ladder; 2: the first curriculum, which had a numeral repeat of Pop level 1)
   function loadFtc() {
     try {
       var o = JSON.parse(window.localStorage.getItem(FTC_KEY));
@@ -1974,6 +1975,11 @@
       title = 'Congratulations!';
       html = 'You have completed Stage ' + doneStage + ' (' + stageText(doneStage) + ').<span class="levelup-line2">' + stageNote(FindChord.levelInfo(state.mode, pop, n).stage) + '</span>';
       goRow = true;
+    } else if (FindChord.levelInfo(state.mode, pop, n).role === 'review') {
+      var rv = FindChord.levelInfo(state.mode, pop, n), nx = n < FindChord.levelCount(state.mode, pop);
+      html = 'You\u2019ve completed Level ' + (n - 1) + ' (of ' + FindChord.stageSteps(state.mode, pop, n) + '). On to level ' + n + ': <strong>a review of all the ' + ftcTypeWord(rv.type) + ' in ' + ftcKeyWord(rv.keyPc) + ', in every inversion</strong>.' +
+        '<span class="levelup-line2">This level is entirely optional \u2014 moving on to the next ' + (nx && FindChord.levelInfo(state.mode, pop, n + 1).stage === rv.stage ? 'chord type' : 'key') + ' is a perfectly good choice. It\u2019s also the right place to come back to whenever you want to review these chords.</span>';
+      goRow = 'review';
     } else {
       html = stepNote(n); goRow = true;
       if (n === 2) html += '<span class="levelup-line2">Note that we\u2019ll start showing inversions of the chords you\u2019ve already mastered as well.</span>';       // (the first graduation: inversions begin)
@@ -1985,7 +1991,7 @@
     if (levelBanner.parentNode !== home) home.insertBefore(levelBanner, newStage ? home.firstChild : null);
     document.getElementById('ftc-levelup-icon').textContent = '\u{1F389}';
     document.getElementById('ftc-levelup-title').textContent = title;
-    if (goRow) html += '<span class="levelup-go-row">'+'<button type="button" class="btn-reset levelup-go">Go \u2192</button></span>';   // (the same as Next)
+    if (goRow) html += '<span class="levelup-go-row">' + (goRow === 'review' && n < FindChord.levelCount(state.mode, pop) ? '<button type="button" class="btn-reset levelup-skip">Skip the review \u2192</button>' : '') + '<button type="button" class="btn-reset levelup-go">' + (goRow === 'review' ? 'Review' : 'Go') + ' \u2192</button></span>';   // (Go is the same as Next)
     levelText.innerHTML = html;
     levelBanner.hidden = false;
     levelBanner.style.animation = 'none'; void levelBanner.offsetWidth; levelBanner.style.animation = '';
@@ -2001,9 +2007,10 @@
   var SESSION_MEH = ['You’re getting there!', 'Keep at it!', 'Every session counts!', 'Slow and steady!', 'You’re building something here!', 'The cards are sinking in!'];
   var SESSION_CLOSE = ['So close!', 'Almost there!', 'Just a little sharper!', 'The cards have stuck \u2014 now polish!'];      // (progress full, accuracy a bit short)
   function curLevelNo() { return quizOn() ? ftcLevelNo() : stepNo(); }
+  var sessFocus = {};                                            // the chords asked in the current session (pc|deg|type), shown outlined in the progress bars
   function noteSessionStart() {                                  // a new question with empty bubbles: the level's progress now is the session's starting point
     if (ftcTrial) return;
-    if (bubbles().every(function (r) { return !r; })) sess0 = { lv: curLevelNo(), pct: levelPct(curLevelNo()) };
+    if (bubbles().every(function (r) { return !r; })) { sess0 = { lv: curLevelNo(), pct: levelPct(curLevelNo()) }; sessFocus = {}; }
   }
   function endSessionReset() {                                   // however the banner is left, the next session starts clean
     if (!sessionPending) return;
@@ -2041,7 +2048,7 @@
     if (levelBanner.parentNode !== ftcSection) ftcSection.appendChild(levelBanner);
     document.getElementById('ftc-levelup-icon').textContent = pickOne(SESSION_ICONS);
     document.getElementById('ftc-levelup-title').textContent = pickOne(pct >= 100 ? SESSION_CLOSE : good ? SESSION_GOOD : SESSION_MEH);
-    levelText.innerHTML = right + ' of ' + b.length + ' first tries right. ' + line + '<span class="session-foot">' + cardStrip() +
+    levelText.innerHTML = right + ' of ' + b.length + ' first tries right. ' + line + (quizOn() && ftcFocusCount(FindChord.typeCards(ftcMem, state.mode, ftcPop(), n)) ? ' <span class="session-legend">The chords outlined below are the ones you worked on this session.</span>' : '') + '<span class="session-foot">' + cardStrip() +
       '<span class="levelup-go-row">' + (last ? '' : '<button type="button" class="btn-reset levelup-go" data-kind="session">New challenge</button>') +
       '<button type="button" class="btn-reset levelup-stay" data-kind="session">Keep working \u2192</button></span></span>';
     levelBanner.hidden = false;
@@ -2171,6 +2178,14 @@
     var cb = e.target.closest && e.target.closest('.levelup-clef-btn');
     if (cb && levelBanner.hasAttribute('data-welcome')) { pickWelcomeClef(cb.getAttribute('data-clef')); return; }
     if (levelBanner.hasAttribute('data-welcome') && e.target.closest && e.target.closest('.levelup-go')) { bannerHold = false; levelBanner.hidden = true; levelBanner.removeAttribute('data-welcome'); return; }
+    var skip = e.target.closest && e.target.closest('.levelup-skip');
+    if (skip && quizOn() && state.answered) {                                   // "Skip the review": straight on to the next level, with its own banner
+      var rn = ftcLevelNo(), rst = FindChord.levelInfo(state.mode, ftcPop(), rn).stage;
+      ftcSetLevel(rn + 1); ftcRaised(true); saveFtc(); updateFtc(); updateChordPanel();
+      ftcStreak = 0; ftcTried = 0; ftcRight = 0; ftcBub = null; bubFull = false;
+      celebrate(rn + 1, FindChord.levelInfo(state.mode, ftcPop(), rn + 1).stage !== rst, rst);
+      return;
+    }
     var stay = e.target.closest && e.target.closest('.levelup-stay');
     var goBtn = e.target.closest && e.target.closest('.levelup-go');
     if (sessionPending && (quizOn() || studyQuizOn()) && state.answered && (stay || goBtn)) {        // the end-of-session banner
@@ -2256,19 +2271,11 @@
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(function () { URL.revokeObjectURL(a.href); }, 2000);
   }
-  var logNote = document.getElementById('log-note'), logLink = document.getElementById('log-link');
-  function logNextAt() { try { var n = parseInt(window.localStorage.getItem(LOG_NOTE_KEY), 10); return n > 0 ? n : LOG_NOTE_AT; } catch (e) { return LOG_NOTE_AT; } }
+  var logLink = document.getElementById('log-link');
   function syncLogNote() {
     if (logLink) { logLink.textContent = 'Practice log: ' + ftcLog.length + ' answers (download)'; logLink.hidden = ftcLog.length < LOG_LINK_AT; }
-    if (logNote) logNote.hidden = ftcLog.length < logNextAt();
   }
   if (logLink) logLink.addEventListener('click', downloadLog);
-  if (logNote) logNote.addEventListener('click', function (e) {
-    var b = e.target.closest('button'); if (!b) return;
-    if (b.id === 'log-note-dl') { downloadLog(); return; }
-    try { window.localStorage.setItem(LOG_NOTE_KEY, String(ftcLog.length + LOG_NOTE_SNOOZE)); } catch (err) { /* storage unavailable */ }
-    syncLogNote();
-  });
   syncLogNote();
   function ftcName(ch) {                                // the chord as shown: G7, or G7/B for an inversion
     return ftcQ.inv ? ch.symbol + '/' + ch.notes[ftcQ.inv % ch.notes.length] : ch.symbol;
@@ -2330,7 +2337,7 @@
     var l = ftcLevels();
     var isFresh = ftcTrial ? null : FindChord.freshTest(state.mode, ftcPop(), ftcLevelNo());
     var nowMs = Date.now();
-    var isNewChord = isFresh;                                    // (this level's new chords stay in root position until the level is done; only graduated chords are inverted)
+    var isNewChord = FindChord.levelInfo(state.mode, ftcPop(), ftcLevelNo()).role === 'review' ? null : isFresh;                                   // (this level's new chords stay in root position until the level is done; only graduated chords are inverted)
     var isOld = isFresh ? function (c) { return !isFresh(c); } : null;                    // older material: every card the earlier levels put in play
     var plan = isFresh ? FindChord.floorPlan(ftcFresh, true, FindChord.anyPair(state.mode, ftcPop(), l.cards, null, function (c) { return isOld(c) && !(ftcQ && c.pc === ftcQ.pc && c.deg === ftcQ.deg && c.type === ftcQ.type); })) : null;
     ftcDraw = plan === 'fresh' ? 'f' : plan === 'old' ? 'o' : 'w';
@@ -2363,6 +2370,7 @@
     var oldSvg = stage.firstElementChild;
     var oldKey = animate && oldSvg ? oldSvg.querySelector('.key[data-pc="' + q.pc + '"]') : null;
     ftcQ = q;
+    if (!ftcTrial) sessFocus[q.pc + '|' + q.deg + '|' + q.type] = 1;
     centerStage = 'card';                             // (a narrow screen scrolls so the card and its button are in view)
     state.answered = false;
     state.root = q.pc;
@@ -2406,7 +2414,7 @@
 
   // ---- Time trial: ten questions at a chosen level, against the clock ----
   // The normal state (bubbles, streak) is kept aside and put back afterwards. A wrong answer costs ten seconds and the trial moves on.
-  var TRIALS_KEY = 'music-theory-trials-v6';       // (v6: the triads bring vi ii iii together too; v5: sevenths and up bring vi ii iii together; v4: the twelve-key ladder; v2: the levels were renumbered with the staged ladder)
+  var TRIALS_KEY = 'music-theory-trials-v7';       // (v7: a review level ends each chord type; v6: the triads bring vi ii iii together too; v5: sevenths and up bring vi ii iii together; v4: the twelve-key ladder; v2: the levels were renumbered with the staged ladder)
   var trialBox = el('div', 'trial-box'), trialBtn = el('button', 'btn-reset trial-btn', 'Time Trial \u25be'), trialList = el('div', 'trial-list'),
       trialClock = el('div', 'trial-clock'), trialPen = el('span', 'trial-pen'), trialStop = el('button', 'btn-reset trial-stop', 'Stop');
   var trialListOpen = false, trialTick = null, trialCountdown = null;
@@ -2779,6 +2787,7 @@
     var mode = state.mode, pop = ftcPop(), l = FindChord.levelInfo(mode, pop, n), spec = ftcKeySpec(mode, l.keyPc).name;
     var cs = ftcDistinctChords(l.fresh.length ? l.fresh : l.cards).map(function (c) { return Chords.chordInKey(spec, mode, c.deg, c.type); }).filter(Boolean);
     var list = cs.map(function (c) { return pop ? c.symbol : c.roman; }).join(', ');
+    if (l.role === 'review') return 'Review: all ' + (LABEL_PLURAL[l.type] || l.type).toLowerCase() + ', every inversion (' + list + ')';
     var group = l.role === 'first' ? 'Major ' : l.role === 'second' ? 'Minor ' : l.role === 'dim' ? 'Diminished ' : '';
     var word = l.role === 'dim' ? (LABEL_ONE[l.type] || LABEL_PLURAL[l.type]) : LABEL_PLURAL[l.type] || l.type;
     return group + word + ' (' + list + ')';
