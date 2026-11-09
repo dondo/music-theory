@@ -123,15 +123,15 @@
     return (EPS + Math.pow(u, GAMMA)) * (1 + NOVEL * Math.max(0, 1 - (m ? m.n : 0) / NOVEL_N));
   }
   // the weight of a chord when drawing: its most-forgotten card (root position, and every inversion once the root is mastered)
-  function chordWeight(mem, mode, q, now) {
+  function chordWeight(mem, mode, q, now, isNew) {
     var w = memWeight(mem, mode, withInv(q, 0), now);
-    if (rootMastered(mem, mode, q)) for (var i = 1; i < notesOf(q.type); i++) w = Math.max(w, memWeight(mem, mode, withInv(q, i), now));
+    if (!(isNew && isNew(q)) && rootMastered(mem, mode, q)) for (var i = 1; i < notesOf(q.type); i++) w = Math.max(w, memWeight(mem, mode, withInv(q, i), now));
     return w;
   }
-  // which inversion to show for a chord: root position until it is mastered, then any of its positions, the ones you know least coming up most
-  function chooseInv(mem, mode, q, rng, now) {
+  // which inversion to show for a chord: root position until it is mastered and graduated (`isNew(q)`: it is one of the current level's new chords, which stay in root position), then any of its positions, the ones you know least coming up most
+  function chooseInv(mem, mode, q, rng, now, isNew) {
     var n = notesOf(q.type);
-    if (n < 2 || !rootMastered(mem, mode, q)) return 0;
+    if (n < 2 || (isNew && isNew(q)) || !rootMastered(mem, mode, q)) return 0;
     var ws = [], tot = 0, i, x;
     for (i = 0; i < n; i++) { x = memWeight(mem, mode, withInv(q, i), now); ws.push(x); tot += x; }
     x = rng() * tot;

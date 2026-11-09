@@ -660,6 +660,9 @@ check('find the chord inversions: Pop is always root position; Jazz mixes every 
     var seenInv = {};
     for (j = 0; j < 400; j++) seenInv[FC.chooseInv(mem, 'major', q, Math.random, now)] = 1;
     assert.deepStrictEqual(Object.keys(seenInv).sort(), ['0', '1', '2']);
+    var onlyNew = function (x) { return x.deg === 0; };                                                              // a chord that is new at the level stays in root position
+    for (j = 0; j < 100; j++) assert.strictEqual(FC.chooseInv(mem, 'major', q, Math.random, now, onlyNew), 0);
+    assert.strictEqual(FC.chordWeight(mem, 'major', q, now, onlyNew), FC.memWeight(mem, 'major', q, now));
     mem.p['major|0|0|triad|i1'] = { h: H, t: now, n: 5, l: 0, rs: -99, ls: -99 };
     var pr = FC.chordProgress(mem, 'major', q);
     assert.strictEqual(pr.done, 2); assert.strictEqual(pr.of, 3); assert.ok(Math.abs(pr.fill - 2 / 3) < 1e-9);
