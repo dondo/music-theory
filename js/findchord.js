@@ -249,12 +249,29 @@
     out.push({ type: 'sus4', qual: null, sev: null, set: key([0, 5, 7]) });
     return (SHAPES = out);
   }
-  function nameChord(pcs, bassPc) {
+  // the 11ths and 13ths too (Chord theory): a triad of any quality, its seventh, the 9th and 11th (and the 13th), stacked as the key's own chords are
+  var BIG = null;
+  function bigShapes() {
+    if (BIG) return BIG;
+    var out = [], key = function (a) { return a.slice().sort(function (x, y) { return x - y; }).join(','); };
+    Object.keys(TRI).forEach(function (q) {
+      Object.keys(SEV[q]).forEach(function (v) {
+        var sev = q === 'maj' || q === 'aug' ? v : null;
+        if ((q === 'min' || q === 'dim') && v !== 'dom') return;
+        var base = TRI[q].concat([SEV[q][v], 2, 5]);
+        out.push({ type: '11', qual: q, sev: sev, set: key(base) });
+        out.push({ type: '13', qual: q, sev: sev, set: key(base.concat([9])) });
+      });
+    });
+    return (BIG = out);
+  }
+  // full: also name 11ths and 13ths (Pop never asks for them)
+  function nameChord(pcs, bassPc, full) {
     var have = {}, found = [];
     pcs.forEach(function (p) { have[((p % 12) + 12) % 12] = 1; });
     var uniq = Object.keys(have).map(Number);
     if (uniq.length < 3) return [];
-    shapes().forEach(function (sh) {
+    (full ? shapes().concat(bigShapes()) : shapes()).forEach(function (sh) {
       for (var r = 0; r < 12; r++) {
         var set = sh.set.split(',').map(function (o) { return (parseInt(o, 10) + r) % 12; }).sort(function (x, y) { return x - y; }).join(',');
         if (set === uniq.slice().sort(function (x, y) { return x - y; }).join(',')) found.push({ root: r, type: sh.type, qual: sh.qual, sev: sh.sev });

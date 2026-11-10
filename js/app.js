@@ -3637,18 +3637,29 @@
 
   // ---- a digital piano as input (js/midi.js): the keys pressed answer Find the key, Play the note and Find the chord ----
   // Notes count in any octave. A chord is judged by its pitch classes (any inversion, doubling or order).
+  // a wrong answer that is not a chip pick (played notes that are no chord of the key): scored like any miss
+  function ftcPlayedWrong(text) {
+    if (ftcTrial) { if (ftcTrial.counting || ftcTrial.done) return; trialAnswer(false); return; }
+    score.bad++;
+    if (!ftcMissed) { ftcNoteMiss(); ftcTried++; pushBub('bad'); }
+    ftcMissed = true; ftcStreak = 0; saveFtc();
+    state.card.wrong = null; state.card.status = text;
+    ftcSay(text, 'bad'); updateScore(); draw(false, false); feedback('nope');
+  }
   function midiChord(notes) {
     if (!quizOn() || !ftcQ || state.answered) return;
     var tonic = ftcQ.pc, want = ftcChord(), pa = popAns();
     var norm = function (a) { var u = {}; a.forEach(function (p) { u[((p % 12) + 12) % 12] = 1; }); return Object.keys(u).map(Number).sort(function (x, y) { return x - y; }).join(','); };
     var played = norm(notes), same = played === norm(want.pcOffsets.map(function (o) { return tonic + o; }));
     var say = function (t) { if (state.card) state.card.status = t; ftcSay(t); draw(false, false); };
+    // played notes that name no chord (or none of this key's) are a wrong answer, but a lone note is not taken for a try at a chord
+    var wrong = function (t) { if (notes.length < 2) { say(t); return; } ftcPlayedWrong(t); };
     var sel = null, bass = notes[0] % 12;
     if (pa) {
       if (same) { var d = FindChord.describe(want, ftcQ.type); sel = { root: (d.root + tonic) % 12, type: d.type, qual: d.qual, sev: d.sev }; }
       else {
         var cs = FindChord.nameChord(notes, bass);
-        if (!cs.length) { say('I can\u2019t name those notes as a chord. Try again.'); return; }
+        if (!cs.length) { wrong('I can\u2019t name those notes as a chord. Try again.'); return; }
         sel = cs[0];
         if ((ftcTypesHidden() && sel.type !== 'triad') || (ftcSevHidden() && sel.sev === 'maj')) { say('That has more notes than this level asks for. Try again.'); return; }
       }
@@ -3658,7 +3669,7 @@
     } else {
       var spec = ftcSpec(), hit = same ? { deg: ftcQ.deg, type: ftcQ.type } : null;
       if (!hit) {
-        var types = {}; ftcLevels().cards.forEach(function (c) { types[c.type] = 1; }); types.triad = 1;
+        var types = {}; Chords.TYPES.forEach(function (t) { types[t.id] = 1; });                // (the whole chord theory set, not just this level's types)
         Object.keys(types).forEach(function (t) {
           for (var dg = 0; dg < 7 && !hit; dg++) {
             var ch = Chords.chordInKey(spec.name, state.mode, dg, t);
@@ -3666,7 +3677,12 @@
           }
         });
       }
-      if (!hit) { say('Those notes aren\u2019t a chord of this key. Try again.'); return; }
+      if (!hit) {                                              // not one of the key's chords: name it if it is any chord at all (a borrowed or altered one), and count it wrong
+        var any = FindChord.nameChord(notes, bass, true);
+        if (any.length) wrong('That is ' + FindChord.answerName(any[0], ftcSpec().kind === 'flat') + ', which isn\u2019t a chord of this key. Try again.');
+        else wrong('Those notes aren\u2019t a chord of this key. Try again.');
+        return;
+      }
       if (ftcTypesHidden() && hit.type !== 'triad') { say('That has more notes than this level asks for. Try again.'); return; }
       if (ftcWrong) ftcClearPicks();
       ftcSel.type = hit.type;

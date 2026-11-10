@@ -568,6 +568,14 @@ check('find the chord: a review level adds no cards, is about the type\'s chords
   r.fresh.forEach(function (q) { for (var p = 0; p < 3; p++) mem.p[FC.pairKey('major', { pc: q.pc, deg: q.deg, type: q.type, inv: p })] = { h: H, t: now, n: 5, l: 0, rs: -99, ls: -99 }; });
   d = FC.durability(mem, 'major', true, i + 1); assert.ok(d.ready && d.fill === 1);
 });
+check('find the chord: nameChord names sus2, and with full also 11ths and 13ths (a played chord outside the key still gets a name)', function () {
+  var has = function (r, root, type) { return r.some(function (x) { return x.root === root && x.type === type; }); };
+  assert.ok(has(FC.nameChord([0, 2, 7], 0), 0, 'sus2'));                       // Csus2
+  assert.ok(has(FC.nameChord([10, 2, 5], 10), 10, 'triad') && has(FC.nameChord([10, 2, 5], 10), 10, 'triad'));   // B\u266D major triad (a borrowed chord in C)
+  assert.deepStrictEqual(FC.nameChord([7, 11, 2, 5, 9, 0], 7).filter(function (x) { return x.type === '11'; }), []);       // G11 is not named without full
+  assert.ok(has(FC.nameChord([7, 11, 2, 5, 9, 0], 7, true), 7, '11') || has(FC.nameChord([7, 11, 2, 5, 0, 4], 7, true), 7, '11'));
+  assert.ok(has(FC.nameChord([7, 11, 2, 5, 9, 0, 4], 7, true), 7, '13'));
+});
 check('find the chord: levelInfo / levelAt clamp and agree', function () {
   var n = FC.levelCount('major', true);
   assert.deepStrictEqual(FC.levelInfo('major', true, 0), FC.levelInfo('major', true, 1));
