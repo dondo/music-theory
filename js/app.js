@@ -249,10 +249,16 @@
       })() + '</u>' + pop_ + br + '</span>';
     }).join('') + '</span>';
   }
-  function ftcFocus() { return FindChord.levelInfo(state.mode, ftcPop(), ftcLevelNo()).role === 'review' ? null : sessFocus; }       // (a review is about all of them: nothing is singled out)
-  function ftcFocusCount(tc) { if (!ftcFocus()) return 0; return tc.cards.filter(function (c) { return sessFocus[c.q.pc + '|' + c.q.deg + '|' + c.q.type]; }).length; }
+  // the chords outlined as "worked on this session": none in a review, and none when the level works on every chord shown (then they would all be outlined)
+  function ftcFocus(tc) {
+    if (FindChord.levelInfo(state.mode, ftcPop(), ftcLevelNo()).role === 'review') return null;
+    var ft = tc && FindChord.freshTest(state.mode, ftcPop(), ftcLevelNo());
+    if (ft && tc.cards.length && tc.cards.every(function (c) { return ft(c.q); })) return null;
+    return sessFocus;
+  }
+  function ftcFocusCount(tc) { if (!ftcFocus(tc)) return 0; return tc.cards.filter(function (c) { return sessFocus[c.q.pc + '|' + c.q.deg + '|' + c.q.type]; }).length; }
   function cardStrip() {
-    if (quizOn()) return ftcStrip(FindChord.typeCards(ftcMem, state.mode, ftcPop(), ftcLevelNo()), null, ftcFocus());      // (all the chords of the level's type in play, the ones asked this session outlined)
+    if (quizOn()) { var tcs = FindChord.typeCards(ftcMem, state.mode, ftcPop(), ftcLevelNo()); return ftcStrip(tcs, null, ftcFocus(tcs)); }      // (all the chords of the level's type in play, the ones asked this session outlined)
     if (!noteOn()) return '';
     var v = stepView(stepNo()), multi = !/^[a-z]+\|[a-z]+\|/.test('') && v.keys.some(function (k) { return k.split('|')[1].replace(/^m\d-/, '') !== v.keys[0].split('|')[1].replace(/^m\d-/, ''); });
     var groups = {}, order = [];                                    // octave brackets under the bars: idx 0-11 is one octave, 12-24 the next (the top C joins it), per clef
@@ -1764,7 +1770,7 @@
       el.removeAttribute('title');
       if (!tip) { tip = el.appendChild(document.createElement('span')); tip.className = 'dur-tip'; }
       var tc = FindChord.typeCards(ftcMem, state.mode, ftcPop(), ftcLevelNo());
-      tip.innerHTML = '<b class="dur-tip-h">' + (LABEL_PLURAL[tc.type] || tc.type) + ' in ' + ftcKeyName(tc.keyPc) + (state.mode === 'minor' ? '' : ' major') + '</b>' + ftcStrip(tc, 44, ftcFocus()) + (ftcFocusCount(tc) ? '<span class="dur-tip-note">Outlined: asked this session</span>' : '');
+      tip.innerHTML = '<b class="dur-tip-h">' + (LABEL_PLURAL[tc.type] || tc.type) + ' in ' + ftcKeyName(tc.keyPc) + (state.mode === 'minor' ? '' : ' major') + '</b>' + ftcStrip(tc, 44, ftcFocus(tc)) + (ftcFocusCount(tc) ? '<span class="dur-tip-note">Outlined: asked this session</span>' : '');
     } else {
       if (tip) tip.remove();
       el.setAttribute('title', 'Progress: how firmly the ' + (studyOn ? 'cards at this level' : 'new cards') + ' have stuck. It fills as you get them right again after gaps; the level is done when every one has stuck.');
