@@ -3722,7 +3722,23 @@
     fromPiano = true; lastPlayed = notes;
     try { midiDispatch(notes); } finally { fromPiano = false; }
   });
+  // An arpeggio on the piano goes on from a banner (the same as the right arrow): three different notes, one at a time (each a separate press,
+  // so a chord does not count), each within ARP_GAP_MS of the one before. Single notes are not answers while a banner is up.
+  var ARP_GAP_MS = 1500, arp = [];
+  function arpeggioGoes(notes) {
+    if (levelBanner.hidden) { arp = []; return false; }
+    var now = Date.now();
+    if (notes.length !== 1) { arp = []; return false; }                                  // (a chord starts over and is dealt with as usual)
+    if (arp.length && now - arp[arp.length - 1].t > ARP_GAP_MS) arp = [];
+    arp.push({ n: notes[0], t: now });
+    var distinct = arp.map(function (a) { return a.n; }).filter(function (n, i, l) { return l.indexOf(n) === i; }).length;
+    if (distinct < 3) return true;                                                      // (swallowed: not an answer)
+    arp = [];
+    document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', code: 'ArrowRight', bubbles: true, cancelable: true }));
+    return true;
+  }
   function midiDispatch(notes) {
+    if (arpeggioGoes(notes)) return;
     if (quizOn()) {
       var was = state.answered, pcs = notes.map(function (p) { return ((p % 12) + 12) % 12; }).filter(function (p, i, l) { return l.indexOf(p) === i; }).sort(function (x, y) { return x - y; }).join(',');
       midiChord(notes);
