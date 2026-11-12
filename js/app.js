@@ -3730,14 +3730,28 @@
     var btn = document.getElementById('midi-link'); if (btn) { btn.classList.remove('midi-ping'); void btn.offsetWidth; btn.classList.add('midi-ping'); }
     var notes = ev.notes;
     fromPiano = true; lastPlayed = notes;
-    try { midiDispatch(notes); } finally { fromPiano = false; }
+    try { midiDispatch(notes, ev.seq); } finally { fromPiano = false; }
   });
   // An arpeggio on the piano goes on from a banner (the same as the right arrow): three different notes, one at a time (each a separate press,
   // so a chord does not count), each within ARP_GAP_MS of the one before. Single notes are not answers while a banner is up.
   var ARP_GAP_MS = 1500, arp = [];
-  function arpeggioGoes(notes) {
+  // A press of three or more keys is an arpeggio, not a chord, when the keys went down evenly spaced: every gap at least ARP_MIN_MS and the
+  // longest no more than ARP_EVEN times the shortest (a chord struck by hand has tiny, uneven gaps). Slower arpeggios arrive as single notes.
+  var ARP_MIN_MS = 25, ARP_EVEN = 1.8;
+  function evenlySpaced(seq) {
+    if (!seq || seq.length < 3) return false;
+    var lo = Infinity, hi = 0;
+    for (var i = 1; i < seq.length; i++) { var g = seq[i].t - seq[i - 1].t; lo = Math.min(lo, g); hi = Math.max(hi, g); }
+    return lo >= ARP_MIN_MS && hi <= lo * ARP_EVEN;
+  }
+  function arpeggioGoes(notes, seq) {
     if (levelBanner.hidden) { arp = []; return false; }
     var now = Date.now();
+    if (notes.length >= 3 && evenlySpaced(seq)) {
+      arp = [];
+      document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', code: 'ArrowRight', bubbles: true, cancelable: true }));
+      return true;
+    }
     if (notes.length !== 1) { arp = []; return false; }                                  // (a chord starts over and is dealt with as usual)
     if (arp.length && now - arp[arp.length - 1].t > ARP_GAP_MS) arp = [];
     arp.push({ n: notes[0], t: now });
@@ -3747,8 +3761,8 @@
     document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', code: 'ArrowRight', bubbles: true, cancelable: true }));
     return true;
   }
-  function midiDispatch(notes) {
-    if (arpeggioGoes(notes)) return;
+  function midiDispatch(notes, seq) {
+    if (arpeggioGoes(notes, seq)) return;
     if (quizOn()) {
       var was = state.answered, pcs = notes.map(function (p) { return ((p % 12) + 12) % 12; }).filter(function (p, i, l) { return l.indexOf(p) === i; }).sort(function (x, y) { return x - y; }).join(',');
       midiChord(notes);

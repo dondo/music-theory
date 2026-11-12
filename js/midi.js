@@ -4,7 +4,8 @@
 //   Midi.supported            true when this browser has navigator.requestMIDIAccess
 //   Midi.connect()            ask for access, listen on every MIDI input (new ones are picked up when plugged in); a promise
 //   Midi.disconnect()         stop listening
-//   Midi.onPlay(fn)           fn({ notes: [midi numbers, lowest first] }) after a press: the keys that went down within CHORD_MS of each other
+//   Midi.onPlay(fn)           fn({ notes: [midi numbers, lowest first], seq: [{ n, t }] }) after a press: the keys that went down within CHORD_MS of each other
+//                             (seq: the same keys in the order they went down, t in ms, for telling a roll or an arpeggio from a chord)
 //   Midi.onStatus(fn)         fn({ state: 'off'|'connecting'|'on'|'none'|'denied'|'unsupported', inputs: [names] }) whenever that changes
 //   Midi.status()             the same object, now
 //   Midi.simulate(notes)      (testing) play these notes as if the piano had
@@ -16,7 +17,7 @@
   'use strict';
   var CHORD_MS = 120, CHORD_MAX_MS = 400;
   var access = null, listening = false, inputs = [], playCb = [], statusCb = [], state = 'off';
-  var pending = null, timer = null, firstAt = 0;
+  var pending = null, seq = null, timer = null, firstAt = 0;
 
   function supported() { return !!(root.navigator && typeof root.navigator.requestMIDIAccess === 'function'); }
   function status() { return { state: state, inputs: inputs.map(function (i) { return i.name || 'MIDI input'; }) }; }
@@ -24,22 +25,22 @@
 
   function flush() {
     timer = null; firstAt = 0;
-    var notes = pending; pending = null;
+    var notes = pending, sq = seq; pending = null; seq = null;
     if (!notes || !notes.length) return;
     notes.sort(function (a, b) { return a - b; });
-    playCb.forEach(function (fn) { try { fn({ notes: notes }); } catch (e) { if (root.console) root.console.error(e); } });
+    playCb.forEach(function (fn) { try { fn({ notes: notes, seq: sq || [] }); } catch (e) { if (root.console) root.console.error(e); } });
   }
-  function noteOn(n) {
-    var now = Date.now();
-    if (!pending) pending = [];
-    if (pending.indexOf(n) < 0) pending.push(n);
+  function noteOn(n, ts) {
+    var now = Date.now(), t = ts != null ? ts : (root.performance && root.performance.now ? root.performance.now() : now);
+    if (!pending) { pending = []; seq = []; }
+    if (pending.indexOf(n) < 0) { pending.push(n); seq.push({ n: n, t: t }); }
     if (!timer) firstAt = now; else root.clearTimeout(timer);
     timer = root.setTimeout(flush, Math.max(0, Math.min(CHORD_MS, firstAt + CHORD_MAX_MS - now)));
   }
   function onMessage(ev) {
     var d = ev.data;
     if (!d || d.length < 3) return;
-    if ((d[0] & 0xf0) === 0x90 && d[2] > 0) noteOn(d[1]);
+    if ((d[0] & 0xf0) === 0x90 && d[2] > 0) noteOn(d[1], ev.timeStamp);
   }
 
   function refresh() {
@@ -80,7 +81,10 @@
     supported: supported, connect: connect, disconnect: disconnect, status: status,
     onPlay: function (fn) { playCb.push(fn); },
     onStatus: function (fn) { statusCb.push(fn); },
-    simulate: function (notes) { notes.forEach(noteOn); },
+    simulate: function (notes, gapMs) {          // (gapMs: pretend the keys went down that far apart)
+      var t0 = root.performance && root.performance.now ? root.performance.now() : Date.now();
+      notes.forEach(function (n, i) { noteOn(n, t0 + i * (gapMs || 0)); });
+    },
     CHORD_MS: CHORD_MS
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.Midi = api;
