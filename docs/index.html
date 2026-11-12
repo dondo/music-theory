@@ -4863,9 +4863,10 @@ var KeyboardRender = (function () {
       })() + '</u>' + pop_ + br + '</span>';
     }).join('') + '</span>';
   }
-  function ftcFocusCount(tc) { return tc.cards.filter(function (c) { return sessFocus[c.q.pc + '|' + c.q.deg + '|' + c.q.type]; }).length; }
+  function ftcFocus() { return FindChord.levelInfo(state.mode, ftcPop(), ftcLevelNo()).role === 'review' ? null : sessFocus; }       // (a review is about all of them: nothing is singled out)
+  function ftcFocusCount(tc) { if (!ftcFocus()) return 0; return tc.cards.filter(function (c) { return sessFocus[c.q.pc + '|' + c.q.deg + '|' + c.q.type]; }).length; }
   function cardStrip() {
-    if (quizOn()) return ftcStrip(FindChord.typeCards(ftcMem, state.mode, ftcPop(), ftcLevelNo()), null, sessFocus);      // (all the chords of the level's type in play, the ones asked this session outlined)
+    if (quizOn()) return ftcStrip(FindChord.typeCards(ftcMem, state.mode, ftcPop(), ftcLevelNo()), null, ftcFocus());      // (all the chords of the level's type in play, the ones asked this session outlined)
     if (!noteOn()) return '';
     var v = stepView(stepNo()), multi = !/^[a-z]+\|[a-z]+\|/.test('') && v.keys.some(function (k) { return k.split('|')[1].replace(/^m\d-/, '') !== v.keys[0].split('|')[1].replace(/^m\d-/, ''); });
     var groups = {}, order = [];                                    // octave brackets under the bars: idx 0-11 is one octave, 12-24 the next (the top C joins it), per clef
@@ -6377,7 +6378,7 @@ var KeyboardRender = (function () {
       el.removeAttribute('title');
       if (!tip) { tip = el.appendChild(document.createElement('span')); tip.className = 'dur-tip'; }
       var tc = FindChord.typeCards(ftcMem, state.mode, ftcPop(), ftcLevelNo());
-      tip.innerHTML = '<b class="dur-tip-h">' + (LABEL_PLURAL[tc.type] || tc.type) + ' in ' + ftcKeyName(tc.keyPc) + (state.mode === 'minor' ? '' : ' major') + '</b>' + ftcStrip(tc, 44, sessFocus) + (ftcFocusCount(tc) ? '<span class="dur-tip-note">Outlined: asked this session</span>' : '');
+      tip.innerHTML = '<b class="dur-tip-h">' + (LABEL_PLURAL[tc.type] || tc.type) + ' in ' + ftcKeyName(tc.keyPc) + (state.mode === 'minor' ? '' : ' major') + '</b>' + ftcStrip(tc, 44, ftcFocus()) + (ftcFocusCount(tc) ? '<span class="dur-tip-note">Outlined: asked this session</span>' : '');
     } else {
       if (tip) tip.remove();
       el.setAttribute('title', 'Progress: how firmly the ' + (studyOn ? 'cards at this level' : 'new cards') + ' have stuck. It fills as you get them right again after gaps; the level is done when every one has stuck.');
@@ -6954,11 +6955,13 @@ var KeyboardRender = (function () {
     var l = ftcLevels();
     var isFresh = ftcTrial ? null : FindChord.freshTest(state.mode, ftcPop(), ftcLevelNo());
     var nowMs = Date.now();
-    var isNewChord = FindChord.levelInfo(state.mode, ftcPop(), ftcLevelNo()).role === 'review' ? null : isFresh;                                   // (this level's new chords stay in root position until the level is done; only graduated chords are inverted)
+    var reviewLv = FindChord.levelInfo(state.mode, ftcPop(), ftcLevelNo()).role === 'review';
+    var isNewChord = reviewLv ? null : isFresh;                                   // (this level's new chords stay in root position until the level is done; only graduated chords are inverted)
     var isOld = isFresh ? function (c) { return !isFresh(c); } : null;                    // older material: every card the earlier levels put in play
     var plan = isFresh ? FindChord.floorPlan(ftcFresh, true, FindChord.anyPair(state.mode, ftcPop(), l.cards, null, function (c) { return isOld(c) && !(ftcQ && c.pc === ftcQ.pc && c.deg === ftcQ.deg && c.type === ftcQ.type); })) : null;
     ftcDraw = plan === 'fresh' ? 'f' : plan === 'old' ? 'o' : 'w';
-    var q = FindChord.pick(state.mode, ftcPop(), l.cards, null, Math.random, ftcQ, function (c) { return FindChord.chordWeight(ftcMem, state.mode, c, nowMs, isNewChord); },
+    var q = FindChord.pick(state.mode, ftcPop(), l.cards, null, Math.random, ftcQ, function (c) { var w = FindChord.chordWeight(ftcMem, state.mode, c, nowMs, isNewChord); return reviewLv && !sessFocus[c.pc + '|' + c.deg + '|' + c.type] && isFresh && isFresh(c) ? w * 5 : w; },      // (in a review the type's chords not yet asked this session are favoured, so each one turns up)
+
                            plan === 'old' ? isOld : isFresh, plan ? 'only' : null);
     q = { pc: q.pc, deg: q.deg, type: q.type };
     var forceInv = false;
@@ -8260,11 +8263,14 @@ var KeyboardRender = (function () {
     state.card.wrong = null; state.card.status = text;
     ftcSay(text, 'bad'); updateScore(); draw(false, false); feedback('nope');
   }
+  var lastRightChord = null;                                       // the pitch classes of the chord just played right (cleared by any other chord)
   function midiChord(notes) {
     if (!quizOn() || !ftcQ || state.answered) return;
     var tonic = ftcQ.pc, want = ftcChord(), pa = popAns();
     var norm = function (a) { var u = {}; a.forEach(function (p) { u[((p % 12) + 12) % 12] = 1; }); return Object.keys(u).map(Number).sort(function (x, y) { return x - y; }).join(','); };
     var played = norm(notes), same = played === norm(want.pcOffsets.map(function (o) { return tonic + o; }));
+    if (!same && played === lastRightChord) return;                              // the chord just got right, played again (the next question is already up): ignored, not a miss
+    lastRightChord = null;
     var say = function (t) { if (state.card) state.card.status = t; ftcSay(t); draw(false, false); };
     // played notes that name no chord (or none of this key's) are a wrong answer, but a lone note is not taken for a try at a chord
     var wrong = function (t) { if (notes.length < 2) { say(t); return; } ftcPlayedWrong(t); };
@@ -8318,7 +8324,12 @@ var KeyboardRender = (function () {
     try { midiDispatch(notes); } finally { fromPiano = false; }
   });
   function midiDispatch(notes) {
-    if (quizOn()) { var was = state.answered; midiChord(notes); midiAutoNext(was); return; }
+    if (quizOn()) {
+      var was = state.answered, pcs = notes.map(function (p) { return ((p % 12) + 12) % 12; }).filter(function (p, i, l) { return l.indexOf(p) === i; }).sort(function (x, y) { return x - y; }).join(',');
+      midiChord(notes);
+      if (!was && state.answered) lastRightChord = pcs;
+      midiAutoNext(was); return;
+    }
     var keyStudy = state.flash && !noteOn() && !chordy() && !!state.card && state.cardMode === 'key';
     var play = noteCardOn() && state.cardMode === 'play';
     if (!(play || keyStudy) || state.answered || notes.length !== 1) return;          // (one key, one answer)
@@ -8751,7 +8762,7 @@ var KeyboardRender = (function () {
 </script>
   <script>
 /* generated by tools/build.py: do not edit */
-var APP_VERSION = '1.0 (build ab863d8)';
+var APP_VERSION = '1.0 (build 9a6c4fe)';
 (function () {
   function show() { Array.prototype.forEach.call(document.querySelectorAll('[data-version]'), function (e) { e.textContent = APP_VERSION; }); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', show); else show();
