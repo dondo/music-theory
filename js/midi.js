@@ -10,29 +10,31 @@
 //   Midi.simulate(notes)      (testing) play these notes as if the piano had
 //
 // Only note-on counts (velocity 0 is a note-off, as the MIDI spec has it); the pedal, pitch bend and the rest are ignored.
-// Fingers never land at exactly the same instant, so a press is closed CHORD_MS after its first note and everything that went down by then is
-// one chord.
+// Fingers never land at exactly the same instant, so a press is closed CHORD_MS after its latest note (but never more than CHORD_MAX_MS after
+// its first) and everything that went down by then is one chord. (A fixed window from the first note split big chords in two.)
 (function (root) {
   'use strict';
-  var CHORD_MS = 90;
+  var CHORD_MS = 120, CHORD_MAX_MS = 400;
   var access = null, listening = false, inputs = [], playCb = [], statusCb = [], state = 'off';
-  var pending = null, timer = null;
+  var pending = null, timer = null, firstAt = 0;
 
   function supported() { return !!(root.navigator && typeof root.navigator.requestMIDIAccess === 'function'); }
   function status() { return { state: state, inputs: inputs.map(function (i) { return i.name || 'MIDI input'; }) }; }
   function setState(s) { state = s; statusCb.forEach(function (fn) { try { fn(status()); } catch (e) { /* a listener's problem */ } }); }
 
   function flush() {
-    timer = null;
+    timer = null; firstAt = 0;
     var notes = pending; pending = null;
     if (!notes || !notes.length) return;
     notes.sort(function (a, b) { return a - b; });
     playCb.forEach(function (fn) { try { fn({ notes: notes }); } catch (e) { if (root.console) root.console.error(e); } });
   }
   function noteOn(n) {
+    var now = Date.now();
     if (!pending) pending = [];
     if (pending.indexOf(n) < 0) pending.push(n);
-    if (!timer) timer = root.setTimeout(flush, CHORD_MS);
+    if (!timer) firstAt = now; else root.clearTimeout(timer);
+    timer = root.setTimeout(flush, Math.max(0, Math.min(CHORD_MS, firstAt + CHORD_MAX_MS - now)));
   }
   function onMessage(ev) {
     var d = ev.data;

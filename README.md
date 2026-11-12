@@ -233,7 +233,7 @@ A digital piano (tested design: Yamaha P-225 over USB) can answer the Study ques
 - Find the chord: play the chord (any octave, any inversion). Pop levels judge the notes by name and quality; Jazz levels by the roman numeral they make in the key.
 - Play the note and Find the key: press the one key (any octave).
 - A right answer played on the piano goes straight on to the next question: no pause and no "Yes!" flash, even after an earlier miss on the same question. A level-up, stage or end-of-session banner stays up until you dismiss it. Time trials move on at once anyway.
-- Keys that go down within 90 ms of each other count as one chord; a multi-note press is ignored by single-note questions.
+- Keys that go down within 120 ms of each other (counted from the latest key, up to 400 ms in all) count as one chord, so a big chord played by hand is not split in two; a multi-note press is ignored by single-note questions.
 - Played notes that make no chord (or, in Jazz levels, no chord of the key) are a **wrong answer** like any other, with the same message ("I can't name those notes as a chord" / "Those notes aren't a chord of this key"); a lone note is not taken as a try. Jazz levels recognise the whole chord theory set (triads, sus2, sus4, add9, 7ths, 9ths, 11ths, 13ths) on every degree, whatever the level, and a chord outside the key (a borrowed one) is named in the message ("That is B♭, which isn't a chord of this key").
 - Playing again the chord you have just got right (the next question is already up) is ignored, not a miss.
 - Pop level 1 hides the quality row, so a minor triad is read as its root's major chord there.
