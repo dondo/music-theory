@@ -2014,7 +2014,8 @@
   var sessFocus = {};                                            // the chords asked in the current session (pc|deg|type), shown outlined in the progress bars
   function noteSessionStart() {                                  // a new question with empty bubbles: the level's progress now is the session's starting point
     if (ftcTrial) return;
-    if (bubbles().every(function (r) { return !r; })) { sess0 = { lv: curLevelNo(), pct: levelPct(curLevelNo()) }; sessFocus = {}; }
+    var fresh = bubbles().every(function (r) { return !r; });
+    if (fresh || !sess0 || sess0.lv !== curLevelNo()) { sess0 = { lv: curLevelNo(), pct: levelPct(curLevelNo()) }; if (fresh) sessFocus = {}; }      // (also when the old starting point was used up or is for another level: it must never go stale)
   }
   function endSessionReset() {                                   // however the banner is left, the next session starts clean
     if (!sessionPending) return;
@@ -2042,6 +2043,7 @@
     var b = bubbles(), right = b.filter(function (r) { return r === 'ok'; }).length, need = FindChord.passMark(b.length), good = right >= need;
     if (pct >= 100 && good) return;                               // (nothing short: the level-up banner has it)
     var start = sess0 && sess0.lv === n ? sess0.pct : null, d = start == null ? 0 : pct - start, line;
+    sess0 = null;                                                 // (used: the next session takes its own starting point, whether or not the bubbles were emptied)
     if (pct >= 100) line = 'Your progress on this level is full \u2014 what\u2019s left is accuracy: it takes ' + need + ' of ' + b.length + ' first tries right to move on.';
     else if (start == null) line = 'Your progress on this level is now ' + pct + '%.';
     else if (d > 0) line = 'This session took your progress on this level from ' + start + '% to <strong>' + pct + '%</strong> (+' + d + ').';
