@@ -142,8 +142,8 @@
   // position and first inversion are mastered and second inversion untouched is 2/3
   function fillOf(m) { return m && m.h ? clamp2(Math.log(m.h / H0) / Math.log(H_DURABLE / H0), 0, 1) : 0; }
   function clamp2(x, lo, hi) { return Math.max(lo, Math.min(hi, x)); }
-  function chordProgress(mem, mode, q) {
-    var n = notesOf(q.type), sum = 0, done = 0, i, m, rootFill = 0, rootDone = false;
+  function chordProgress(mem, mode, q, rootOnly) {      // rootOnly: the chord is new at this level, so its inversions are not in play yet and count for nothing
+    var n = rootOnly ? 1 : notesOf(q.type), sum = 0, done = 0, i, m, rootFill = 0, rootDone = false;
     for (i = 0; i < n; i++) {
       m = mem.p[pairKey(mode, withInv(q, i))]; sum += fillOf(m); if (m && m.n > 0 && m.h >= H_DURABLE) done++;
       if (i === 0) { rootFill = fillOf(m); rootDone = !!(m && m.n > 0 && m.h >= H_DURABLE); }
@@ -440,11 +440,11 @@
   // (the first level's chords, then those and the second level's, then all three), whichever level introduced them
   function typeCards(mem, mode, pop, n) {
     var L = ladder(mode, pop), cur = L[clamp(n, 1, L.length) - 1], cards = [];
-    function fresh(q) { var p = chordProgress(mem, mode, q); return { q: q, h: 0, done: p.done === p.of, fill: p.fill, invDone: p.done, invOf: p.of, rootFill: p.rootFill, rootDone: p.rootDone, invFill: p.invFill }; }
+    function fresh(q, rootOnly) { var p = chordProgress(mem, mode, q, rootOnly); return { q: q, h: 0, done: p.done === p.of, fill: p.fill, invDone: p.done, invOf: p.of, rootFill: p.rootFill, rootDone: p.rootDone, invFill: p.invFill }; }
     L.forEach(function (l, i) {
       if (i + 1 > n || l.stage !== cur.stage || l.type !== cur.type || l.role === 'review') return;
       l.fresh.forEach(function (q) {
-        cards.push(fresh(q));
+        cards.push(fresh(q, l === cur));                  // (the chords this level introduces come only in root position until a later level)
       });
     });
     return { cards: cards, type: cur.type, keyPc: cur.keyPc };
