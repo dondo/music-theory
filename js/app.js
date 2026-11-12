@@ -2726,7 +2726,7 @@
     ftcStreak = 0;
     saveFtc();
     ftcWrong = true;                                  // (the chips keep showing the wrong chord until the next click)
-    try { state.card.wrong = { notes: wrongNotes(pa ? sel : null, got) }; } catch (e) { state.card.wrong = null; }      // (red notes beside the question; never in a time trial, which returns above)
+    try { var wn = wrongNotes(pa ? sel : null, got); state.card.wrong = { notes: fromPiano && lastPlayed ? playedNotes(lastPlayed, wn) : wn }; } catch (e) { state.card.wrong = null; }      // (from the piano: the notes as actually played)      // (red notes beside the question; never in a time trial, which returns above)
     if (haveName) state.card.status = 'That is ' + haveName + '. Try again.';
     else { var have = Chords.chordInKey(ftcSpec().name, state.mode, got.deg, got.type); state.card.status = 'That is ' + have.symbol + ' (' + have.roman + '). Try again.'; }
     ftcSay(state.card.status, 'bad');
@@ -3090,6 +3090,7 @@
   }
 
   // brief feedback marks: kind 'yes' | 'nope'; `keyEl` is the key that was pressed
+  var lastPlayed = null;                                     // the notes of the last piano press (MIDI numbers)
   var fromPiano = false;                                     // set while a played key is being answered: no "Yes!" flash, the next question simply comes
   function feedback(kind, keyEl) {
     if (fromPiano && kind === 'yes') return;
@@ -3642,10 +3643,13 @@
   // Notes count in any octave. A chord is judged by its pitch classes (any inversion, doubling or order).
   // a wrong answer that is not a chip pick (played notes that are no chord of the key): scored like any miss
   // the notes that were played, as red notes for the staff (lowest first, stacked upward; spelt as the key spells its black keys)
-  function playedNotes(notes) {
-    var flats = ftcSpec().kind === 'flat', seen = {}, pcs = [];
-    notes.slice().sort(function (x, y) { return x - y; }).forEach(function (m) { var p = ((m % 12) + 12) % 12; if (!seen[p]) { seen[p] = 1; pcs.push(p); } });
-    return ftcNotes({ pcOffsets: pcs, notes: pcs.map(function (p) { return FindChord.pcName(p, flats); }) }, 0, 0);
+  function playedNotes(notes, spelled) {                        // (spelled: the chord's own spelling, [{ midi, name }], when the notes were recognised)
+    var flats = ftcSpec().kind === 'flat', byPc = {};
+    (spelled || []).forEach(function (n) { byPc[((n.midi % 12) + 12) % 12] = n.name; });
+    var items = notes.slice().sort(function (x, y) { return x - y; }).map(function (m) { var p = ((m % 12) + 12) % 12; return { midi: m, name: byPc[p] || FindChord.pcName(p, flats) }; });
+    var avg = items.reduce(function (s, n) { return s + n.midi; }, 0) / items.length;                 // (the notes as played, moved by whole octaves to sit on this clef's stave)
+    var shift = 12 * Math.round((KeyboardRender.CLEFS.filter(function (c) { return c.id === ftcClef(); })[0].mid - avg) / 12);
+    return items.map(function (n) { return { midi: n.midi + shift, name: n.name }; });
   }
   function ftcPlayedWrong(text, notes) {
     if (ftcTrial) { if (ftcTrial.counting || ftcTrial.done) return; trialAnswer(false); return; }
@@ -3713,7 +3717,7 @@
   Midi.onPlay(function (ev) {
     var btn = document.getElementById('midi-link'); if (btn) { btn.classList.remove('midi-ping'); void btn.offsetWidth; btn.classList.add('midi-ping'); }
     var notes = ev.notes;
-    fromPiano = true;
+    fromPiano = true; lastPlayed = notes;
     try { midiDispatch(notes); } finally { fromPiano = false; }
   });
   function midiDispatch(notes) {
