@@ -3649,8 +3649,12 @@
     var flats = ftcSpec().kind === 'flat', byPc = {};
     (spelled || []).forEach(function (n) { byPc[((n.midi % 12) + 12) % 12] = n.name; });
     var items = notes.slice().sort(function (x, y) { return x - y; }).map(function (m) { var p = ((m % 12) + 12) % 12; return { midi: m, name: byPc[p] || FindChord.pcName(p, flats) }; });
-    var avg = items.reduce(function (s, n) { return s + n.midi; }, 0) / items.length;                 // (the notes as played, moved by whole octaves to sit on this clef's stave)
-    var shift = 12 * Math.round((KeyboardRender.CLEFS.filter(function (c) { return c.id === ftcClef(); })[0].mid - avg) / 12);
+    // exactly the octave that was played, unless that runs off the stave's room (more than four ledger lines below, or far above): then the
+    // whole chord moves by whole octaves, only as far as it must
+    var clef = KeyboardRender.CLEFS.filter(function (c) { return c.id === ftcClef(); })[0], shift = 0;
+    var pos = function (m) { return items.map(function (n) { return KeyboardRender.notePosition(n.midi + m, n.name, clef); }); };
+    for (var g = 0; g < 8 && Math.min.apply(null, pos(shift)) < -8; g++) shift += 12;
+    for (g = 0; g < 8 && Math.max.apply(null, pos(shift)) > 20; g++) shift -= 12;
     return items.map(function (n) { return { midi: n.midi + shift, name: n.name }; });
   }
   function ftcPlayedWrong(text, notes) {
