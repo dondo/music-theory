@@ -1010,7 +1010,7 @@ var KeyboardRender = (function () {
         var kc = function (i) { var s = geo.startSemitone + i; return T.isBlack(T.mod12(s)) ? boundaryX(s) + shift : whiteX(s) + shift + W / 2; };
         var k0 = kc(0), kStep = (kc(nst.chords.length - 1) - k0) / Math.max(1, nst.chords.length - 1);       // evenly spaced, from the first key's centre to the last one's
         nst = Object.assign({}, nst, { noNames: true, slotW: kStep, keyX: nst.chords.map(function (c, i) { return k0 + i * kStep; }) });
-        nL = winL - 80;
+        nL = winL - 62;
       }
       parts.push((nst.grand ? grandStave : bigStave)(nst, nL, winR, rootSpec, mode));
       if (noteStudy) {
