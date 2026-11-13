@@ -1593,7 +1593,7 @@
     layoutBar.hidden = !!state.flash || noteOn() || !!(state.staff && state.selected);       // the signature boxes only show when no stave replaces them
     state.quizStave = quizOn() && state.answered && state.card && state.card.chord ? buildQuizStave() : null;
     var ghosts = pendingLayout === 'out' && oldSvg ? Array.prototype.map.call(oldSvg.querySelectorAll('.xbox'), function (g) { return g.outerHTML; }).join('') : '';
-    state.romanTop = appMode.indexOf('chords') >= 0;                      // (Chords, Pop: the keys of the key carry their numerals)
+    state.romanTop = appMode.indexOf('chords') >= 0 || appMode.indexOf('theory') >= 0;      // (Chords and Chord theory: the keys of the key carry their numerals)
     stage.innerHTML = KeyboardRender.render(quizOn() ? Object.assign({}, state, { selected: false }) : state);
     if (ftcTrial && ftcTrial.view) ftcTrial.view();                       // (a countdown or the trial results fills the stage)
     if (levelBanner.hasAttribute('data-welcome')) {                        // a welcome belongs to its own study activity: leaving it takes the banner away

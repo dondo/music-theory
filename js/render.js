@@ -995,11 +995,11 @@ var KeyboardRender = (function () {
       parts.push('</g></g>');
       if (state.picked && state.picked.length) parts.push(pickedOverlay(whites, blacks, state.picked));
     }
-    if (!noKeys && state.romanTop && scale && !flash && !noteMode && !altKind) {          // Chords (Pop): the roman numeral of each key's chord, small, inside the keys that belong to the key (centred in the white that shows beside a black key: C and F have one on their right, E and B on their left)
+    if (!noKeys && state.romanTop && scale && !flash && !noteMode && !altKind) {          // Chords and Chord theory: the roman numeral of each key's chord, small, at the top of the keys that belong to the key, just inside the top border (centred in the white that shows beside a black key: C and F have one on their right, E and B on their left)
       var rn = {};
       for (var rd = 0; rd < 7; rd++) { var rc = CH.chordInKey(rootSpec.name, mode, rd, 'triad'); if (rc) rn[T.mod12(r + rc.pcOffsets[0])] = rc.roman; }
       parts.push('<g class="roman-top" pointer-events="none" font-size="12" font-weight="700" fill="#475569" text-anchor="middle">');
-      whites.concat(blacks).forEach(function (k) { if (k.inside && rn[k.pc]) parts.push('<text x="' + f(k.x != null ? k.x + W / 2 + (k.pc === 0 || k.pc === 5 ? -BW / 4 : k.pc === 4 || k.pc === 11 ? BW / 4 : 0) : k.cx) + '" y="' + (KEY_TOP + (k.x != null ? 40 : 38)) + '">' + rn[k.pc] + '</text>'); });
+      whites.concat(blacks).forEach(function (k) { if (k.inside && rn[k.pc]) parts.push('<text x="' + f(k.x != null ? k.x + W / 2 + (k.pc === 0 || k.pc === 5 ? -BW / 4 : k.pc === 4 || k.pc === 11 ? BW / 4 : 0) : k.cx) + '" y="' + (KEY_TOP + 15) + '">' + rn[k.pc] + '</text>'); });
       parts.push('</g>');
     }
 
