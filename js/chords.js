@@ -21,8 +21,8 @@ var Chords = (function () {
     { id: 'triad', label: 'Triad', steps: [0, 2, 4] },
     { id: 'sus2', label: 'Sus2', steps: [0, 1, 4] },
     { id: 'sus4', label: 'Sus4', steps: [0, 3, 4] },
-    { id: 'add9', label: 'Add9', steps: [0, 2, 4, 8] },
     { id: '7', label: '7th', steps: [0, 2, 4, 6] },
+    { id: 'add9', label: 'Add9', steps: [0, 2, 4, 8] },
     { id: '9', label: '9th', steps: [0, 2, 4, 6, 8] },
     { id: '11', label: '11th', steps: [0, 2, 4, 6, 8, 10] },
     { id: '13', label: '13th', steps: [0, 2, 4, 6, 8, 10, 12] }

@@ -47,12 +47,12 @@
     frequency: 'Frequency: how often the mode is used in written music, from the most common (Ionian and Aeolian, i.e. major and natural minor) to the rarest (Locrian). A rough, conventional ranking.'
   };
   var TYPE_SORT_NOTES = {
-    complexity: 'Complexity: from the simplest chord to the most complex, mostly by number of notes. Triads, sus2 and sus4 have three; add9 and the 7th have four; then the 9th (five), 11th (six) and 13th (seven). Ties are a judgment call: the plain triad first, then the suspensions, and add9 before the 7th.',
+    complexity: 'Complexity: from the simplest chord to the most complex, mostly by number of notes. Triads, sus2 and sus4 have three; add9 and the 7th have four; then the 9th (five), 11th (six) and 13th (seven). Ties are a judgment call: the plain triad first, then the suspensions, and the 7th before add9 (the order the levels teach them in). This is the default order.',
     frequency: 'Frequency: how often the chord type turns up in written music, from the most common (triads, then sevenths) to the rarest (the 11th and 13th). A rough, conventional ranking.',
     ambiguity: 'Ambiguity (for the selected mode\u2019s chord): how little the chord says about major versus minor, from least ambiguous (the 7th, 9th and 13th, whose 3rd and 7th pin the chord down) to most ambiguous (sus2 and sus4, which have no 3rd at all).',
     tension: 'Tension (for the selected mode\u2019s chord): how strongly the chord wants to move on, from the most settled (the plain triad) to the most driving (the dominant 7th, 9th and 13th, where the tritone pulls toward resolution). The order follows the chord on the selected mode: a major or minor 7th, 9th or 13th sits low, and only the dominant (the V chord in a major key) sits at the top.'
   };
-  var typeSortBy = 'frequency';                       // type chip order: frequency | complexity | ambiguity | tension
+  var typeSortBy = 'complexity';                      // type chip order: complexity (the list order: triad, sus2, sus4, 7th, add9, ...) | frequency | ambiguity | tension
   // ---- progressions: chords collected as (degree, type), so they follow whatever key is picked ----
   var PROG_KEY = 'music-theory-progression-v1';
   var progSection = document.getElementById('progressions');
@@ -464,7 +464,7 @@
     Array.prototype.forEach.call(typeSortSel.options, function (o) {
       o.hidden = o.disabled = pop && o.classList.contains('jazz-only');
     });
-    if (pop && typeSortBy !== 'frequency') typeSortBy = 'frequency';      // Pop: no sort menu, so always the default order
+    if (pop && typeSortBy !== 'complexity') typeSortBy = 'complexity';      // Pop: no sort menu, so always the default order
     if (pop) sortBy = 'scale';
     modeSort.hidden = alt || pop;
     typeSort.hidden = alt || pop;
@@ -4171,7 +4171,7 @@
     document.getElementById('fm-play').checked = true;
     document.getElementById('view-explore').checked = true;
     sortBy = 'scale';
-    typeSortBy = 'frequency';
+    typeSortBy = 'complexity';
     chordTypes_ = { full: 'triad', pentatonic: 'maj', wholetone: 'aug' };
     chordsDetails.open = true;
     progDetails.open = true;

@@ -36,7 +36,7 @@ No build tools or dependencies. Open `index.html` in a browser, or open the sing
   lights the scale, and offers Next, which rotates the keyboard onto the next tonic as a click does in Explore.
 - **Keyboard shortcuts (chord selector, while it is open).** 1-7 pick the degree (Mode row in Jazz; same
   degrees, whatever the sort order); A S D F G H J K pick the Type chips in the order they are shown (so
-  they follow the Frequency / Complexity / ... sort). Each chip shows its key in the corner, but only while the Progressions section is open. In Pop the type sort menu is hidden (the order is always by frequency). Enter submits the
+  they follow the Complexity (default) / Frequency / ... sort). Each chip shows its key in the corner, but only while the Progressions section is open. In Pop the type sort menu is hidden (the order is always the default, triad, sus2, sus4, 7th, add9, 9th: A S D F G H, or 1-6 in Find the chord). Enter submits the
   chord to the progression. Pressing a key that is already selected leaves it selected.
 - **Sound.** (`js/audio.js`, Web Audio; no samples, no piano imitation: each note is a soft triangle plus a sine.) In the
   Chords section a "Hold to play" speaker button appears when the section is open and a chord is selected. In
