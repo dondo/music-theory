@@ -66,7 +66,7 @@
   var chordSoundRow = document.getElementById('chord-sound');
   var qualityView = document.getElementById('quality-view'), cvGroup = document.getElementById('chordview-group');
   var qualityShown = null;                                   // the type whose table is in the page
-  // Explore > Chord quality: with the Chords section open, a table of the qualities of the chosen type replaces the staff and keyboard
+  // Explore > Nomenclature (the chord quality tables): with the Chords section open, a table of the qualities of the chosen type replaces the staff and keyboard
   function qualityOn() { return state.chordView === 'quality' && !progsMode() && !state.flash && !isAlt() && state.selected && chordsDetails.open; }
   var chordPlayBtn = document.getElementById('chord-play');
   var progSoundBtn = document.getElementById('prog-sound');
@@ -451,7 +451,7 @@
     if (!show) return;
     var alt = isAlt();
     var rootName = currentSpec().name;
-    document.getElementById('chords-summary').textContent = qualityOn() ? 'Chord quality (tables are in C)' : 'Chords in the key of ' + rootName + (state.mode === 'minor' ? ' minor' : '');
+    document.getElementById('chords-summary').textContent = qualityOn() ? 'Nomenclature (tables are in C)' : 'Chords in the key of ' + rootName + (state.mode === 'minor' ? ' minor' : '');
     var sc = alt ? altScale() : null;
     var type = curType();
 
