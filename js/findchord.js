@@ -336,9 +336,10 @@
   // Every stage is read on the clef chosen in Explore (setClef); a card read on another clef is remembered as its own card.
   // the twelve keys in the order taught (pitch classes): C G F D B\u266D A E\u266D E A\u266D D\u266D B F\u266F, and A E B D F\u266F C\u266F G C F G\u266F B\u266D E\u266D; the same for Pop and Jazz
   var MAJOR_KEYS = [0, 7, 5, 2, 10, 9, 3, 4, 8, 1, 11, 6], MINOR_KEYS = [9, 4, 11, 2, 6, 1, 7, 0, 5, 8, 10, 3];
+  // (Pop teaches the sus chords before the sevenths; Jazz is in its own order)
   var CURRICULUM = {
-    'major|pop':  { keys: MAJOR_KEYS, types: ['triad', '7', 'sus4', 'sus2', 'add9', '9'], letters: true },
-    'minor|pop':  { keys: MINOR_KEYS, types: ['triad', '7', 'sus4', 'sus2', 'add9', '9'], letters: true },
+    'major|pop':  { keys: MAJOR_KEYS, types: ['triad', 'sus4', 'sus2', '7', 'add9', '9'], letters: true },
+    'minor|pop':  { keys: MINOR_KEYS, types: ['triad', 'sus4', 'sus2', '7', 'add9', '9'], letters: true },
     'major|jazz': { keys: MAJOR_KEYS, types: ['triad', '7', '9', 'sus4', 'add9', 'sus2', '11', '13'], letters: false },
     'minor|jazz': { keys: MINOR_KEYS, types: ['triad', '7', '9', 'sus4', 'add9', 'sus2', '11', '13'], letters: false }
   };

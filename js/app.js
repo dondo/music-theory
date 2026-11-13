@@ -1829,12 +1829,15 @@
   function quizOn() { return state.flash && state.cardMode === 'chord'; }
   function ftcPop() { return level === 'pop'; }
 
-  var FTC_LADDER = 10;                                  // which ladder the saved levels belong to (1: the old keys-x-chords ladder; 2: the first curriculum, which had a numeral repeat of Pop level 1)
+  var FTC_LADDER = 11;                                  // which ladder the saved levels belong to (1: the old keys-x-chords ladder; 2: the first curriculum, which had a numeral repeat of Pop level 1)
+  // Pop's sus chords now come before the sevenths: within each 18-level stage, old levels 5-8 (sevenths) are now 9-12 and old 9-12 (sus4, sus2) are now 5-8
+  function popReorder(n) { var k = ((n - 1) % 18) + 1, base = n - k; return base + (k >= 5 && k <= 8 ? k + 4 : k >= 9 && k <= 12 ? k - 4 : k); }
   function loadFtc() {
     try {
       var o = JSON.parse(window.localStorage.getItem(FTC_KEY));
       if (!o || typeof o !== 'object') return;
-      if (o.ladder === FTC_LADDER && o.lvl && typeof o.lvl === 'object') Object.keys(o.lvl).forEach(function (k) { if (/^(major|minor)\|(pop|jazz)$/.test(k) && Number.isInteger(o.lvl[k]) && o.lvl[k] >= 1) ftcLv[k] = o.lvl[k]; ftcLvPrev[k] = o.lvl[k]; if (o.lvt && Number.isInteger(o.lvt[k])) ftcLvT[k] = o.lvt[k]; });
+      if (o.ladder === 10 && o.lvl && typeof o.lvl === 'object') Object.keys(o.lvl).forEach(function (k) { if (/\|pop$/.test(k) && Number.isInteger(o.lvl[k])) o.lvl[k] = popReorder(o.lvl[k]); });
+      if ((o.ladder === FTC_LADDER || o.ladder === 10) && o.lvl && typeof o.lvl === 'object') Object.keys(o.lvl).forEach(function (k) { if (/^(major|minor)\|(pop|jazz)$/.test(k) && Number.isInteger(o.lvl[k]) && o.lvl[k] >= 1) ftcLv[k] = o.lvl[k]; ftcLvPrev[k] = o.lvl[k]; if (o.lvt && Number.isInteger(o.lvt[k])) ftcLvT[k] = o.lvt[k]; });
       ftcAuto = true;                                  // (always automatic; older saves may say otherwise)
       if (o.fresh && Number.isInteger(o.fresh.asked) && Number.isInteger(o.fresh.fresh) && o.fresh.asked >= 0 && o.fresh.asked < 5 && o.fresh.fresh >= 0) ftcFresh = { asked: o.fresh.asked, fresh: o.fresh.fresh };
       ftcStreak = ftcTried = ftcRight = 0;               // (a reload starts a fresh session: empty bubbles, nothing carried from the one before)
@@ -2428,6 +2431,7 @@
 
   // ---- Time trial: ten questions at a chosen level, against the clock ----
   // The normal state (bubbles, streak) is kept aside and put back afterwards. A wrong answer costs ten seconds and the trial moves on.
+  var TRIALS_ORDER_KEY = 'music-theory-trials-pop-order';
   var TRIALS_KEY = 'music-theory-trials-v7';       // (v7: a review level ends each chord type; v6: the triads bring vi ii iii together too; v5: sevenths and up bring vi ii iii together; v4: the twelve-key ladder; v2: the levels were renumbered with the staged ladder)
   var trialBox = el('div', 'trial-box'), trialBtn = el('button', 'btn-reset trial-btn', 'Time Trial \u25be'), trialList = el('div', 'trial-list'),
       trialClock = el('div', 'trial-clock'), trialPen = el('span', 'trial-pen'), trialStop = el('button', 'btn-reset trial-stop', 'Stop');
@@ -2452,6 +2456,13 @@
   // best per level: { ms, wrong } (older saves held just the time)
   function trialBests() {
     var o; try { o = JSON.parse(window.localStorage.getItem(TRIALS_KEY)) || {}; } catch (e) { o = {}; }
+    try {                                                           // (once: the Pop trial bests follow their levels to the new order)
+      if (window.localStorage.getItem(TRIALS_ORDER_KEY) !== '1') {
+        var moved = {};
+        Object.keys(o).forEach(function (k) { var m = /^((?:major|minor):pop:[^:]+:)(\d+)$/.exec(k); moved[m ? m[1] + popReorder(+m[2]) : k] = o[k]; });
+        o = moved; window.localStorage.setItem(TRIALS_KEY, JSON.stringify(o)); window.localStorage.setItem(TRIALS_ORDER_KEY, '1');
+      }
+    } catch (e) { /* storage unavailable */ }
     Object.keys(o).forEach(function (k) { if (typeof o[k] === 'number') o[k] = { ms: o[k], wrong: null }; });
     return o;
   }
@@ -2797,11 +2808,12 @@
   // What level n is about, as the level menu lists it: the chord type, then the chords: "Minor Triads (Am, Dm, Em)" (Pop: letter names; Chord theory: roman numerals)
   var LABEL_PLURAL = { triad: 'Triads', '7': 'Sevenths', '9': 'Ninths', '11': 'Elevenths', '13': 'Thirteenths', sus4: 'Sus4 Chords', sus2: 'Sus2 Chords', add9: 'Add9 Chords' };
   var LABEL_ONE = { triad: 'Triad', '7': 'Seventh' };
+  var INV_WORD = { triad: 'Triad', '7': '7th', '9': '9th', '11': '11th', '13': '13th', sus4: 'Sus4', sus2: 'Sus2', add9: 'Add9' };   // (the review level that ends each type: "Sus4 Inversions")
   function ftcLevelLabel(n) {
     var mode = state.mode, pop = ftcPop(), l = FindChord.levelInfo(mode, pop, n), spec = ftcKeySpec(mode, l.keyPc).name;
     var cs = ftcDistinctChords(l.fresh.length ? l.fresh : l.cards).map(function (c) { return Chords.chordInKey(spec, mode, c.deg, c.type); }).filter(Boolean);
     var list = cs.map(function (c) { return pop ? c.symbol : c.roman; }).join(', ');
-    if (l.role === 'review') return 'Review: all ' + (LABEL_PLURAL[l.type] || l.type).toLowerCase() + ', every inversion (' + list + ')';
+    if (l.role === 'review') return (INV_WORD[l.type] || l.type) + ' Inversions (' + list + ')';
     var group = l.role === 'first' ? 'Major ' : l.role === 'second' ? 'Minor ' : l.role === 'dim' ? 'Diminished ' : '';
     var word = l.role === 'dim' ? (LABEL_ONE[l.type] || LABEL_PLURAL[l.type]) : LABEL_PLURAL[l.type] || l.type;
     return group + word + ' (' + list + ')';
