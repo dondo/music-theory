@@ -532,7 +532,7 @@
       return false;
     }) : Chords.TYPES.filter(function (t) { return (!pop || POP_HIDDEN_TYPES.indexOf(t.id) < 0) && typeInPlay(t.id) && !(qOn && t.id === 'sus2'); });   // (the quality view shows Sus2 and Sus4 together)
     if (qOn && !alt) {                                  // Chord quality: its own teaching order
-      var QORDER = ['triad', 'sus2', 'sus4', 'add9', '7', '9', '11', '13'];
+      var QORDER = ['triad', 'sus2', 'sus4', '7', 'add9', '9', '11', '13'];
       types = types.slice().sort(function (x, y) { return QORDER.indexOf(x.id) - QORDER.indexOf(y.id); });
     } else if (!alt && typeSortBy !== 'complexity') {         // stable sort: ties keep the complexity (list) order
       var rank = null;
