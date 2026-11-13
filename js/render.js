@@ -832,7 +832,7 @@ var KeyboardRender = (function () {
         esc(data.hint || '') + '</text>');
     } else {
       var n = data.slot ? chords.length : Math.max(chords.length, data.slots || 0);      // fixed slot width: chords do not shift when the chord type changes
-      var slot = data.slot || Math.min(150, (endX - startX) / n);               // (data.slot: the caller sized the stave to its voicings)
+      var slot = data.keyX ? data.slotW : data.slot || Math.min(150, (endX - startX) / n);               // (data.slot: the caller sized the stave to its voicings; data.keyX: Notes, each note stands over its key)
       var fsTop = n > 10 ? 11 : n > 6 ? 13 : 14, fsSub = n > 10 ? 12 : 13;
       // if neighbouring labels would run into each other, alternate them between two rows
       var widths = chords.map(function (c) {
@@ -846,6 +846,7 @@ var KeyboardRender = (function () {
         var left = startX + j * slot + (j < litIdx || lg === 0 ? 0 : j === litIdx ? lg : 2 * lg);
         var boxW = Math.max(slot - 4, data.litW || 0);
         var cx = left + slot / 2;
+        if (data.keyX) { cx = data.keyX[j]; left = cx - slot / 2; }
         var ink = INK;
         if (c.lit) {                              // drawn beneath the staff lines, in the key's own tint
           under.push('<rect class="lit-box" x="' + f(left + slot / 2 - boxW / 2) + '" y="' + f(YB - 4 * SB - 5.5 * SB) + '" width="' + f(boxW) + '" height="' + f(14.5 * SB + 40) + '" rx="8" fill="' + pal[0] + '" stroke="' + pal[1] + '" stroke-width="1.2"/>');
@@ -1004,7 +1005,12 @@ var KeyboardRender = (function () {
     }
 
     if (noteMode) {
-      parts.push((state.staff && state.staff.grand ? grandStave : bigStave)(state.staff || { kind: 'empty', clef: 'treble', chords: [] }, winL, winR, rootSpec, mode));
+      var nst = state.staff || { kind: 'empty', clef: 'treble', chords: [] }, nL = winL;
+      if (nst.hits && !nst.grand) {                              // Notes, Explore: each note sits directly above the letter name of its key, so the stave starts left of the keyboard (the clef takes the room)
+        nst = Object.assign({}, nst, { slotW: 25, keyX: nst.chords.map(function (c, i) { var s = geo.startSemitone + i; return T.isBlack(T.mod12(s)) ? boundaryX(s) + shift : whiteX(s) + shift + W / 2; }) });
+        nL = winL - 80;
+      }
+      parts.push((nst.grand ? grandStave : bigStave)(nst, nL, winR, rootSpec, mode));
       if (noteStudy) {
         parts.push('<text class="fb-nope" x="' + f(WIDTH / 2) + '" y="50" text-anchor="middle" ' + (state.guess === 'enter' ? 'font-size="26" fill="#64748b"' : 'font-size="34" font-weight="bold" fill="#dc2626"') + ' opacity="0" pointer-events="none">' + (state.guess === 'enter' ? '' : '\u2717 ') + (state.guess === 'enter' ? (state.heldText || 'um\u2026 let go of the return key :)') : state.guess === 'octave' ? 'Right note, wrong octave' : state.guess === 'alter' ? 'Right note\u2026 wrong alteration!' : typeof state.guess === 'number' ? 'That was ' + ['C', 'C\u266F/D\u266D', 'D', 'D\u266F/E\u266D', 'E', 'F', 'F\u266F/G\u266D', 'G', 'G\u266F/A\u266D', 'A', 'A\u266F/B\u266D', 'B'][state.guess] + (state.card && /[\u266F\u266D]/.test(state.card.name || '') && ENHARM_WHITE[state.guess] ? ' (' + ENHARM_WHITE[state.guess] + ')' : '') : 'Nope') + '</text>' +
           '<text class="fb-yes" x="' + f(WIDTH / 2) + '" y="50" text-anchor="middle" font-size="34" font-weight="bold" fill="#16a34a" opacity="0" pointer-events="none">\u2713 Yes!</text>');
