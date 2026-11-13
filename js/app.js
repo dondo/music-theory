@@ -1741,6 +1741,8 @@
   }
   function showStreak() {
     var st = document.getElementById('streak-text'), b = bubbles(), right = 0;
+    var rl = st.parentNode.querySelector('.row-label');           // Find the chord: the chord type being studied (Triad, Sus2, 7th, ...) stands in for "Session"
+    if (rl) rl.textContent = (quizOn() && !ftcTrial ? INV_WORD[FindChord.levelInfo(state.mode, ftcPop(), ftcLevelNo()).type] : '') ? INV_WORD[FindChord.levelInfo(state.mode, ftcPop(), ftcLevelNo()).type] + ':' : 'Session:';
     st.textContent = '';
     b.forEach(function (r) {
       var d = document.createElement('span');
