@@ -532,7 +532,7 @@
       return false;
     }) : Chords.TYPES.filter(function (t) { return (!pop || POP_HIDDEN_TYPES.indexOf(t.id) < 0) && typeInPlay(t.id) && !(qOn && t.id === 'sus2'); });   // (the quality view shows Sus2 and Sus4 together)
     if (qOn && !alt) {                                  // Chord quality: its own teaching order
-      var QORDER = ['triad', 'sus4', 'sus2', 'add9', '7', '9', '11', '13'];
+      var QORDER = ['triad', 'sus2', 'sus4', 'add9', '7', '9', '11', '13'];
       types = types.slice().sort(function (x, y) { return QORDER.indexOf(x.id) - QORDER.indexOf(y.id); });
     } else if (!alt && typeSortBy !== 'complexity') {         // stable sort: ties keep the complexity (list) order
       var rank = null;
@@ -1095,7 +1095,7 @@
       '<input type="text" spellcheck="false" aria-label="Chords" placeholder="I - V - vi - IV | I - V - I" maxlength="400">' +
       '<button type="submit" class="btn-reset btn-primary">Enter</button></form>' +
       (prog.length ? '<label class="text-pop-replace"><input type="checkbox"> Replace the current progression</label>' : '') +
-      '<p class="text-pop-help">Roman numerals, or 1\u20137. Add 7, 9, sus4, sus2 or add9 for other chord types' + (level === 'pop' ? '' : ' (and 11, 13)') +
+      '<p class="text-pop-help">Roman numerals, or 1\u20137. Add 7, 9, sus2, sus4 or add9 for other chord types' + (level === 'pop' ? '' : ' (and 11, 13)') +
       '. Hyphens, bars and spaces just separate chords. The key decides major or minor.</p>' +
       '<p class="text-pop-error" role="alert"></p>';
     document.body.appendChild(textPop);
@@ -1829,30 +1829,37 @@
   function quizOn() { return state.flash && state.cardMode === 'chord'; }
   function ftcPop() { return level === 'pop'; }
 
-  var FTC_LADDER = 12;                                  // which ladder the saved levels belong to (1: the old keys-x-chords ladder; 2: the first curriculum, which had a numeral repeat of Pop level 1)
-  // The sus chords now come right after the triads (Pop: triads, sus4, sus2, 7ths, ...; Chord theory: triads, sus4, sus2, 7ths, 9ths, add9, ...): a saved level number
-  // moves with its chords. Each type has this many levels in a stage (a type without a diminished chord has one fewer), in the old order and the new.
+  var FTC_LADDER = 13;                                  // which ladder the saved levels belong to (1: the old keys-x-chords ladder; 2: the first curriculum, which had a numeral repeat of Pop level 1)
+  // The sus chords come right after the triads, sus2 then sus4 (Pop: triads, sus2, sus4, 7ths, ...; Chord theory: triads, sus2, sus4, 7ths, 9ths, add9, ...). The level order has
+  // changed twice, and a saved level number moves with its chords: `levelReorder(n, kind, from)` takes a level from an earlier order ('v10': the first, 'v12': sus4 before sus2)
+  // to the present one. Each type has this many levels in a stage (a type without a diminished chord has one fewer).
   var LV_SIZE = { triad: 4, '7': 4, '9': 3, sus4: 2, sus2: 2, add9: 3, '11': 3, '13': 3 };
-  var LV_OLD = { pop: ['triad', '7', 'sus4', 'sus2', 'add9', '9'], jazz: ['triad', '7', '9', 'sus4', 'add9', 'sus2', '11', '13'] };
-  var LV_NEW = { pop: ['triad', 'sus4', 'sus2', '7', 'add9', '9'], jazz: ['triad', 'sus4', 'sus2', '7', '9', 'add9', '11', '13'] };
-  function levelReorder(n, kind) {
-    var size = LV_OLD[kind].reduce(function (s, t) { return s + LV_SIZE[t]; }, 0), k = ((n - 1) % size) + 1, base = n - k, at = 0, t, i;
-    for (i = 0; i < LV_OLD[kind].length; i++) {
-      t = LV_OLD[kind][i];
+  var LV_ORDER = {
+    v10: { pop: ['triad', '7', 'sus4', 'sus2', 'add9', '9'], jazz: ['triad', '7', '9', 'sus4', 'add9', 'sus2', '11', '13'] },
+    v12: { pop: ['triad', 'sus4', 'sus2', '7', 'add9', '9'], jazz: ['triad', 'sus4', 'sus2', '7', '9', 'add9', '11', '13'] },
+    now: { pop: ['triad', 'sus2', 'sus4', '7', 'add9', '9'], jazz: ['triad', 'sus2', 'sus4', '7', '9', 'add9', '11', '13'] }
+  };
+  function levelReorder(n, kind, from) {
+    var old = LV_ORDER[from][kind], cur = LV_ORDER.now[kind];
+    var size = old.reduce(function (s, t) { return s + LV_SIZE[t]; }, 0), k = ((n - 1) % size) + 1, base = n - k, at = 0, t, i;
+    for (i = 0; i < old.length; i++) {
+      t = old[i];
       if (k <= at + LV_SIZE[t]) {
-        var off = k - at, start = 0;
-        for (var j = 0; j < LV_NEW[kind].length && LV_NEW[kind][j] !== t; j++) start += LV_SIZE[LV_NEW[kind][j]];
-        return base + start + off;
+        var start = 0;
+        for (var j = 0; j < cur.length && cur[j] !== t; j++) start += LV_SIZE[cur[j]];
+        return base + start + (k - at);
       }
       at += LV_SIZE[t];
     }
     return n;
   }
+  // which order a saved ladder number's levels are in, for Pop and for Chord theory
+  function savedOrder(ladder, kind) { return ladder === 10 ? 'v10' : ladder === 11 ? (kind === 'pop' ? 'v12' : 'v10') : 'v12'; }
   function loadFtc() {
     try {
       var o = JSON.parse(window.localStorage.getItem(FTC_KEY));
       if (!o || typeof o !== 'object') return;
-      if (o.ladder >= 10 && o.ladder < FTC_LADDER && o.lvl && typeof o.lvl === 'object') Object.keys(o.lvl).forEach(function (k) { var m = /\|(pop|jazz)$/.exec(k); if (m && Number.isInteger(o.lvl[k]) && (m[1] === 'jazz' || o.ladder === 10)) o.lvl[k] = levelReorder(o.lvl[k], m[1]); });
+      if (o.ladder >= 10 && o.ladder < FTC_LADDER && o.lvl && typeof o.lvl === 'object') Object.keys(o.lvl).forEach(function (k) { var m = /\|(pop|jazz)$/.exec(k); if (m && Number.isInteger(o.lvl[k])) o.lvl[k] = levelReorder(o.lvl[k], m[1], savedOrder(o.ladder, m[1])); });
       if (o.ladder >= 10 && o.ladder <= FTC_LADDER && o.lvl && typeof o.lvl === 'object') Object.keys(o.lvl).forEach(function (k) { if (/^(major|minor)\|(pop|jazz)$/.test(k) && Number.isInteger(o.lvl[k]) && o.lvl[k] >= 1) ftcLv[k] = o.lvl[k]; ftcLvPrev[k] = o.lvl[k]; if (o.lvt && Number.isInteger(o.lvt[k])) ftcLvT[k] = o.lvt[k]; });
       ftcAuto = true;                                  // (always automatic; older saves may say otherwise)
       if (o.fresh && Number.isInteger(o.fresh.asked) && Number.isInteger(o.fresh.fresh) && o.fresh.asked >= 0 && o.fresh.asked < 5 && o.fresh.fresh >= 0) ftcFresh = { asked: o.fresh.asked, fresh: o.fresh.fresh };
@@ -2473,14 +2480,14 @@
   function trialBests() {
     var o; try { o = JSON.parse(window.localStorage.getItem(TRIALS_KEY)) || {}; } catch (e) { o = {}; }
     try {                                                           // (once: the Pop trial bests follow their levels to the new order)
-      var done = window.localStorage.getItem(TRIALS_ORDER_KEY);            // null: neither; '1': Pop done; '2': both
-      if (done !== '2') {
+      var done = window.localStorage.getItem(TRIALS_ORDER_KEY);            // null: not yet moved; '1': Pop moved once; '2': both moved once; '3': both in the present order
+      if (done !== '3') {
         var moved = {};
         Object.keys(o).forEach(function (k) {
           var m = /^((?:major|minor):(pop|jazz):[^:]+:)(\d+)$/.exec(k);
-          moved[m && (m[2] === 'jazz' || done !== '1') ? m[1] + levelReorder(+m[3], m[2]) : k] = o[k];
+          moved[m ? m[1] + levelReorder(+m[3], m[2], done === '2' || (done === '1' && m[2] === 'pop') ? 'v12' : 'v10') : k] = o[k];
         });
-        o = moved; window.localStorage.setItem(TRIALS_KEY, JSON.stringify(o)); window.localStorage.setItem(TRIALS_ORDER_KEY, '2');
+        o = moved; window.localStorage.setItem(TRIALS_KEY, JSON.stringify(o)); window.localStorage.setItem(TRIALS_ORDER_KEY, '3');
       }
     } catch (e) { /* storage unavailable */ }
     Object.keys(o).forEach(function (k) { if (typeof o[k] === 'number') o[k] = { ms: o[k], wrong: null }; });

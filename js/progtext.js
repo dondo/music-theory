@@ -26,7 +26,7 @@
       var deg = /^[1-7]$/.test(m[2]) ? parseInt(m[2], 10) - 1 : NUMERALS[m[2].toLowerCase()];
       var suffix = m[3].toLowerCase().replace(/[°ø⌀+]|dim|aug|^o/g, '');   // quality marks: the key decides
       var type = TYPES[suffix];
-      if (type === undefined) { errors.push('“' + tok + '”: unknown chord type “' + m[3] + '” (try 7, 9, sus4, sus2 or add9)'); return; }
+      if (type === undefined) { errors.push('“' + tok + '”: unknown chord type “' + m[3] + '” (try 7, 9, sus2, sus4 or add9)'); return; }
       if (allowedTypes && allowedTypes.indexOf(type) < 0) { errors.push('“' + tok + '”: that chord type is only available in Jazz'); return; }
       chords.push({ deg: deg, type: type });
     });
