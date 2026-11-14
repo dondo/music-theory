@@ -1589,7 +1589,12 @@
       state.mode = 'major'; state.root = 0; state.spell = 0;
       state.noteLit = state.flash ? (state.cardMode === 'find' && state.card ? state.card.idx : null) : noteSel;
       state.staff = buildNoteStaff();
-    } else state.staff = buildStaff();
+    } else {
+      // Chords and Chord theory (Explore): there is always a chord selected; with none, the key's I chord (in the type chosen)
+      if (!state.chord && state.selected && !state.flash && chordy() && !progActive() && chordsDetails.open && !qualityOn() && !(findOn && picks.length)
+          && (!isAlt() || Chords.chordInScale(altScale(), 0, curType()))) state.chord = { deg: 0, type: curType() };
+      state.staff = buildStaff();
+    }
     layoutBar.hidden = !!state.flash || noteOn() || !!(state.staff && state.selected);       // the signature boxes only show when no stave replaces them
     state.quizStave = quizOn() && state.answered && state.card && state.card.chord ? buildQuizStave() : null;
     var ghosts = pendingLayout === 'out' && oldSvg ? Array.prototype.map.call(oldSvg.querySelectorAll('.xbox'), function (g) { return g.outerHTML; }).join('') : '';
