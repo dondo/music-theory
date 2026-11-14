@@ -126,7 +126,7 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 16px;
-  flex-basis: 100%;               /* its own row, so the keyboard doesn't jump when Reset view appears */
+  flex-basis: 100%;               /* its own row, so the keyboard doesn't jump */
   font-weight: 600;
 }
 .score[hidden] { display: none; }

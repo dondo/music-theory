@@ -298,7 +298,6 @@
 
   var stage = document.getElementById('stage');
   var caption = document.getElementById('caption');
-  var resetBtn = document.getElementById('reset');
   var modeInputs = document.querySelectorAll('input[name="mode"]');
   var viewInputs = document.querySelectorAll('input[name="view"]');
   var kindInputs = document.querySelectorAll('input[name="scalekind"]');
@@ -439,7 +438,7 @@
     document.getElementById(state.chordView === 'quality' ? 'cv-quality' : 'cv-scale').checked = true;
     stage.classList.toggle('chords-open', !!(show && chordsDetails.open) || noteOn());
     stage.hidden = qOn; qualityView.hidden = !qOn; caption.hidden = qOn;
-    if (qOn) { layoutBar.hidden = true; resetBtn.hidden = true; var qt = curType(); if (qualityShown !== qt) { qualityView.innerHTML = Quality.table(qt); qualityShown = qt; }
+    if (qOn) { layoutBar.hidden = true; var qt = curType(); if (qualityShown !== qt) { qualityView.innerHTML = Quality.table(qt); qualityShown = qt; }
       updateQMore(); }
     else qualityShown = null;
     chordInfo.hidden = qOn || (progsMode() && !!state.chord);
@@ -1562,6 +1561,8 @@
   // anim: false | 'fade' | { oldKeyS: absolute semitone of the clicked key in the current drawing }
   function draw(anim, focusRoot) {
     if (menuSels) syncMenus();
+    var kWant = appMode.indexOf('theory') >= 0 ? document.getElementById('score') : document.getElementById('view-group');      // the scale menu: last in Chord theory, else after Major / Minor
+    if (kindGroup.nextElementSibling !== kWant) kWant.parentNode.insertBefore(kindGroup, kWant);
     syncSlot();
     endSlide();
     var oldSvg = stage.firstElementChild;
@@ -1610,7 +1611,6 @@
     }
     if (!((quizOn() || studyQuizOn()) && state.answered) && !bannerHold) levelBanner.hidden = true;        // the level-up note stays until the next question
     if (!quizOn()) maybeStudyWelcome();
-    resetBtn.hidden = noteOn() || !state.selected || (state.flash && state.cardMode === 'sig') || quizOn();
     updateCaption();
     updateChordPanel();
     updateFtc();
@@ -3473,19 +3473,6 @@
     draw(state.flash ? 'fade' : false, false);
   }
 
-  function reset() {
-    if (state.flash) setView(false);
-    if (appMode !== 'note') { document.getElementById('am-note').checked = true; applyAppMode('note'); syncModeBtn(); }
-    typePicked = false;
-    progRevealed = false;                  // the Progressions section waits for the first chord again
-    state.chord = null;
-    chordCleared = false;
-    state.root = 0;
-    state.spell = 0;
-    state.selected = false;
-    draw('fade', false);
-  }
-
   // ---- events ---------------------------------------------------------------
   function intAttr(el, name) {
     return el.hasAttribute(name) ? parseInt(el.getAttribute(name), 10) : null;
@@ -4286,7 +4273,6 @@
     updateChordPanel();                                // (Find the chord: the instruction is back)
   });
 
-  resetBtn.addEventListener('click', reset);
 
   // Turning the phone changes the width of the stage: put the card (or the opened staff) back in the middle of what is visible.
   var recentreTimer = null;
