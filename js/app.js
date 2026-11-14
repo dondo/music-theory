@@ -1666,7 +1666,7 @@
   function ftcLevelNo() { return ftcTrial ? ftcTrial.level : FindChord.clamp(ftcLv[ftcLvKey()] || 1, 1, FindChord.levelCount(state.mode, level === 'pop')); }
   function ftcSetLevel(n) { ftcLv[ftcLvKey()] = FindChord.clamp(n, 1, FindChord.levelCount(state.mode, level === 'pop')); }
   var ftcAuto = true, ftcStreak = 0, ftcTried = 0, ftcRight = 0;     // (ftcTried: questions answered since the last level change)
-  // Questions per level: the app's default (FindChord.STREAK), or the number set with the slider in the developer dialog.
+  // Questions per session: the app's default (FindChord.STREAK), or the number set with the slider in the developer dialog.
   // (Kept per device, outside the synced keys.)
   var DEV_KEY = 'devmode-music-theory-v1', dev = { n: FindChord.STREAK };
   try { var dv = JSON.parse(window.localStorage.getItem(DEV_KEY)); if (dv && typeof dv === 'object' && dv.on !== false && Number.isInteger(dv.n) && dv.n >= 1 && dv.n <= 30) dev.n = dv.n; } catch (e) { /* defaults */ }
@@ -4220,7 +4220,7 @@
   }
 
   // ---- settings, used by the dialog behind the cog at the top right (js/syncui.js builds it) ----
-  // Questions per level (1-30; the default is FindChord.STREAK) and Delete all app data.
+  // Questions per session (1-30; the default is FindChord.STREAK) and Delete all app data.
   window.musicTheorySettings = {
     DEFAULT_N: FindChord.STREAK,
     getQuestions: function () { return dev.n; },

@@ -139,11 +139,11 @@
   }
   var view = 'home';
 
-  // the settings part of the dialog: Questions per level, and Delete all app data (after an "Are you sure?")
+  // the settings part of the dialog: Questions per session, and Delete all app data (after an "Are you sure?")
   function settingsNodes() {
     var S = window.musicTheorySettings;
     if (!S) return [];
-    var out = el('output', null, String(S.getQuestions())), rg = el('input'), lab = el('label', null, 'Questions per level: ');
+    var out = el('output', null, String(S.getQuestions())), rg = el('input'), lab = el('label', null, 'Questions per session: ');
     rg.type = 'range'; rg.min = 1; rg.max = 30; rg.step = 1; rg.value = S.getQuestions(); rg.id = 'set-range'; lab.htmlFor = 'set-range'; lab.appendChild(out);
     rg.addEventListener('input', function () { S.setQuestions(parseInt(rg.value, 10)); out.textContent = rg.value; });
     var sl = el('div', 'dev-row dev-slide'); sl.appendChild(lab); sl.appendChild(rg);
@@ -231,6 +231,14 @@
       row(create, btn('Choose another passphrase', function () { reroll(acct.name); }), btn('Cancel', home))]);
   }
 
+  // a name too short to use is topped up with random letters to the minimum length
+  function padName(v) {
+    var out = String(v).trim(), a = new Uint32Array(Sync.NAME_MIN);
+    crypto.getRandomValues(a);
+    for (var i = 0; out.length < Sync.NAME_MIN; i++) out += String.fromCharCode(97 + a[i] % 26);
+    return out;
+  }
+
   // connecting a device to an existing store
   function connect() {
     view = 'connect';
@@ -241,7 +249,7 @@
       if (!Sync.validPass(p.input.value)) bad.push('Passphrase must be two words of 4 to 6 letters, separated by a dash.');
       if (bad.length) {
         setStatus(bad.join(' ')); offer.textContent = '';
-        offer.appendChild(btn('Generate', function () { createName(n.input.value); }, 'btn-reset sync-primary'));
+        offer.appendChild(btn('Generate', function () { createName(padName(n.input.value)); }, 'btn-reset sync-primary'));
         return;
       }
       go.disabled = true; offer.textContent = ''; setStatus('Checking…');

@@ -845,7 +845,7 @@ var Sync = require('../js/sync.js');
   assert.strictEqual(d.id, d2.id); assert.strictEqual(d.token, d2.token);                  // case and spacing do not matter
   assert.notStrictEqual(d.id, d3.id); assert.notStrictEqual(d.id, d.token);
   assert.ok(/^[0-9a-f]{64}$/.test(d.id) && /^[0-9a-f]{64}$/.test(d.token));
-  assert.ok(Sync.validName('abcde') && !Sync.validName('abcd') && !Sync.validName('    ab   '));
+  assert.ok(Sync.validName('abcd') && !Sync.validName('abc') && !Sync.validName('    ab   '));
   assert.ok(Sync.validPass('four-sixsixs') === false && Sync.validPass('four-fives') && !Sync.validPass('abc-defg') && !Sync.validPass('abcdefg-abcd'));
   for (var i = 0; i < 300; i++) assert.ok(Sync.validPass(Sync.randomPassphrase()), 'passphrase shape');
   Sync.WORDS.forEach(function (w) { assert.ok(/^[a-z]{4,6}$/.test(w), w); });

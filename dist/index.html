@@ -2144,7 +2144,7 @@ var Memory = (function () {
 </script>
   <script>
 /* Sync across devices: the app's whole saved state, encrypted in the browser, kept in a tiny Cloudflare Worker + KV store.
-   Nothing here is a secret: the Worker only ever holds an encrypted blob. A name (5+ characters) and a two-word passphrase
+   Nothing here is a secret: the Worker only ever holds an encrypted blob. A name (4+ characters) and a two-word passphrase
    are joined and stretched (PBKDF2) into three things: the storage ID, a write token (the Worker lets only its holder
    in) and the AES-GCM key. Lose either the name or the passphrase and the data is unrecoverable.
 
@@ -2161,7 +2161,7 @@ var Sync = (function () {
   var WORKER = 'https://music-theory.dondo.workers.dev';
   var ITER = 600000, SALT = 'music-theory-sync/v1';
   var CRED_KEY = 'music-theory-sync-v1', TIMES_KEY = 'music-theory-sync-times-v1';
-  var NAME_MIN = 5, NAME_MAX = 40, LOG_KEEP = 5000;
+  var NAME_MIN = 4, NAME_MAX = 40, LOG_KEEP = 5000;
   var WORDS = 'able acorn actor adobe agile alder alley almond alpine amaze amber ample anchor angle anvil apex apple apron arbor arch aroma arrow aspen atlas attic aurora autumn axis badge bagel baker balsa bamboo banjo barn basil basin basket beach beacon beam beaver bell bench berry birch birdie bison blade blaze bloom bluff boat bonsai bonus boots brave bravo bread breeze brick bridge brook broom brush bugle bunny butter cabin cable cactus camel cameo candle candy canoe canvas canyon cargo carol carpet castle cedar cello chalk charm cherry chess chime chorus cider cinder circus clam cliff cloak clock cloud clover coast cobalt cobweb cocoa comet cookie copper coral cosmic cotton cover cradle crane crest crisp crown cuddle curry dagger daisy dance dapper dazzle delta denim desert dimple diner dipper dizzy donut dragon dream drift drum dusk eagle earth echo elbow ember engine fable falcon fancy farm fern ferry fiddle field fiesta finch fizz flame flint flora fluff flute forest fossil fresh frost gadget galaxy garden garnet geese gentle giant ginger glade globe glove glow gnome gold goose grain grape gravel grove guitar gummy hammer happy harbor harp hatch haven hazel heron hobby hollow honey hound humble icing igloo indigo island ivory jacket jade jasper jazz jelly jewel jolly juggle jumbo jungle kayak kettle kitten kiwi knit koala ladder lagoon lake lark laurel lemon lilac lily linen llama locket lotus lucky lunar lunch magic mango maple marble marsh meadow mellow melon merry mint mirror mocha moon moss motor muffin mural mystic napkin nectar needle nimble noble north novel nutmeg oasis ocean olive onyx opal orange orbit orchid otter oyster paddle palm panda paper pasta peach pearl pebble pecan penny pepper piano picnic pillow pilot pine pixel planet plum pocket polar pond poppy pretty puddle puzzle quail quartz quest quiet quill quilt rabbit radar radio rain raisin ranch raven reef rhythm ribbon ridge ripple river robin rocket rose ruby rustic saddle sage sailor salmon salsa sand sandal satin shadow shell silk silver sketch slate sleepy smile snow soda solar sonnet spark spice spoon sprout spruce squid star stone storm stream sugar summer sunny swan swift tablet tango teapot tidal tiger timber toast toffee tomato topaz trail tulip tundra turnip turtle umber umpire unity valley velvet violet vivid waffle wagon walnut water wave whale wheat whisk willow winter wizard wolf wonder yarn yellow yodel zebra zephyr zesty zigzag'.split(' ');
 
   // ---- keys and clocks ----------------------------------------------------------------------
@@ -2528,11 +2528,11 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = Sync; }
   }
   var view = 'home';
 
-  // the settings part of the dialog: Questions per level, and Delete all app data (after an "Are you sure?")
+  // the settings part of the dialog: Questions per session, and Delete all app data (after an "Are you sure?")
   function settingsNodes() {
     var S = window.musicTheorySettings;
     if (!S) return [];
-    var out = el('output', null, String(S.getQuestions())), rg = el('input'), lab = el('label', null, 'Questions per level: ');
+    var out = el('output', null, String(S.getQuestions())), rg = el('input'), lab = el('label', null, 'Questions per session: ');
     rg.type = 'range'; rg.min = 1; rg.max = 30; rg.step = 1; rg.value = S.getQuestions(); rg.id = 'set-range'; lab.htmlFor = 'set-range'; lab.appendChild(out);
     rg.addEventListener('input', function () { S.setQuestions(parseInt(rg.value, 10)); out.textContent = rg.value; });
     var sl = el('div', 'dev-row dev-slide'); sl.appendChild(lab); sl.appendChild(rg);
@@ -2620,6 +2620,14 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = Sync; }
       row(create, btn('Choose another passphrase', function () { reroll(acct.name); }), btn('Cancel', home))]);
   }
 
+  // a name too short to use is topped up with random letters to the minimum length
+  function padName(v) {
+    var out = String(v).trim(), a = new Uint32Array(Sync.NAME_MIN);
+    crypto.getRandomValues(a);
+    for (var i = 0; out.length < Sync.NAME_MIN; i++) out += String.fromCharCode(97 + a[i] % 26);
+    return out;
+  }
+
   // connecting a device to an existing store
   function connect() {
     view = 'connect';
@@ -2630,7 +2638,7 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = Sync; }
       if (!Sync.validPass(p.input.value)) bad.push('Passphrase must be two words of 4 to 6 letters, separated by a dash.');
       if (bad.length) {
         setStatus(bad.join(' ')); offer.textContent = '';
-        offer.appendChild(btn('Generate', function () { createName(n.input.value); }, 'btn-reset sync-primary'));
+        offer.appendChild(btn('Generate', function () { createName(padName(n.input.value)); }, 'btn-reset sync-primary'));
         return;
       }
       go.disabled = true; offer.textContent = ''; setStatus('Checking…');
@@ -6318,7 +6326,7 @@ var KeyboardRender = (function () {
   function ftcLevelNo() { return ftcTrial ? ftcTrial.level : FindChord.clamp(ftcLv[ftcLvKey()] || 1, 1, FindChord.levelCount(state.mode, level === 'pop')); }
   function ftcSetLevel(n) { ftcLv[ftcLvKey()] = FindChord.clamp(n, 1, FindChord.levelCount(state.mode, level === 'pop')); }
   var ftcAuto = true, ftcStreak = 0, ftcTried = 0, ftcRight = 0;     // (ftcTried: questions answered since the last level change)
-  // Questions per level: the app's default (FindChord.STREAK), or the number set with the slider in the developer dialog.
+  // Questions per session: the app's default (FindChord.STREAK), or the number set with the slider in the developer dialog.
   // (Kept per device, outside the synced keys.)
   var DEV_KEY = 'devmode-music-theory-v1', dev = { n: FindChord.STREAK };
   try { var dv = JSON.parse(window.localStorage.getItem(DEV_KEY)); if (dv && typeof dv === 'object' && dv.on !== false && Number.isInteger(dv.n) && dv.n >= 1 && dv.n <= 30) dev.n = dv.n; } catch (e) { /* defaults */ }
@@ -8872,7 +8880,7 @@ var KeyboardRender = (function () {
   }
 
   // ---- settings, used by the dialog behind the cog at the top right (js/syncui.js builds it) ----
-  // Questions per level (1-30; the default is FindChord.STREAK) and Delete all app data.
+  // Questions per session (1-30; the default is FindChord.STREAK) and Delete all app data.
   window.musicTheorySettings = {
     DEFAULT_N: FindChord.STREAK,
     getQuestions: function () { return dev.n; },
@@ -8925,7 +8933,7 @@ var KeyboardRender = (function () {
 </script>
   <script>
 /* generated by tools/build.py: do not edit */
-var APP_VERSION = '1.0 (build 8ec2dc8)';
+var APP_VERSION = '1.0 (build 539c9d3)';
 (function () {
   function show() { Array.prototype.forEach.call(document.querySelectorAll('[data-version]'), function (e) { e.textContent = APP_VERSION; }); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', show); else show();
