@@ -302,8 +302,7 @@
   var viewInputs = document.querySelectorAll('input[name="view"]');
   var kindInputs = document.querySelectorAll('input[name="scalekind"]');
   var kindGroup = document.getElementById('scalekind-group');
-  var layoutBar = document.getElementById('layout-bar');
-  var layoutDial = document.getElementById('layout-dial');
+  var layoutBar = document.getElementById('layout-group');
   var pendingLayout = null;                 // 'in' | 'out': the layout animation the next draw() runs
   var scoreBox = document.getElementById('score');
   var scoreHome = scoreBox.parentNode;                 // (Find the chord shows it in the chord info instead, after the first guess)
@@ -3999,7 +3998,7 @@
   function closeMenus(except) {
     menuSels.forEach(function (m) { if (m !== except && !m.pop.hidden) { m.pop.hidden = true; m.btn.setAttribute('aria-expanded', 'false'); } });
   }
-  ['level-group', 'mode-group', 'scalekind-group', 'flashmode-group', 'chordview-group', 'notespell-group'].forEach(function (id) {
+  ['level-group', 'mode-group', 'scalekind-group', 'flashmode-group', 'chordview-group', 'layout-group', 'notespell-group'].forEach(function (id) {
     var fs = document.getElementById(id), lg = fs.querySelector('legend'), pop = document.createElement('div'), btn = document.createElement('button'), label = document.createElement('span'), caret = document.createElement('span'), m;
     fs.classList.add('menu-sel'); pop.className = 'menu-pop'; pop.hidden = true;
     btn.type = 'button'; btn.className = 'menu-btn'; btn.setAttribute('aria-haspopup', 'true'); btn.setAttribute('aria-expanded', 'false');
@@ -4088,12 +4087,13 @@
   });
 
   function syncDial() {
-    var v = state.layout === 'vertical';
-    layoutDial.setAttribute('aria-pressed', v ? 'true' : 'false');
-    layoutDial.setAttribute('aria-label', 'Signature layout: ' + (v ? 'vertical (switch to horizontal)' : 'horizontal (switch to vertical)'));
+    document.getElementById(state.layout === 'vertical' ? 'sl-dense' : 'sl-sparse').checked = true;
+    if (menuSels) syncMenus();
   }
-  layoutDial.addEventListener('click', function () {
-    state.layout = state.layout === 'vertical' ? 'horizontal' : 'vertical';
+  layoutBar.addEventListener('change', function (e) {
+    var want = e.target.value === 'vertical' ? 'vertical' : 'horizontal';
+    if (want === state.layout) return;
+    state.layout = want;
     syncDial();
     pendingLayout = reduceMotion ? null : state.layout === 'vertical' ? 'in' : 'out';
     draw();

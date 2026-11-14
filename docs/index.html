@@ -579,20 +579,7 @@ button, .inv-zone, .clef-hit, .key, svg { touch-action: manipulation; }
 .local-badge[hidden] { display: none; }
 html.is-local body { border-top: 6px solid #ea580c; }
 
-/* Explore: horizontal / vertical signature dial, top right above the keyboard */
-.stage-tools { display: flex; justify-content: flex-end; padding: 0 8px; }
-.stage-tools[hidden] { display: none; }
-.dial { width: 34px; height: 34px; padding: 2px; border: 0; border-radius: 50%; background: transparent; color: #64748b; cursor: pointer; }
-.dial:hover { color: #1d4ed8; }
-.dial:focus-visible { outline: 2px solid #1d4ed8; outline-offset: 1px; }
-.dial-face { fill: #f1f5f9; }
-.dial-ring { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
 /* the arrow notched into the ring shows which way the next turn goes; it flips once the turn has finished */
-.dial-arrow { fill: currentColor; transition: opacity 0.2s 0.45s; }
-.dial-ccw, .dial[aria-pressed="true"] .dial-cw { opacity: 0; }
-.dial[aria-pressed="true"] .dial-ccw { opacity: 1; }
-.dial-knob { fill: currentColor; transform-origin: 16px 16px; transition: transform 0.45s cubic-bezier(.5,0,.2,1); }
-.dial[aria-pressed="true"] .dial-knob { transform: rotate(90deg); }
 @media (prefers-reduced-motion: reduce) { .dial-knob, .dial-arrow { transition: none; } }
 
 /* the vertical layout's duplicate staves sit slightly dimmer than the originals */
@@ -1097,6 +1084,13 @@ html.is-local body { border-top: 6px solid #ea580c; }
         <input type="radio" name="chordview" id="cv-quality" value="quality">
         <label for="cv-quality">Nomenclature</label>
       </fieldset>
+      <fieldset class="segmented" id="layout-group" hidden>
+        <legend class="sr-only">Signature layout</legend>
+        <input type="radio" name="siglayout" id="sl-sparse" value="horizontal" checked>
+        <label for="sl-sparse">Sparse</label>
+        <input type="radio" name="siglayout" id="sl-dense" value="vertical">
+        <label for="sl-dense">Dense</label>
+      </fieldset>
       <fieldset class="segmented" id="notespell-group" hidden>
         <legend class="sr-only">Spelling</legend>
         <input type="radio" name="notespell" id="ns-sharp" value="sharp" checked>
@@ -1117,17 +1111,6 @@ html.is-local body { border-top: 6px solid #ea580c; }
       <div id="ftc-levelup" class="levelup" role="status" hidden>
         <span class="levelup-icon" id="ftc-levelup-icon" aria-hidden="true">&#127881;</span>
         <div><strong id="ftc-levelup-title">Nice work!</strong> <span id="ftc-levelup-text"></span></div>
-      </div>
-      <div class="stage-tools" id="layout-bar">
-        <button type="button" class="dial" id="layout-dial" aria-pressed="false" aria-label="Signature layout: horizontal (switch to vertical)" title="Horizontal / vertical signatures">
-          <svg viewBox="0 0 32 32" width="30" height="30" aria-hidden="true">
-            <circle cx="16" cy="16" r="13" class="dial-face"/>
-            <path class="dial-ring" d="M22.50 4.74 A13 13 0 1 1 9.50 4.74"/>
-            <polygon class="dial-arrow dial-cw" points="12.44,3.04 10.13,7.84 7.13,2.64"/>
-            <polygon class="dial-arrow dial-ccw" points="19.56,3.04 24.87,2.64 21.87,7.84"/>
-            <g class="dial-knob"><rect x="7" y="14.3" width="18" height="3.4" rx="1.7"/></g>
-          </svg>
-        </button>
       </div>
       <div id="stage" class="stage"></div>
     <div id="quality-view" class="quality-view" hidden></div>
@@ -4966,8 +4949,7 @@ var KeyboardRender = (function () {
   var viewInputs = document.querySelectorAll('input[name="view"]');
   var kindInputs = document.querySelectorAll('input[name="scalekind"]');
   var kindGroup = document.getElementById('scalekind-group');
-  var layoutBar = document.getElementById('layout-bar');
-  var layoutDial = document.getElementById('layout-dial');
+  var layoutBar = document.getElementById('layout-group');
   var pendingLayout = null;                 // 'in' | 'out': the layout animation the next draw() runs
   var scoreBox = document.getElementById('score');
   var scoreHome = scoreBox.parentNode;                 // (Find the chord shows it in the chord info instead, after the first guess)
@@ -8663,7 +8645,7 @@ var KeyboardRender = (function () {
   function closeMenus(except) {
     menuSels.forEach(function (m) { if (m !== except && !m.pop.hidden) { m.pop.hidden = true; m.btn.setAttribute('aria-expanded', 'false'); } });
   }
-  ['level-group', 'mode-group', 'scalekind-group', 'flashmode-group', 'chordview-group', 'notespell-group'].forEach(function (id) {
+  ['level-group', 'mode-group', 'scalekind-group', 'flashmode-group', 'chordview-group', 'layout-group', 'notespell-group'].forEach(function (id) {
     var fs = document.getElementById(id), lg = fs.querySelector('legend'), pop = document.createElement('div'), btn = document.createElement('button'), label = document.createElement('span'), caret = document.createElement('span'), m;
     fs.classList.add('menu-sel'); pop.className = 'menu-pop'; pop.hidden = true;
     btn.type = 'button'; btn.className = 'menu-btn'; btn.setAttribute('aria-haspopup', 'true'); btn.setAttribute('aria-expanded', 'false');
@@ -8752,12 +8734,13 @@ var KeyboardRender = (function () {
   });
 
   function syncDial() {
-    var v = state.layout === 'vertical';
-    layoutDial.setAttribute('aria-pressed', v ? 'true' : 'false');
-    layoutDial.setAttribute('aria-label', 'Signature layout: ' + (v ? 'vertical (switch to horizontal)' : 'horizontal (switch to vertical)'));
+    document.getElementById(state.layout === 'vertical' ? 'sl-dense' : 'sl-sparse').checked = true;
+    if (menuSels) syncMenus();
   }
-  layoutDial.addEventListener('click', function () {
-    state.layout = state.layout === 'vertical' ? 'horizontal' : 'vertical';
+  layoutBar.addEventListener('change', function (e) {
+    var want = e.target.value === 'vertical' ? 'vertical' : 'horizontal';
+    if (want === state.layout) return;
+    state.layout = want;
     syncDial();
     pendingLayout = reduceMotion ? null : state.layout === 'vertical' ? 'in' : 'out';
     draw();
@@ -8902,7 +8885,7 @@ var KeyboardRender = (function () {
 </script>
   <script>
 /* generated by tools/build.py: do not edit */
-var APP_VERSION = '1.0 (build 0815f76)';
+var APP_VERSION = '1.0 (build 7a64b27)';
 (function () {
   function show() { Array.prototype.forEach.call(document.querySelectorAll('[data-version]'), function (e) { e.textContent = APP_VERSION; }); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', show); else show();
