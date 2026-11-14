@@ -814,7 +814,7 @@ var KeyboardRender = (function () {
     for (i = 0; i < sp.n; i++) {
       out.push('<use href="#' + sp.kind + '" transform="translate(' + f(ax + i * adv) + ',' + f(YB - steps[i] * SB / 2) + ') scale(' + k + ',-' + k + ')" fill="' + INK + '"/>');
     }
-    if (!data.noKey) out.push('<text x="' + f(x0 + 8) + '" y="' + f(YB - 4 * SB - 14 - (clef.glyph === 'gclef8va' ? 13 : 0)) + '" font-size="14" font-weight="bold" fill="' + pal[1] + '">' + esc(T.keyTitle(sp, mode)) + '</text>');
+    if (!data.noKey) out.push('<text x="' + f(x0 + 8) + '" y="' + f(YB - 4 * SB - 27 - (clef.glyph === 'gclef8va' ? 13 : 0)) + '" font-size="14" font-weight="bold" fill="' + pal[1] + '">' + esc(T.keyTitle(sp, mode)) + '</text>');
     out.push('</g>');
     var sigVal = {};
     (sp.kind === 'sharp' ? SHARP_ORDER : FLAT_ORDER).slice(0, sp.n).forEach(function (l) { sigVal[l] = sp.kind === 'sharp' ? 1 : -1; });
