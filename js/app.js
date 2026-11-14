@@ -2466,18 +2466,17 @@
   // The normal state (bubbles, streak) is kept aside and put back afterwards. A wrong answer costs ten seconds and the trial moves on.
   var TRIALS_ORDER_KEY = 'music-theory-trials-pop-order';
   var TRIALS_KEY = 'music-theory-trials-v7';       // (v7: a review level ends each chord type; v6: the triads bring vi ii iii together too; v5: sevenths and up bring vi ii iii together; v4: the twelve-key ladder; v2: the levels were renumbered with the staged ladder)
-  var trialBox = el('div', 'trial-box'), trialBtn = el('button', 'btn-reset trial-btn', 'Time Trial'), trialList = el('div', 'trial-list'),
+  var trialBox = el('div', 'trial-box'), trialBtn = el('button', 'btn-reset trial-btn', 'Time Trial'),
       trialClock = el('div', 'trial-clock'), trialPen = el('span', 'trial-pen'), trialStop = el('button', 'btn-reset trial-stop', 'Stop');
-  var trialListOpen = false, trialTick = null, trialCountdown = null;
+  var trialTick = null, trialCountdown = null;
   trialBtn.type = 'button'; trialStop.type = 'button';
-  trialList.setAttribute('role', 'menu'); trialList.hidden = true;
   var CX = 20, CY = 20, CR = 17;
   trialClock.innerHTML = '<svg viewBox="0 0 40 40" width="40" height="40" aria-hidden="true"><circle cx="20" cy="20" r="18" class="tc-face"/>' +
     '<path class="tc-fill" d="M20 20"/><line class="tc-hand" x1="20" y1="20" x2="20" y2="3"/></svg>';
   trialClock.appendChild(trialPen); trialClock.appendChild(trialStop);
   trialClock.hidden = true;
   trialBtn.hidden = false;
-  trialBox.appendChild(trialBtn); trialBox.appendChild(trialClock); trialBox.appendChild(trialList);
+  trialBox.appendChild(trialBtn); trialBox.appendChild(trialClock);
   // the Time Trial button lives in the controls row, just after the study direction ("Find the chord", ...)
   function placeTrialBox(show) {
     var g = document.getElementById('flashmode-group');
@@ -2520,70 +2519,15 @@
     trialClock.hidden = !ftcTrial;
     trialStop.hidden = !!(ftcTrial && ftcTrial.done);
     chordsPanel.classList.toggle('trialing', !!ftcTrial);              // (keyboard hints on the chips, where there is a keyboard)
-    if (!(ftcTrial && ftcTrial.done) && trialList.parentNode !== trialBox) trialBox.appendChild(trialList);      // (the results borrow the list for their own menu button)
-    trialList.hidden = !trialListOpen || !!(ftcTrial && !ftcTrial.done);
   }
-  function closeTrialList() { if (trialListOpen) { trialListOpen = false; syncTrialBox(); } }
-  document.addEventListener('click', function (e) { if (trialListOpen && !trialBox.contains(e.target) && !(e.target.closest && e.target.closest('.tr-menu'))) closeTrialList(); });
-  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && trialListOpen) { closeTrialList(); trialBtn.focus(); } });
   function stageLabel(n) { if (studyQuizOn()) return 'Level ' + n; var i = FindChord.levelInfo(state.mode, ftcPop(), n); return 'Stage ' + i.stage + ' \u2013 Level ' + i.step; }
-  // two levels: the stages (newest first; only the current one open to start with), and under each the steps reached so far
-  function buildTrialList() {
-    trialList.textContent = '';
-    if (studyQuizOn()) {                                              // one stage only: the steps reached so far, newest first
-      var ncur = stepNo(), nb = trialBests();
-      for (var k = ncur; k >= 1; k--) {
-        var nbtn = el('button', 'btn-reset trial-lvl'), nbest = nb[trialKey(k)], nlocked = false;                      // (every level, the one in progress included, may be trialled at any time)
-        nbtn.type = 'button'; nbtn.setAttribute('data-level', k); nbtn.setAttribute('role', 'menuitem');
-        if (nlocked) { nbtn.disabled = true; nbtn.classList.add('locked'); nbtn.title = 'Answer ' + unlockText() + ' right to unlock'; }
-        nbtn.appendChild(el('span', 'tl-n', 'Level ' + k));
-        nbtn.appendChild(el('span', 'tl-best', nlocked ? 'play it first' : nbest ? fmtTime(nbest.ms) + (nbest.wrong == null ? '' : ' \u00b7 ' + nbest.wrong + ' wrong') : 'no time yet'));
-        trialList.appendChild(nbtn);
-      }
-      return;
-    }
-    var cur = FindChord.clamp(ftcLv[ftcLvKey()] || 1, 1, FindChord.levelCount(state.mode, ftcPop())), bests = trialBests(), curStage = FindChord.levelInfo(state.mode, ftcPop(), cur).stage, groups = {}, order = [];
-    for (var n = cur; n >= 1; n--) {
-      var st = FindChord.levelInfo(state.mode, ftcPop(), n).stage;
-      if (!groups[st]) { groups[st] = []; order.push(st); }
-      groups[st].push(n);
-    }
-    order.forEach(function (st) {
-      var open = st === curStage, g = el('div', 'tl-stage'), h = el('button', 'btn-reset tl-stage-head'), body = el('div', 'tl-steps');
-      h.type = 'button'; h.setAttribute('aria-expanded', open ? 'true' : 'false');
-      h.appendChild(el('span', 'tl-caret', '\u25b8'));
-      h.appendChild(el('span', 'tl-n', 'Stage ' + st));
-      h.appendChild(el('span', 'tl-best', groups[st].length + (groups[st].length === 1 ? ' level' : ' levels')));
-      body.hidden = !open;
-      groups[st].forEach(function (n) {
-        var b = el('button', 'btn-reset trial-lvl'), best = bests[trialKey(n)];
-        b.type = 'button'; b.setAttribute('data-level', n); b.setAttribute('role', 'menuitem');
-        var locked = false;                                           // (every level, the one in progress included, may be trialled at any time)
-        if (locked) { b.disabled = true; b.classList.add('locked'); b.title = 'Answer ' + unlockText() + ' right to unlock'; }
-        b.appendChild(el('span', 'tl-n', 'Level ' + FindChord.levelInfo(state.mode, ftcPop(), n).step));
-        b.appendChild(el('span', 'tl-best', locked ? 'play it first' : best ? fmtTime(best.ms) + (best.wrong == null ? '' : ' \u00b7 ' + best.wrong + ' wrong') : 'no time yet'));
-        body.appendChild(b);
-      });
-      g.appendChild(h); g.appendChild(body); trialList.appendChild(g);
-    });
-  }
   trialBtn.addEventListener('click', function () { startTrial(studyQuizOn() ? stepNo() : ftcLevelNo()); });      // a plain button: a time trial of the current level
-  trialList.addEventListener('click', function (e) {
-    var h = e.target.closest ? e.target.closest('.tl-stage-head') : null;
-    if (h) {                                                         // a stage opens or closes; the list stays up
-      var body = h.nextElementSibling, open = body.hidden;
-      body.hidden = !open; h.setAttribute('aria-expanded', open ? 'true' : 'false');
-      if (open) {                                                  // scroll so the steps show (or as many as fit), keeping the stage's own row in view
-        var lr = trialList.getBoundingClientRect(), br = body.getBoundingClientRect(), hr = h.getBoundingClientRect();
-        var over = br.bottom - lr.bottom + 6;
-        if (over > 0) trialList.scrollTop += Math.min(over, Math.max(0, hr.top - lr.top - 4));
-      }
-      return;
-    }
-    var b = e.target.closest ? e.target.closest('.trial-lvl') : null;
-    if (b) startTrial(parseInt(b.getAttribute('data-level'), 10));
-  });
   trialStop.addEventListener('click', function () { abortTrial(); ftcNewQuestionDraw(); });
+  document.addEventListener('keydown', function (e) {                // Return on the results does "Try Again"
+    if (e.key !== 'Enter' || e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey || !ftcTrial || !ftcTrial.done) return;
+    if (e.target.closest && e.target.closest('.trial-result, .menu-sel, #mode-menu, dialog, input, select, textarea, summary')) return;      // (a focused results button, menu or field does its own thing)
+    e.preventDefault(); startTrial(ftcTrial.level);
+  });
   function ftcNewQuestionDraw() {
     if (studyQuizOn()) { state.answered = false; lastResult = ''; state.selected = false; if (noteOn()) newNoteCard(); else newCard(); updateScore(); draw(false, false); return; }
     var anim = ftcNewQuestion(false); updateScore(); draw(anim, false); }
@@ -2591,7 +2535,6 @@
     var nq = studyQuizOn();
     if (!(quizOn() || nq) || (ftcTrial && !ftcTrial.done)) return;
     var lv = nq ? null : FindChord.levelAt(state.mode, ftcPop(), n);
-    trialListOpen = false;
     var snap = ftcTrial ? ftcTrial.snap                                   // ("Try again": the state from before the first trial is still the one to return to)
       : { bub: ftcBub, bubFull: bubFull, streak: ftcStreak, tried: ftcTried, right: ftcRight, home: ftcHomeNext };
     clearInterval(trialTick); trialTick = null;
@@ -2625,7 +2568,7 @@
     chordsPanel.classList.remove('counting');
     var sn = ftcTrial.snap;
     ftcBub = sn.bub; bubFull = sn.bubFull; ftcStreak = sn.streak; ftcTried = sn.tried; ftcRight = sn.right; ftcHomeNext = sn.home;
-    ftcTrial = null; trialListOpen = false;
+    ftcTrial = null;
     syncTrialBox();
   }
   function trialAnswer(ok) {
@@ -2655,7 +2598,7 @@
     chordsPanel.classList.add('counting');
     t.view = function () {
       stage.innerHTML = '<div class="trial-result"><div class="tr-icon"></div><h3 class="tr-title"></h3><div class="tr-time"></div><p class="tr-detail"></p><p class="tr-best"></p>' +
-        '<div class="tr-actions"><button type="button" class="btn-reset tr-again">Try Again</button><span class="tr-menu"><button type="button" class="btn-reset tr-trials" aria-haspopup="true">Time Trial \u25be</button></span><button type="button" class="btn-reset tr-back">Back to Study</button></div></div>';
+        '<div class="tr-actions"><button type="button" class="btn-reset tr-again">Try Again</button><button type="button" class="btn-reset tr-back">Back to Study</button></div></div>';
       var q = function (c) { return stage.querySelector(c); };
       q('.tr-icon').textContent = isBest ? '\u{1F389}' : t.wrongs >= 3 ? '\u{1F61E}' : '\u{1F610}';      // party / sad (three or more wrong) / shrug
       q('.tr-title').textContent = isBest ? 'New best time for ' + stageLabel(t.level) + '!' : stageLabel(t.level) + ' time trial complete';
@@ -2664,11 +2607,6 @@
       q('.tr-best').textContent = isBest ? (best ? 'Previous best: ' + fmtTime(best.ms) + ' · ' + best.wrong + ' wrong' : 'First time at this level') :
         'Best: ' + fmtTime(best.ms) + (best.wrong == null ? '' : ' · ' + best.wrong + ' wrong');
       q('.tr-again').addEventListener('click', function () { startTrial(t.level); });
-      q('.tr-trials').addEventListener('click', function () {
-        trialListOpen = !trialListOpen;
-        if (trialListOpen) { buildTrialList(); q('.tr-menu').appendChild(trialList); }
-        syncTrialBox();
-      });
       q('.tr-back').addEventListener('click', function () { abortTrial(); ftcNewQuestionDraw(); });
     };
     syncTrialBox(); drawClock(); updateFtc(); updateScore(); updateChordPanel();
