@@ -1561,7 +1561,7 @@
   // anim: false | 'fade' | { oldKeyS: absolute semitone of the clicked key in the current drawing }
   function draw(anim, focusRoot) {
     if (menuSels) syncMenus();
-    var kWant = appMode.indexOf('theory') >= 0 ? document.getElementById('score') : document.getElementById('view-group');      // the scale menu: last in Chord theory, else after Major / Minor
+    var kWant = appMode.indexOf('theory') >= 0 ? cvGroup : document.getElementById('view-group');      // the scale menu: just before the chord view menu (Chords in scale / Nomenclature) in Chord theory, else after Major / Minor
     if (kindGroup.nextElementSibling !== kWant) kWant.parentNode.insertBefore(kindGroup, kWant);
     syncSlot();
     endSlide();
@@ -4068,7 +4068,7 @@
     btn.type = 'button'; btn.className = 'menu-btn'; btn.setAttribute('aria-haspopup', 'true'); btn.setAttribute('aria-expanded', 'false');
     if (lg) btn.setAttribute('aria-label', lg.textContent);
     caret.className = 'menu-caret'; caret.setAttribute('aria-hidden', 'true'); caret.textContent = '\u25BE';
-    btn.appendChild(label); btn.appendChild(caret);
+    btn.appendChild(caret); btn.appendChild(label);
     Array.prototype.slice.call(fs.children).forEach(function (c) { if (c !== lg) pop.appendChild(c); });
     fs.appendChild(btn); fs.appendChild(pop);
     m = { fs: fs, pop: pop, btn: btn, label: label }; menuSels.push(m);
