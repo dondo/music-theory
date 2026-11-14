@@ -2466,11 +2466,10 @@
   // The normal state (bubbles, streak) is kept aside and put back afterwards. A wrong answer costs ten seconds and the trial moves on.
   var TRIALS_ORDER_KEY = 'music-theory-trials-pop-order';
   var TRIALS_KEY = 'music-theory-trials-v7';       // (v7: a review level ends each chord type; v6: the triads bring vi ii iii together too; v5: sevenths and up bring vi ii iii together; v4: the twelve-key ladder; v2: the levels were renumbered with the staged ladder)
-  var trialBox = el('div', 'trial-box'), trialBtn = el('button', 'btn-reset trial-btn', 'Time Trial \u25be'), trialList = el('div', 'trial-list'),
+  var trialBox = el('div', 'trial-box'), trialBtn = el('button', 'btn-reset trial-btn', 'Time Trial'), trialList = el('div', 'trial-list'),
       trialClock = el('div', 'trial-clock'), trialPen = el('span', 'trial-pen'), trialStop = el('button', 'btn-reset trial-stop', 'Stop');
   var trialListOpen = false, trialTick = null, trialCountdown = null;
   trialBtn.type = 'button'; trialStop.type = 'button';
-  trialBtn.setAttribute('aria-haspopup', 'true');
   trialList.setAttribute('role', 'menu'); trialList.hidden = true;
   var CX = 20, CY = 20, CR = 17;
   trialClock.innerHTML = '<svg viewBox="0 0 40 40" width="40" height="40" aria-hidden="true"><circle cx="20" cy="20" r="18" class="tc-face"/>' +
@@ -2521,7 +2520,6 @@
     trialClock.hidden = !ftcTrial;
     trialStop.hidden = !!(ftcTrial && ftcTrial.done);
     chordsPanel.classList.toggle('trialing', !!ftcTrial);              // (keyboard hints on the chips, where there is a keyboard)
-    trialBtn.setAttribute('aria-expanded', trialListOpen ? 'true' : 'false');
     if (!(ftcTrial && ftcTrial.done) && trialList.parentNode !== trialBox) trialBox.appendChild(trialList);      // (the results borrow the list for their own menu button)
     trialList.hidden = !trialListOpen || !!(ftcTrial && !ftcTrial.done);
   }
@@ -2569,11 +2567,7 @@
       g.appendChild(h); g.appendChild(body); trialList.appendChild(g);
     });
   }
-  trialBtn.addEventListener('click', function () {
-    trialListOpen = !trialListOpen;
-    if (trialListOpen) buildTrialList();
-    syncTrialBox();
-  });
+  trialBtn.addEventListener('click', function () { startTrial(studyQuizOn() ? stepNo() : ftcLevelNo()); });      // a plain button: a time trial of the current level
   trialList.addEventListener('click', function (e) {
     var h = e.target.closest ? e.target.closest('.tl-stage-head') : null;
     if (h) {                                                         // a stage opens or closes; the list stays up
