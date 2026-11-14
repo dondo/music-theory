@@ -277,7 +277,8 @@ body {
 .sw-sharp { background: #eef3fb; border-color: var(--sharp); }
 .sw-flat { background: #f3eefb; border-color: var(--flat); }
 .sw-scale { background: #fef08a; border-color: #ca9a04; }
-.sw-croot { background: #f59e0b; border-color: #92400e; }
+.sw-croot { background: #ef4444; border-color: #7f1d1d; }
+.sw-cscale { background: #fef08a; border-color: #ca9a04; }
 .sw-ctone { background: #fb923c; border-color: #9a3412; }
 .legend-chord[hidden] { display: none; }
 

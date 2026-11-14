@@ -57,9 +57,9 @@ var KeyboardRender = (function () {
 
   var HL = {                                    // key fills when highlighted
     white: { scale: '#fef08a', root: '#fde047', third: '#fde047', fifth: '#fde047',
-             croot: '#f59e0b', ctone: '#fb923c', cscale: '#fef9c3' },     // c*: a chord is selected
+             croot: '#ef4444', ctone: '#fb923c', cscale: '#fef08a' },     // c*: a chord is selected
     black: { scale: '#fef08a', root: '#eab308', third: '#eab308', fifth: '#eab308',
-             croot: '#d97706', ctone: '#f97316', cscale: '#fde68a' }
+             croot: '#b91c1c', ctone: '#f97316', cscale: '#fde047' }
   };
   var THIRD_STROKE = '#9a3412';
   var SELECT = '#ea580c';                       // outline of the selected root's box
