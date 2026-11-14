@@ -1561,6 +1561,7 @@
   // anim: false | 'fade' | { oldKeyS: absolute semitone of the clicked key in the current drawing }
   function draw(anim, focusRoot) {
     if (menuSels) syncMenus();
+    if (trialBox) trialBox.hidden = !(quizOn() || studyQuizOn());          // (Time Trial belongs to the study activities, never to Explore)
     var kWant = appMode.indexOf('theory') >= 0 ? cvGroup : document.getElementById('view-group');      // the scale menu: just before the chord view menu (Chords in scale / Nomenclature) in Chord theory, else after Major / Minor
     if (kindGroup.nextElementSibling !== kWant) kWant.parentNode.insertBefore(kindGroup, kWant);
     syncSlot();
@@ -3989,6 +3990,8 @@
     menuSels.forEach(function (m) {
       var r = m.fs.querySelector('input:checked'), l = r && m.fs.querySelector('label[for="' + r.id + '"]');
       m.label.textContent = l ? l.textContent : '';
+      var opts = Array.prototype.filter.call(m.pop.querySelectorAll('label'), function (x) { return !x.hidden; }).length;
+      m.fs.classList.toggle('menu-one', opts < 2);                // (a menu with one choice is not shown)
     });
   }
   function closeMenus(except) {

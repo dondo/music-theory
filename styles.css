@@ -981,7 +981,7 @@ html.is-local body { border-top: 6px solid #ea580c; }
 
 /* topline popup menus: a pill with the current choice and a triangle; the choices drop down in a popup */
 .menu-sel { position: relative; display: inline-block; padding: 0; background: transparent; border-radius: 22px; }
-.menu-sel[hidden] { display: none; }
+.menu-sel[hidden], .menu-sel.menu-one { display: none; }
 .menu-btn { font: inherit; font-weight: 600; color: var(--ink); background: #e6e9f1; border: 0; border-radius: 999px; padding: 11px 22px 11px 16px; cursor: pointer; display: inline-flex; gap: 10px; align-items: center; }
 .menu-btn:hover { background: #dde1ec; }
 .menu-btn:focus-visible { outline: 3px solid var(--accent); outline-offset: 1px; }
