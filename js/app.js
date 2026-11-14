@@ -171,6 +171,7 @@
   var sortBy = 'scale';                               // mode chip order: scale | brightness | frequency
   var chordsDetails = document.getElementById('chords-details');
   var typePicked = false;                             // a type chip was pressed (before any degree): show it as selected
+  var menuSels = null;                                // (the topline popup menus, once built)
   var chordCleared = false;                           // user toggled the chord off while the panel is open
   var chordTypes_ = { full: 'triad', pentatonic: 'maj', wholetone: 'aug' };   // last chosen chord type per scale type
   var score = { ok: 0, bad: 0 };
@@ -1560,6 +1561,7 @@
 
   // anim: false | 'fade' | { oldKeyS: absolute semitone of the clicked key in the current drawing }
   function draw(anim, focusRoot) {
+    if (menuSels) syncMenus();
     syncSlot();
     endSlide();
     var oldSvg = stage.firstElementChild;
@@ -4061,6 +4063,40 @@
   Array.prototype.forEach.call(document.querySelectorAll('input[name="notespell"]'), function (input) {
     input.addEventListener('change', function () { if (input.checked) { noteSpell = input.value === 'flat' ? 1 : 0; draw(false, false); } });
   });
+  // The topline selectors (all but the topic and Explore/Study ones) are popup menus: the same radios, which stay the source of truth,
+  // listed in a popup under a pill showing the current choice and a triangle.
+  menuSels = [];
+  function syncMenus() {
+    menuSels.forEach(function (m) {
+      var r = m.fs.querySelector('input:checked'), l = r && m.fs.querySelector('label[for="' + r.id + '"]');
+      m.label.textContent = l ? l.textContent : '';
+    });
+  }
+  function closeMenus(except) {
+    menuSels.forEach(function (m) { if (m !== except && !m.pop.hidden) { m.pop.hidden = true; m.btn.setAttribute('aria-expanded', 'false'); } });
+  }
+  ['level-group', 'mode-group', 'scalekind-group', 'flashmode-group', 'chordview-group', 'notespell-group'].forEach(function (id) {
+    var fs = document.getElementById(id), lg = fs.querySelector('legend'), pop = document.createElement('div'), btn = document.createElement('button'), label = document.createElement('span'), caret = document.createElement('span'), m;
+    fs.classList.add('menu-sel'); pop.className = 'menu-pop'; pop.hidden = true;
+    btn.type = 'button'; btn.className = 'menu-btn'; btn.setAttribute('aria-haspopup', 'true'); btn.setAttribute('aria-expanded', 'false');
+    if (lg) btn.setAttribute('aria-label', lg.textContent);
+    caret.className = 'menu-caret'; caret.setAttribute('aria-hidden', 'true'); caret.textContent = '\u25BE';
+    btn.appendChild(label); btn.appendChild(caret);
+    Array.prototype.slice.call(fs.children).forEach(function (c) { if (c !== lg) pop.appendChild(c); });
+    fs.appendChild(btn); fs.appendChild(pop);
+    m = { fs: fs, pop: pop, btn: btn, label: label }; menuSels.push(m);
+    function open(on) {
+      closeMenus(on ? m : null); modeMenu(false);
+      pop.hidden = !on; btn.setAttribute('aria-expanded', on ? 'true' : 'false');
+      if (on) { var c = pop.querySelector('input:checked'); if (c) c.focus({ preventScroll: true }); }
+    }
+    btn.addEventListener('click', function (e) { e.stopPropagation(); open(pop.hidden); });
+    fs.addEventListener('change', function () { syncMenus(); open(false); btn.focus({ preventScroll: true }); });
+    fs.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !pop.hidden) { e.stopPropagation(); open(false); btn.focus(); } });
+  });
+  document.addEventListener('click', function (e) { if (!e.target.closest('.menu-sel')) closeMenus(null); });
+  syncMenus();
+
   function syncModeBtn() {
     var onKeys = appMode === 'key' || appMode === 'minor';
     Array.prototype.forEach.call(document.querySelectorAll('.legend-key'), function (li) { li.hidden = !onKeys; });      // the key-signature legend belongs to the Keys topics
