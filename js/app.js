@@ -2477,7 +2477,7 @@
     '<path class="tc-fill" d="M20 20"/><line class="tc-hand" x1="20" y1="20" x2="20" y2="3"/></svg>';
   trialClock.appendChild(trialPen); trialClock.appendChild(trialStop);
   trialClock.hidden = true;
-  trialBtn.hidden = !trialEver;
+  trialBtn.hidden = false;
   trialBox.appendChild(trialBtn); trialBox.appendChild(trialClock); trialBox.appendChild(trialList);
   // the Time Trial button lives in the controls row, just after the study direction ("Find the chord", ...)
   function placeTrialBox(show) {
@@ -2517,7 +2517,7 @@
       'M20 20 L20 ' + (CY - CR) + ' A' + CR + ' ' + CR + ' 0 ' + (frac > 0.5 ? 1 : 0) + ' 1 ' + x.toFixed(2) + ' ' + y.toFixed(2) + ' Z');   // swept from 12 o'clock to the hand
   }
   function syncTrialBox() {
-    trialBtn.hidden = !!ftcTrial || !trialEver;
+    trialBtn.hidden = !!ftcTrial;
     trialClock.hidden = !ftcTrial;
     trialStop.hidden = !!(ftcTrial && ftcTrial.done);
     chordsPanel.classList.toggle('trialing', !!ftcTrial);              // (keyboard hints on the chips, where there is a keyboard)
@@ -2535,7 +2535,7 @@
     if (studyQuizOn()) {                                              // one stage only: the steps reached so far, newest first
       var ncur = stepNo(), nb = trialBests();
       for (var k = ncur; k >= 1; k--) {
-        var nbtn = el('button', 'btn-reset trial-lvl'), nbest = nb[trialKey(k)], nlocked = k === ncur && !trialUnlocked;
+        var nbtn = el('button', 'btn-reset trial-lvl'), nbest = nb[trialKey(k)], nlocked = false;                      // (every level, the one in progress included, may be trialled at any time)
         nbtn.type = 'button'; nbtn.setAttribute('data-level', k); nbtn.setAttribute('role', 'menuitem');
         if (nlocked) { nbtn.disabled = true; nbtn.classList.add('locked'); nbtn.title = 'Answer ' + unlockText() + ' right to unlock'; }
         nbtn.appendChild(el('span', 'tl-n', 'Level ' + k));
@@ -2560,7 +2560,7 @@
       groups[st].forEach(function (n) {
         var b = el('button', 'btn-reset trial-lvl'), best = bests[trialKey(n)];
         b.type = 'button'; b.setAttribute('data-level', n); b.setAttribute('role', 'menuitem');
-        var locked = n === cur && !trialUnlocked;                    // the step in progress opens for a trial once it has been played well enough
+        var locked = false;                                           // (every level, the one in progress included, may be trialled at any time)
         if (locked) { b.disabled = true; b.classList.add('locked'); b.title = 'Answer ' + unlockText() + ' right to unlock'; }
         b.appendChild(el('span', 'tl-n', 'Level ' + FindChord.levelInfo(state.mode, ftcPop(), n).step));
         b.appendChild(el('span', 'tl-best', locked ? 'play it first' : best ? fmtTime(best.ms) + (best.wrong == null ? '' : ' \u00b7 ' + best.wrong + ' wrong') : 'no time yet'));
