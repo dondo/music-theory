@@ -244,7 +244,7 @@
     view = 'connect';
     var n = field('Name', 'text'), p = field('Passphrase', 'text', 'Two words joined by a dash.'), offer = el('div', 'sync-row');
     var go = btn('Connect', function () {
-      if (Sync.validName(n.input.value) && !Sync.validPass(p.input.value)) { reroll(n.input.value); return; }      // a good name with a passphrase that doesn't conform: straight to a generated one
+      if (Sync.validName(n.input.value) && p.input.value.trim() && !Sync.validPass(p.input.value)) { reroll(n.input.value); return; }      // a good name with a passphrase that was typed but doesn't conform: straight to a generated one (a blank passphrase gets the message instead)
       var bad = [];                                     // say which of the two fails, and offer to generate a proper pair
       if (!Sync.validName(n.input.value)) bad.push('Name must be ' + Sync.NAME_MIN + ' or more characters.');
       if (!Sync.validPass(p.input.value)) bad.push('Passphrase must be two words of 4 to 6 letters, separated by a dash.');
