@@ -58,8 +58,8 @@ No build tools or dependencies. Open `index.html` in a browser, or open the sing
   automatically, names are kept unique (a suffix is added), and everything lives in localStorage and is cleared by
   Clear all app data.
 - **Progressions (Explore).** A collapsible section below the chord selector, hidden until a chord (type and
-  degree) has been selected, unless a saved progression exists, in which case it appears as soon as a key is picked; then it appears (collapsed) and stays. Nothing is pre-selected: opening the chord selector
-  leaves no chord, and the section waits for the first one. Inside the section, under its title (so only
+  degree) has been selected, unless a saved progression exists, in which case it appears as soon as a key is picked; then it appears (collapsed) and stays. Opening the chord selector always selects a chord
+  (the I chord by default). Inside the section, under its title (so only
   while it is expanded, and only while the chord selector is open), an "Add ... to progression" button, or the
   Enter key (even with a type or degree chip focused), submits the selected chord; Clear sits at the far right
   of the same row. The progression is a row of chiclets (roman numeral over chord name; × removes one) stored by degree and type, so it follows whatever key you pick. It is saved in localStorage.

@@ -1561,6 +1561,7 @@
   // anim: false | 'fade' | { oldKeyS: absolute semitone of the clicked key in the current drawing }
   function draw(anim, focusRoot) {
     if (menuSels) syncMenus();
+    if (typeof stepCard !== 'undefined' && stepCard) stepCard.hidden = !studyQuizOn();
     if (trialBox) trialBox.hidden = !(quizOn() || studyQuizOn());          // (Time Trial belongs to the study activities, never to Explore)
     var kWant = appMode.indexOf('theory') >= 0 ? cvGroup : document.getElementById('view-group');      // the scale menu: just before the chord view menu (Chords in scale / Nomenclature) in Chord theory, else after Major / Minor
     if (kindGroup.nextElementSibling !== kWant) kWant.parentNode.insertBefore(kindGroup, kWant);
@@ -2741,6 +2742,7 @@
     ftcSection.hidden = !(on || non);
     chordsPanel.classList.toggle('quizzing', on);
     if (non) { updateStudyHead(); return; }
+    if (typeof stepCard !== 'undefined' && stepCard) stepCard.hidden = true;
     if (!on || !ftcQ) return;
     buildLevelTag(levelTag);
     showStreak();
