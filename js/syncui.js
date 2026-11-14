@@ -194,13 +194,14 @@
   }
 
   // setting up: a name, then a passphrase chosen for you
-  function createName() {
+  function createName(prefill) {
     view = 'create';
     var f = field('Your name for this account', 'text', 'At least ' + Sync.NAME_MIN + ' characters. Not case-sensitive. Pick something memorable!');
     var go = btn('Choose a passphrase', function () {
       if (!Sync.validName(f.input.value)) { setStatus('The name needs at least ' + Sync.NAME_MIN + ' characters (up to ' + Sync.NAME_MAX + ').'); return; }
       reroll(f.input.value);
     }, 'btn-reset sync-primary');
+    if (typeof prefill === 'string') f.input.value = prefill;
     f.input.addEventListener('keydown', function (e) { if (e.key === 'Enter') go.click(); });
     show([el('h2', null, 'Set up sync'), f.wrap, row(go, btn('Back', home))]);
     f.input.focus();
@@ -235,7 +236,14 @@
     view = 'connect';
     var n = field('Name', 'text'), p = field('Passphrase', 'text', 'Two words joined by a dash.'), offer = el('div', 'sync-row');
     var go = btn('Connect', function () {
-      if (!Sync.validName(n.input.value) || !Sync.validPass(p.input.value)) { setStatus('Enter the name (5 or more characters) and the passphrase (two words with a dash).'); return; }
+      var bad = [];                                     // say which of the two fails, and offer to generate a proper pair
+      if (!Sync.validName(n.input.value)) bad.push('Name must be ' + Sync.NAME_MIN + ' or more characters.');
+      if (!Sync.validPass(p.input.value)) bad.push('Passphrase must be two words of 4 to 6 letters, separated by a dash.');
+      if (bad.length) {
+        setStatus(bad.join(' ')); offer.textContent = '';
+        offer.appendChild(btn('Generate', function () { createName(n.input.value); }, 'btn-reset sync-primary'));
+        return;
+      }
       go.disabled = true; offer.textContent = ''; setStatus('Checking…');
       Sync.derive(n.input.value, p.input.value).then(function (d) {
         return Sync.pull(d).then(function (remote) {
