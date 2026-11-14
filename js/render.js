@@ -1078,6 +1078,11 @@ var KeyboardRender = (function () {
         'fill="#7b8294" pointer-events="none">\u2191 Click any key to see the corresponding note on the staff, or click a note to see its key</text>');
     }
 
+    if (state.keyHint) {                                            // Chords, Explore: how to change the key
+      parts.push('<text x="' + (WIDTH / 2) + '" y="' + (KEY_TOP + WH + 36) + '" text-anchor="middle" font-size="15" ' +
+        'fill="#7b8294" pointer-events="none">Press a key on the keyboard to select that musical key</text>');
+    }
+
     parts.push('</svg>');
     return parts.join('');
   }

@@ -1598,6 +1598,7 @@
     layoutBar.hidden = !!state.flash || noteOn() || !!(state.staff && state.selected);       // the signature boxes only show when no stave replaces them
     state.quizStave = quizOn() && state.answered && state.card && state.card.chord ? buildQuizStave() : null;
     var ghosts = pendingLayout === 'out' && oldSvg ? Array.prototype.map.call(oldSvg.querySelectorAll('.xbox'), function (g) { return g.outerHTML; }).join('') : '';
+    state.keyHint = appMode.indexOf('chords') >= 0 && !state.flash && state.selected && !qualityOn();      // (Chords, Explore: a line under the keyboard on choosing the key)
     state.romanTop = appMode.indexOf('chords') >= 0 || appMode.indexOf('theory') >= 0;      // (Chords and Chord theory: the keys of the key carry their numerals)
     stage.innerHTML = KeyboardRender.render(quizOn() ? Object.assign({}, state, { selected: false }) : state);
     if (ftcTrial && ftcTrial.view) ftcTrial.view();                       // (a countdown or the trial results fills the stage)
